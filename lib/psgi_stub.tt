@@ -1,0 +1,21 @@
+use [% impl_package_name %];
+use [% server_package_name %];
+
+[% IF module.options.authenticated %]
+use UserAuth;
+
+my $user_auth = UserAuth->new();
+[% END %]
+
+my $impl_obj = [% impl_package_name %]->new;
+
+my $server = [% server_package_name %]->new(instance_dispatch => { '[% module.module_name %]' => $impl_obj },
+[% IF module.options.authenticated %]
+				user_auth => $user_auth,
+[% END %]
+				allow_get => 0,
+			       );
+
+my $handler = sub { $server->handle_input(@_) };
+
+$handler;
