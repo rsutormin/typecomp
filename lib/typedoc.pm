@@ -48,7 +48,7 @@ sub new {
 		ACTIONS => {
 			'' => -1
 		},
-		DEFAULT => -6,
+		DEFAULT => -8,
 		GOTOS => {
 			'module_opts' => 3,
 			'module' => 4
@@ -75,7 +75,7 @@ sub new {
 		DEFAULT => 0
 	},
 	{#State 6
-		DEFAULT => -8
+		DEFAULT => -10
 	},
 	{#State 7
 		DEFAULT => -4,
@@ -84,537 +84,582 @@ sub new {
 		}
 	},
 	{#State 8
-		DEFAULT => -7
+		DEFAULT => -9
 	},
 	{#State 9
 		ACTIONS => {
 			'IDENT' => 10
+		},
+		GOTOS => {
+			'mod_name_def' => 11
 		}
 	},
 	{#State 10
 		ACTIONS => {
-			"{" => 11
-		}
+			":" => 12
+		},
+		DEFAULT => -6
 	},
 	{#State 11
-		DEFAULT => -9,
-		GOTOS => {
-			'module_components' => 12
+		ACTIONS => {
+			"{" => 13
 		}
 	},
 	{#State 12
 		ACTIONS => {
-			"}" => 13,
-			"use" => 18,
-			'DOC_COMMENT' => 15,
-			'TYPEDEF' => 19,
-			'FUNCDEF' => 17
-		},
-		GOTOS => {
-			'module_component' => 14,
-			'funcdef' => 16,
-			'typedef' => 20,
-			'module_component_with_doc' => 21
+			'IDENT' => 14
 		}
 	},
 	{#State 13
-		ACTIONS => {
-			";" => 22
+		DEFAULT => -11,
+		GOTOS => {
+			'module_components' => 15
 		}
 	},
 	{#State 14
-		DEFAULT => -11
+		DEFAULT => -7
 	},
 	{#State 15
 		ACTIONS => {
-			"use" => 18,
-			'TYPEDEF' => 19,
-			'FUNCDEF' => 17
+			"}" => 16,
+			'ASYNC' => 21,
+			"use" => 22,
+			'DOC_COMMENT' => 18,
+			'TYPEDEF' => 23
 		},
+		DEFAULT => -24,
 		GOTOS => {
-			'module_component' => 23,
-			'funcdef' => 16,
-			'typedef' => 20
+			'async_flag' => 20,
+			'module_component' => 17,
+			'funcdef' => 19,
+			'typedef' => 24,
+			'module_component_with_doc' => 25
 		}
 	},
 	{#State 16
-		DEFAULT => -14
+		ACTIONS => {
+			";" => 26
+		}
 	},
 	{#State 17
-		ACTIONS => {
-			'IDENT' => -18
-		},
-		DEFAULT => -20,
-		GOTOS => {
-			'@4-1' => 24,
-			'@3-1' => 25
-		}
+		DEFAULT => -13
 	},
 	{#State 18
 		ACTIONS => {
-			"module" => 26
+			'ASYNC' => 21,
+			"use" => 22,
+			'TYPEDEF' => 23
+		},
+		DEFAULT => -24,
+		GOTOS => {
+			'async_flag' => 20,
+			'module_component' => 27,
+			'funcdef' => 19,
+			'typedef' => 24
 		}
 	},
 	{#State 19
-		DEFAULT => -16,
-		GOTOS => {
-			'@2-1' => 27
-		}
+		DEFAULT => -16
 	},
 	{#State 20
-		DEFAULT => -13
+		ACTIONS => {
+			'FUNCDEF' => 28
+		}
 	},
 	{#State 21
-		DEFAULT => -10
+		DEFAULT => -25
 	},
 	{#State 22
-		DEFAULT => -5
+		ACTIONS => {
+			"module" => 29
+		}
 	},
 	{#State 23
-		DEFAULT => -12
+		ACTIONS => {
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'LIST' => 36,
+			'IDENT' => 33,
+			'MAPPING' => 34,
+			'STRUCTURE' => 39
+		},
+		GOTOS => {
+			'mapping' => 31,
+			'structure' => 35,
+			'type' => 38,
+			'tuple' => 37,
+			'list' => 40
+		}
 	},
 	{#State 24
-		ACTIONS => {
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'LIST' => 33,
-			'MAPPING' => 31,
-			'STRUCTURE' => 36
-		},
-		GOTOS => {
-			'mapping' => 29,
-			'structure' => 32,
-			'type' => 35,
-			'tuple' => 34,
-			'list' => 37
-		}
+		DEFAULT => -15
 	},
 	{#State 25
-		ACTIONS => {
-			'IDENT' => 38
-		}
+		DEFAULT => -12
 	},
 	{#State 26
-		ACTIONS => {
-			'ident' => 39
-		}
+		DEFAULT => -5
 	},
 	{#State 27
-		ACTIONS => {
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'LIST' => 33,
-			'MAPPING' => 31,
-			'STRUCTURE' => 36
-		},
-		GOTOS => {
-			'mapping' => 29,
-			'structure' => 32,
-			'type' => 40,
-			'tuple' => 34,
-			'list' => 37
-		}
+		DEFAULT => -14
 	},
 	{#State 28
-		DEFAULT => -27
+		ACTIONS => {
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'LIST' => 36,
+			'IDENT' => 41,
+			'MAPPING' => 34,
+			'STRUCTURE' => 39
+		},
+		GOTOS => {
+			'mapping' => 31,
+			'structure' => 35,
+			'type' => 42,
+			'tuple' => 37,
+			'list' => 40
+		}
 	},
 	{#State 29
-		DEFAULT => -28
+		ACTIONS => {
+			'ident' => 43
+		}
 	},
 	{#State 30
-		ACTIONS => {
-			"<" => 41
-		}
-	},
-	{#State 31
-		ACTIONS => {
-			"<" => 42
-		}
-	},
-	{#State 32
-		DEFAULT => -29
-	},
-	{#State 33
-		ACTIONS => {
-			"<" => 43
-		}
-	},
-	{#State 34
 		DEFAULT => -31
 	},
-	{#State 35
+	{#State 31
+		DEFAULT => -32
+	},
+	{#State 32
 		ACTIONS => {
-			'IDENT' => 44
+			"<" => 44
 		}
+	},
+	{#State 33
+		DEFAULT => -36
+	},
+	{#State 34
+		ACTIONS => {
+			"<" => 45
+		}
+	},
+	{#State 35
+		DEFAULT => -33
 	},
 	{#State 36
 		ACTIONS => {
-			"{" => 45
+			"<" => 46
 		}
 	},
 	{#State 37
-		DEFAULT => -30
+		DEFAULT => -35
 	},
 	{#State 38
 		ACTIONS => {
-			"(" => 46
+			'IDENT' => 47
 		}
 	},
 	{#State 39
 		ACTIONS => {
-			";" => 47
+			"{" => 48
 		}
 	},
 	{#State 40
-		ACTIONS => {
-			'IDENT' => 48
-		}
+		DEFAULT => -34
 	},
 	{#State 41
 		ACTIONS => {
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'LIST' => 33,
-			'MAPPING' => 31,
-			'STRUCTURE' => 36
+			'IDENT' => -36
 		},
+		DEFAULT => -20,
 		GOTOS => {
-			'mapping' => 29,
-			'tuple_types' => 49,
-			'structure' => 32,
-			'tuple_type' => 50,
-			'tuple' => 34,
-			'type' => 51,
-			'list' => 37
+			'@3-3' => 49
 		}
 	},
 	{#State 42
 		ACTIONS => {
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'LIST' => 33,
-			'MAPPING' => 31,
-			'STRUCTURE' => 36
-		},
-		GOTOS => {
-			'mapping' => 29,
-			'tuple_type' => 52,
-			'structure' => 32,
-			'tuple' => 34,
-			'type' => 51,
-			'list' => 37
+			'IDENT' => 50
 		}
 	},
 	{#State 43
 		ACTIONS => {
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'LIST' => 33,
-			'MAPPING' => 31,
-			'STRUCTURE' => 36
-		},
-		GOTOS => {
-			'mapping' => 29,
-			'structure' => 32,
-			'type' => 53,
-			'tuple' => 34,
-			'list' => 37
+			";" => 51
 		}
 	},
 	{#State 44
 		ACTIONS => {
-			"(" => 54
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'LIST' => 36,
+			'IDENT' => 33,
+			'MAPPING' => 34,
+			'STRUCTURE' => 39
+		},
+		GOTOS => {
+			'mapping' => 31,
+			'tuple_types' => 52,
+			'structure' => 35,
+			'tuple_type' => 53,
+			'tuple' => 37,
+			'type' => 54,
+			'list' => 40
 		}
 	},
 	{#State 45
 		ACTIONS => {
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'LIST' => 33,
-			'MAPPING' => 31,
-			'STRUCTURE' => 36
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'LIST' => 36,
+			'IDENT' => 33,
+			'MAPPING' => 34,
+			'STRUCTURE' => 39
 		},
 		GOTOS => {
-			'mapping' => 29,
-			'structure' => 32,
-			'tuple' => 34,
-			'type' => 57,
-			'struct_items' => 56,
-			'struct_item' => 55,
-			'list' => 37
+			'mapping' => 31,
+			'tuple_type' => 55,
+			'structure' => 35,
+			'tuple' => 37,
+			'type' => 54,
+			'list' => 40
 		}
 	},
 	{#State 46
 		ACTIONS => {
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'MAPPING' => 31,
-			'LIST' => 33,
-			'STRUCTURE' => 36
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'LIST' => 36,
+			'IDENT' => 33,
+			'MAPPING' => 34,
+			'STRUCTURE' => 39
 		},
-		DEFAULT => -22,
 		GOTOS => {
-			'funcdef_param' => 59,
-			'mapping' => 29,
-			'structure' => 32,
-			'funcdef_params' => 58,
-			'type' => 60,
-			'tuple' => 34,
-			'list' => 37
+			'mapping' => 31,
+			'structure' => 35,
+			'type' => 56,
+			'tuple' => 37,
+			'list' => 40
 		}
 	},
 	{#State 47
-		DEFAULT => -15
+		DEFAULT => -18,
+		GOTOS => {
+			'@2-3' => 57
+		}
 	},
 	{#State 48
 		ACTIONS => {
-			";" => 61
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'LIST' => 36,
+			'IDENT' => 33,
+			'MAPPING' => 34,
+			'STRUCTURE' => 39
+		},
+		GOTOS => {
+			'mapping' => 31,
+			'structure' => 35,
+			'tuple' => 37,
+			'type' => 60,
+			'struct_items' => 59,
+			'struct_item' => 58,
+			'list' => 40
 		}
 	},
 	{#State 49
 		ACTIONS => {
-			"," => 62,
-			">" => 63
+			"(" => 61
 		}
 	},
 	{#State 50
-		DEFAULT => -40
+		DEFAULT => -22,
+		GOTOS => {
+			'@4-4' => 62
+		}
 	},
 	{#State 51
-		ACTIONS => {
-			'IDENT' => 64
-		},
-		DEFAULT => -42
+		DEFAULT => -17
 	},
 	{#State 52
 		ACTIONS => {
-			"," => 65
+			"," => 63,
+			">" => 64
 		}
 	},
 	{#State 53
-		ACTIONS => {
-			">" => 66
-		}
+		DEFAULT => -45
 	},
 	{#State 54
 		ACTIONS => {
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'MAPPING' => 31,
-			'LIST' => 33,
-			'STRUCTURE' => 36
+			'IDENT' => 65
 		},
-		DEFAULT => -22,
-		GOTOS => {
-			'funcdef_param' => 59,
-			'mapping' => 29,
-			'structure' => 32,
-			'funcdef_params' => 67,
-			'type' => 60,
-			'tuple' => 34,
-			'list' => 37
-		}
+		DEFAULT => -47
 	},
 	{#State 55
-		DEFAULT => -34
+		ACTIONS => {
+			"," => 66
+		}
 	},
 	{#State 56
 		ACTIONS => {
-			"}" => 68,
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'LIST' => 33,
-			'MAPPING' => 31,
-			'STRUCTURE' => 36
-		},
-		GOTOS => {
-			'mapping' => 29,
-			'structure' => 32,
-			'tuple' => 34,
-			'type' => 57,
-			'struct_item' => 69,
-			'list' => 37
+			">" => 67
 		}
 	},
 	{#State 57
 		ACTIONS => {
-			'IDENT' => 70
+			";" => 68
 		}
 	},
 	{#State 58
-		ACTIONS => {
-			"," => 71,
-			")" => 72
-		}
+		DEFAULT => -39
 	},
 	{#State 59
-		DEFAULT => -23
+		ACTIONS => {
+			"}" => 69,
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'LIST' => 36,
+			'IDENT' => 33,
+			'MAPPING' => 34,
+			'STRUCTURE' => 39
+		},
+		GOTOS => {
+			'mapping' => 31,
+			'structure' => 35,
+			'tuple' => 37,
+			'type' => 60,
+			'struct_item' => 70,
+			'list' => 40
+		}
 	},
 	{#State 60
 		ACTIONS => {
-			'IDENT' => 73
-		},
-		DEFAULT => -26
+			'IDENT' => 71
+		}
 	},
 	{#State 61
-		DEFAULT => -17
+		ACTIONS => {
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'IDENT' => 33,
+			'MAPPING' => 34,
+			'LIST' => 36,
+			'STRUCTURE' => 39
+		},
+		DEFAULT => -26,
+		GOTOS => {
+			'funcdef_param' => 73,
+			'mapping' => 31,
+			'structure' => 35,
+			'funcdef_params' => 72,
+			'type' => 74,
+			'tuple' => 37,
+			'list' => 40
+		}
 	},
 	{#State 62
 		ACTIONS => {
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'LIST' => 33,
-			'MAPPING' => 31,
-			'STRUCTURE' => 36
-		},
-		GOTOS => {
-			'mapping' => 29,
-			'tuple_type' => 74,
-			'structure' => 32,
-			'tuple' => 34,
-			'type' => 51,
-			'list' => 37
+			"(" => 75
 		}
 	},
 	{#State 63
-		DEFAULT => -39
-	},
-	{#State 64
-		DEFAULT => -43
-	},
-	{#State 65
 		ACTIONS => {
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'LIST' => 33,
-			'MAPPING' => 31,
-			'STRUCTURE' => 36
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'LIST' => 36,
+			'IDENT' => 33,
+			'MAPPING' => 34,
+			'STRUCTURE' => 39
 		},
 		GOTOS => {
-			'mapping' => 29,
-			'tuple_type' => 75,
-			'structure' => 32,
-			'tuple' => 34,
-			'type' => 51,
-			'list' => 37
+			'mapping' => 31,
+			'tuple_type' => 76,
+			'structure' => 35,
+			'tuple' => 37,
+			'type' => 54,
+			'list' => 40
 		}
+	},
+	{#State 64
+		DEFAULT => -44
+	},
+	{#State 65
+		DEFAULT => -48
 	},
 	{#State 66
-		DEFAULT => -38
+		ACTIONS => {
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'LIST' => 36,
+			'IDENT' => 33,
+			'MAPPING' => 34,
+			'STRUCTURE' => 39
+		},
+		GOTOS => {
+			'mapping' => 31,
+			'tuple_type' => 77,
+			'structure' => 35,
+			'tuple' => 37,
+			'type' => 54,
+			'list' => 40
+		}
 	},
 	{#State 67
-		ACTIONS => {
-			"," => 71,
-			")" => 76
-		}
+		DEFAULT => -43
 	},
 	{#State 68
-		DEFAULT => -33
+		DEFAULT => -19
 	},
 	{#State 69
-		DEFAULT => -35
+		DEFAULT => -38
 	},
 	{#State 70
-		ACTIONS => {
-			'NULLABLE' => 78,
-			";" => 77
-		}
+		DEFAULT => -40
 	},
 	{#State 71
 		ACTIONS => {
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'LIST' => 33,
-			'MAPPING' => 31,
-			'STRUCTURE' => 36
-		},
-		GOTOS => {
-			'funcdef_param' => 79,
-			'mapping' => 29,
-			'structure' => 32,
-			'type' => 60,
-			'tuple' => 34,
-			'list' => 37
+			'NULLABLE' => 79,
+			";" => 78
 		}
 	},
 	{#State 72
 		ACTIONS => {
-			'RETURNS' => 80
+			"," => 80,
+			")" => 81
 		}
 	},
 	{#State 73
-		DEFAULT => -25
+		DEFAULT => -27
 	},
 	{#State 74
-		DEFAULT => -41
+		ACTIONS => {
+			'IDENT' => 82
+		},
+		DEFAULT => -30
 	},
 	{#State 75
 		ACTIONS => {
-			">" => 81
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'IDENT' => 33,
+			'MAPPING' => 34,
+			'LIST' => 36,
+			'STRUCTURE' => 39
+		},
+		DEFAULT => -26,
+		GOTOS => {
+			'funcdef_param' => 73,
+			'mapping' => 31,
+			'structure' => 35,
+			'funcdef_params' => 83,
+			'type' => 74,
+			'tuple' => 37,
+			'list' => 40
 		}
 	},
 	{#State 76
-		ACTIONS => {
-			";" => 82
-		}
+		DEFAULT => -46
 	},
 	{#State 77
-		DEFAULT => -36
-	},
-	{#State 78
 		ACTIONS => {
-			";" => 83
+			">" => 84
 		}
 	},
+	{#State 78
+		DEFAULT => -41
+	},
 	{#State 79
-		DEFAULT => -24
+		ACTIONS => {
+			";" => 85
+		}
 	},
 	{#State 80
 		ACTIONS => {
-			"(" => 84
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'LIST' => 36,
+			'IDENT' => 33,
+			'MAPPING' => 34,
+			'STRUCTURE' => 39
+		},
+		GOTOS => {
+			'funcdef_param' => 86,
+			'mapping' => 31,
+			'structure' => 35,
+			'type' => 74,
+			'tuple' => 37,
+			'list' => 40
 		}
 	},
 	{#State 81
-		DEFAULT => -32
+		ACTIONS => {
+			'RETURNS' => 87
+		}
 	},
 	{#State 82
-		DEFAULT => -21
+		DEFAULT => -29
 	},
 	{#State 83
-		DEFAULT => -37
+		ACTIONS => {
+			"," => 80,
+			")" => 88
+		}
 	},
 	{#State 84
-		ACTIONS => {
-			'TYPENAME' => 28,
-			'TUPLE' => 30,
-			'MAPPING' => 31,
-			'LIST' => 33,
-			'STRUCTURE' => 36
-		},
-		DEFAULT => -22,
-		GOTOS => {
-			'funcdef_param' => 59,
-			'mapping' => 29,
-			'structure' => 32,
-			'funcdef_params' => 85,
-			'type' => 60,
-			'tuple' => 34,
-			'list' => 37
-		}
+		DEFAULT => -37
 	},
 	{#State 85
-		ACTIONS => {
-			"," => 71,
-			")" => 86
-		}
+		DEFAULT => -42
 	},
 	{#State 86
-		ACTIONS => {
-			";" => 87
-		}
+		DEFAULT => -28
 	},
 	{#State 87
-		DEFAULT => -19
+		ACTIONS => {
+			"(" => 89
+		}
+	},
+	{#State 88
+		ACTIONS => {
+			";" => 90
+		}
+	},
+	{#State 89
+		ACTIONS => {
+			'TYPENAME' => 30,
+			'TUPLE' => 32,
+			'IDENT' => 33,
+			'MAPPING' => 34,
+			'LIST' => 36,
+			'STRUCTURE' => 39
+		},
+		DEFAULT => -26,
+		GOTOS => {
+			'funcdef_param' => 73,
+			'mapping' => 31,
+			'structure' => 35,
+			'funcdef_params' => 91,
+			'type' => 74,
+			'tuple' => 37,
+			'list' => 40
+		}
+	},
+	{#State 90
+		DEFAULT => -23
+	},
+	{#State 91
+		ACTIONS => {
+			"," => 80,
+			")" => 92
+		}
+	},
+	{#State 92
+		ACTIONS => {
+			";" => 93
+		}
+	},
+	{#State 93
+		DEFAULT => -21
 	}
 ],
                                   yyrules  =>
@@ -649,214 +694,253 @@ sub
 #line 28 "typedoc.yp"
 {
     KBT::DefineModule->new(options => $_[1],
-			   module_name => $_[4],
+			   @{$_[4]},
 			   module_components => $_[6],
 		           comment => $_[3]);
     }
 	],
 	[#Rule 6
-		 'module_opts', 0,
+		 'mod_name_def', 1,
 sub
 #line 36 "typedoc.yp"
-{ [] }
+{ [ module_name => $_[1], service_name => $_[1] ] }
 	],
 	[#Rule 7
-		 'module_opts', 2,
+		 'mod_name_def', 3,
 sub
 #line 37 "typedoc.yp"
-{ [ @{$_[1]}, $_[2] ] }
+{ [ module_name => $_[3], service_name => $_[1] ] }
 	],
 	[#Rule 8
-		 'module_opt', 1, undef
-	],
-	[#Rule 9
-		 'module_components', 0,
+		 'module_opts', 0,
 sub
-#line 44 "typedoc.yp"
+#line 40 "typedoc.yp"
 { [] }
 	],
-	[#Rule 10
-		 'module_components', 2,
+	[#Rule 9
+		 'module_opts', 2,
 sub
-#line 45 "typedoc.yp"
+#line 41 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
+	[#Rule 10
+		 'module_opt', 1, undef
+	],
 	[#Rule 11
-		 'module_component_with_doc', 1, undef
+		 'module_components', 0,
+sub
+#line 48 "typedoc.yp"
+{ [] }
 	],
 	[#Rule 12
-		 'module_component_with_doc', 2,
+		 'module_components', 2,
 sub
-#line 50 "typedoc.yp"
-{ $_[2]->comment($_[1]); $_[2] }
+#line 49 "typedoc.yp"
+{ [ @{$_[1]}, $_[2] ] }
 	],
 	[#Rule 13
-		 'module_component', 1, undef
+		 'module_component_with_doc', 1, undef
 	],
 	[#Rule 14
-		 'module_component', 1, undef
+		 'module_component_with_doc', 2,
+sub
+#line 54 "typedoc.yp"
+{ $_[2]->comment($_[1]); $_[2] }
 	],
 	[#Rule 15
-		 'module_component', 4, undef
+		 'module_component', 1, undef
 	],
 	[#Rule 16
-		 '@2-1', 0,
-sub
-#line 59 "typedoc.yp"
-{ $_[0]->get_comment() }
+		 'module_component', 1, undef
 	],
 	[#Rule 17
-		 'typedef', 5,
-sub
-#line 59 "typedoc.yp"
-{ $_[0]->define_type($_[3], $_[4], $_[2]); }
+		 'module_component', 4, undef
 	],
 	[#Rule 18
-		 '@3-1', 0,
+		 '@2-3', 0,
 sub
-#line 62 "typedoc.yp"
+#line 63 "typedoc.yp"
 { $_[0]->get_comment() }
 	],
 	[#Rule 19
-		 'funcdef', 11,
+		 'typedef', 5,
 sub
 #line 63 "typedoc.yp"
-{ KBT::Funcdef->new(return_type => $_[9], name => $_[3], parameters => $_[5],
-			      comment => $_[2]); }
+{ $_[0]->define_type($_[2], $_[3], $_[4]); }
 	],
 	[#Rule 20
-		 '@4-1', 0,
+		 '@3-3', 0,
 sub
-#line 65 "typedoc.yp"
+#line 66 "typedoc.yp"
 { $_[0]->get_comment() }
 	],
 	[#Rule 21
-		 'funcdef', 8,
+		 'funcdef', 12,
 sub
-#line 66 "typedoc.yp"
-{ KBT::Funcdef->new(return_type => [$_[3]], name => $_[4], parameters => $_[6],
-			      comment => $_[2]); }
+#line 67 "typedoc.yp"
+{ KBT::Funcdef->new(return_type => $_[10], name => $_[3], parameters => $_[6],
+			      comment => $_[4], async => $_[1] ); }
 	],
 	[#Rule 22
-		 'funcdef_params', 0,
+		 '@4-4', 0,
 sub
-#line 70 "typedoc.yp"
-{ [] }
+#line 69 "typedoc.yp"
+{ $_[0]->get_comment() }
 	],
 	[#Rule 23
-		 'funcdef_params', 1,
+		 'funcdef', 9,
 sub
-#line 71 "typedoc.yp"
-{ [ $_[1] ] }
+#line 70 "typedoc.yp"
+{ KBT::Funcdef->new(return_type => [$_[3]], name => $_[4], parameters => $_[7],
+			      comment => $_[5], async => $_[1]); }
 	],
 	[#Rule 24
-		 'funcdef_params', 3,
+		 'async_flag', 0,
 sub
-#line 72 "typedoc.yp"
-{ [ @{$_[1]}, $_[3] ] }
+#line 74 "typedoc.yp"
+{ 0 }
 	],
 	[#Rule 25
-		 'funcdef_param', 2,
+		 'async_flag', 1,
 sub
 #line 75 "typedoc.yp"
-{ { type => $_[1], name => $_[2] } }
+{ 1 }
 	],
 	[#Rule 26
-		 'funcdef_param', 1,
+		 'funcdef_params', 0,
 sub
-#line 76 "typedoc.yp"
-{ { type => $_[1] } }
+#line 78 "typedoc.yp"
+{ [] }
 	],
 	[#Rule 27
-		 'type', 1, undef
+		 'funcdef_params', 1,
+sub
+#line 79 "typedoc.yp"
+{ [ $_[1] ] }
 	],
 	[#Rule 28
-		 'type', 1, undef
+		 'funcdef_params', 3,
+sub
+#line 80 "typedoc.yp"
+{ [ @{$_[1]}, $_[3] ] }
 	],
 	[#Rule 29
-		 'type', 1, undef
+		 'funcdef_param', 2,
+sub
+#line 83 "typedoc.yp"
+{ { type => $_[1], name => $_[2] } }
 	],
 	[#Rule 30
-		 'type', 1, undef
+		 'funcdef_param', 1,
+sub
+#line 84 "typedoc.yp"
+{ { type => $_[1] } }
 	],
 	[#Rule 31
 		 'type', 1, undef
 	],
 	[#Rule 32
-		 'mapping', 6,
-sub
-#line 87 "typedoc.yp"
-{ KBT::Mapping->new(key_type => $_[3], value_type=> $_[5]); }
+		 'type', 1, undef
 	],
 	[#Rule 33
-		 'structure', 4,
-sub
-#line 90 "typedoc.yp"
-{ KBT::Struct->new(items => $_[3]); }
+		 'type', 1, undef
 	],
 	[#Rule 34
-		 'struct_items', 1,
-sub
-#line 93 "typedoc.yp"
-{ [$_[1]] }
+		 'type', 1, undef
 	],
 	[#Rule 35
-		 'struct_items', 2,
-sub
-#line 94 "typedoc.yp"
-{ [ @{$_[1]}, $_[2] ] }
+		 'type', 1, undef
 	],
 	[#Rule 36
-		 'struct_item', 3,
+		 'type', 1,
 sub
-#line 97 "typedoc.yp"
-{ KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 0); }
+#line 93 "typedoc.yp"
+{ my $type = $_[0]->lookup_type($_[1]);
+			if (!defined($type))
+			{
+			    $_[0]->emit_error("Attempt to use undefined type '$_[1]'");
+			}
+			$type }
 	],
 	[#Rule 37
-		 'struct_item', 4,
-sub
-#line 98 "typedoc.yp"
-{ KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 1); }
-	],
-	[#Rule 38
-		 'list', 4,
+		 'mapping', 6,
 sub
 #line 101 "typedoc.yp"
-{ KBT::List->new(element_type => $_[3]); }
+{ KBT::Mapping->new(key_type => $_[3]->[0], value_type=> $_[5]->[0]); }
 	],
-	[#Rule 39
-		 'tuple', 4,
+	[#Rule 38
+		 'structure', 4,
 sub
 #line 104 "typedoc.yp"
-{ KBT::Tuple->new(element_types => $_[3]); }
+{ KBT::Struct->new(items => $_[3]); }
 	],
-	[#Rule 40
-		 'tuple_types', 1,
+	[#Rule 39
+		 'struct_items', 1,
 sub
 #line 107 "typedoc.yp"
-{ [ $_[1] ] }
+{ [$_[1]] }
 	],
-	[#Rule 41
-		 'tuple_types', 3,
+	[#Rule 40
+		 'struct_items', 2,
 sub
 #line 108 "typedoc.yp"
-{ [ @{$_[1]}, $_[3] ] }
+{ [ @{$_[1]}, $_[2] ] }
+	],
+	[#Rule 41
+		 'struct_item', 3,
+sub
+#line 111 "typedoc.yp"
+{ KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 0); }
 	],
 	[#Rule 42
-		 'tuple_type', 1, undef
-	],
-	[#Rule 43
-		 'tuple_type', 2,
+		 'struct_item', 4,
 sub
 #line 112 "typedoc.yp"
-{ $_[1] }
+{ KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 1); }
+	],
+	[#Rule 43
+		 'list', 4,
+sub
+#line 115 "typedoc.yp"
+{ KBT::List->new(element_type => $_[3]); }
+	],
+	[#Rule 44
+		 'tuple', 4,
+sub
+#line 118 "typedoc.yp"
+{ KBT::Tuple->new(element_types => [ map { $_->[0] } @{$_[3]}],
+							    element_names => [ map { $_->[1] } @{$_[3]}] ); }
+	],
+	[#Rule 45
+		 'tuple_types', 1,
+sub
+#line 122 "typedoc.yp"
+{ [ $_[1] ] }
+	],
+	[#Rule 46
+		 'tuple_types', 3,
+sub
+#line 123 "typedoc.yp"
+{ [ @{$_[1]}, $_[3] ] }
+	],
+	[#Rule 47
+		 'tuple_type', 1,
+sub
+#line 126 "typedoc.yp"
+{ [ $_[1], undef ] }
+	],
+	[#Rule 48
+		 'tuple_type', 2,
+sub
+#line 127 "typedoc.yp"
+{ [ $_[1], $_[2] ] }
 	]
 ],
                                   @_);
     bless($self,$class);
 }
 
-#line 115 "typedoc.yp"
+#line 130 "typedoc.yp"
  
 
 sub define_type
@@ -865,13 +949,24 @@ sub define_type
     my $def = KBT::Typedef->new(name => $new_type, alias_type => $old_type, comment => $comment);
     push(@{$self->YYData->{type_list}}, $def);
     $self->YYData->{type_table}->{$new_type} = $def;
+    #
+    # Try to name the typedefed type if it is a tuple or struct.
+    #
+    if ($old_type->isa('KBT::Struct') || $old_type->isa('KBT::Tuple'))
+    {
+	$old_type->name_type($new_type);
+	if ($comment)
+	{
+	    $old_type->comment($comment);
+	}
+    }
     return $def;
 }
 
 sub types
 {
     my($self) = @_;
-    return $self->YYData->{type_list};
+    return $self->YYData->{type_list} || [];
 }
 
 sub lookup_type
@@ -883,18 +978,26 @@ sub lookup_type
 
 sub parse
 {
-    my($self, $data) = @_;
+    my($self, $data, $filename) = @_;
+
+    $self->init_state($data, $filename);
+    my $res = $self->YYParse(yylex => \&Lexer, yyerror => \&Error);
+
+    return ($res, $self->YYData->{error_count});;
+}
+
+sub init_state
+{
+    my($self, $data, $filename) = @_;
 
     #
     # Initialize type table to just the builtins.
     #
     $self->YYData->{type_table} = { %builtin_types };
-
     $self->YYData->{INPUT} = $data;
-
-    my $res = $self->YYParse(yylex => \&Lexer, yyerror => \&Error);
-
-    return $res;
+    $self->YYData->{line_number} = 1;
+    $self->YYData->{filename} = $filename;
+    $self->YYData->{error_count} = 0;
 }
 
 
@@ -902,23 +1005,33 @@ sub Error {
     my($parser) = @_;
     
     my $data = $parser->YYData;
-    my $bufptr = \$data->{INPUT};
 
-    my $ctx = substr($$bufptr, 0, 100);
+    my $error = $data->{ERRMSG} || "Syntax error";
 
-    if ($data->{ERRMSG})
-    {
-        print $data->{ERRMSG};
-	print "$ctx\n";
-        delete $data->{ERRMSG};
-        return;
-    }
-    else
-    {
-	print "Syntax error.\n";
-	print "$ctx\n";
-    }
+    $parser->emit_error($error);
 }
+
+sub emit_error {
+    my($parser, $message) = @_;
+    
+    my $data = $parser->YYData;
+
+    my $line = $data->{line_number};
+    my $file = $data->{filename};
+
+    my $token = $parser->YYCurtok;
+    my $tval = $parser->YYCurval;
+
+    if ($token eq 'IDENT')
+    {
+	$token = $tval;
+    }
+    
+
+    print STDERR "$file:$line: $message (next token is '$token')\n";
+    $data->{error_count}++;
+}
+
 
 sub Lexer {
     my($parser)=shift;
@@ -931,28 +1044,32 @@ sub Lexer {
 	while ($_ ne '')
 	{
 	    # print "Top: '$_'\n";
-	    s/^[ \t\n]+//;
-
+	    next if (s/^[ \t]+//);
+	    if (s/^\n//)
+	    {
+		$data->{line_number}++;
+		next;
+	    }
 	    
 	    if ($_ eq '')
 	    {
 		return ('', undef);
 	    }
-	    elsif (s/^(funcdef|typedef|module|list|mapping|structure|nullable|returns|authenticated|tuple)\b//)
+	    elsif (s/^(funcdef|typedef|module|list|mapping|structure|nullable|returns|authenticated|tuple|async)\b//)
 	    {
 		return (uc($1), $1);
 	    }
 	    elsif (s/^([A-Za-z][A-Za-z0-9_]*)//)
 	    {
-		#print "Check builtin $1 " . Dumper($data->{type_table});
-		
-		if (my $type = $data->{type_table}->{$1})
+		my $str = $1;
+		if ($builtin_types{$str})
 		{
+		    my $type = $data->{type_table}->{$str};
 		    return('TYPENAME', $type);
 		}
 		else
 		{
-		    return('IDENT',$1);
+		    return('IDENT', $str);
 		}
 	    }
 	    elsif (s,^/\*(.*?)\*/,,s)

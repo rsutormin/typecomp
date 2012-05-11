@@ -25,12 +25,16 @@ module_list: 	{ [] }
 	|      	module_list module { [ @{$_[1]}, $_[2] ] }
 	;
 
-module:		module_opts MODULE { $_[0]->get_comment() }  IDENT '{' module_components '}' ';' {
+module:		module_opts MODULE { $_[0]->get_comment() }  mod_name_def '{' module_components '}' ';' {
     KBT::DefineModule->new(options => $_[1],
-			   module_name => $_[4],
+			   @{$_[4]},
 			   module_components => $_[6],
 		           comment => $_[3]);
     }
+	;
+
+mod_name_def:	IDENT { [ module_name => $_[1], service_name => $_[1] ] }
+	|	IDENT ':' IDENT  { [ module_name => $_[3], service_name => $_[1] ] }
 	;
 
 module_opts: { [] }
@@ -56,15 +60,19 @@ module_component:
 	|	'use' 'module' ident ';'
 	;
 
-typedef:	TYPEDEF { $_[0]->get_comment() } type IDENT  ';' { $_[0]->define_type($_[3], $_[4], $_[2]); }
+typedef:	TYPEDEF type IDENT { $_[0]->get_comment() }  ';' { $_[0]->define_type($_[2], $_[3], $_[4]); }
 	;
 
-funcdef:	FUNCDEF { $_[0]->get_comment() } IDENT '(' funcdef_params ')' RETURNS '(' funcdef_params ')' ';'
-			{ KBT::Funcdef->new(return_type => $_[9], name => $_[3], parameters => $_[5],
-			      comment => $_[2]); }
-	|	FUNCDEF { $_[0]->get_comment() } type IDENT '(' funcdef_params ')' ';'
-			{ KBT::Funcdef->new(return_type => [$_[3]], name => $_[4], parameters => $_[6],
-			      comment => $_[2]); }
+funcdef:	async_flag FUNCDEF IDENT { $_[0]->get_comment() } '(' funcdef_params ')' RETURNS '(' funcdef_params ')' ';'
+			{ KBT::Funcdef->new(return_type => $_[10], name => $_[3], parameters => $_[6],
+			      comment => $_[4], async => $_[1] ); }
+	|	async_flag FUNCDEF type IDENT { $_[0]->get_comment() } '(' funcdef_params ')' ';'
+			{ KBT::Funcdef->new(return_type => [$_[3]], name => $_[4], parameters => $_[7],
+			      comment => $_[5], async => $_[1]); }
+	;
+
+async_flag: { 0 } 
+	|     ASYNC { 1 }
 	;
 
 funcdef_params: { [] }		# empty
@@ -82,9 +90,15 @@ type:		TYPENAME
 	|	structure
 	|	list
 	|	tuple
+	| 	IDENT { my $type = $_[0]->lookup_type($_[1]);
+			if (!defined($type))
+			{
+			    $_[0]->emit_error("Attempt to use undefined type '$_[1]'");
+			}
+			$type }
 	;
 
-mapping:	MAPPING '<' tuple_type ',' tuple_type '>' { KBT::Mapping->new(key_type => $_[3], value_type=> $_[5]); }
+mapping:	MAPPING '<' tuple_type ',' tuple_type '>' { KBT::Mapping->new(key_type => $_[3]->[0], value_type=> $_[5]->[0]); }
 	;
 
 structure:	STRUCTURE '{' struct_items '}' { KBT::Struct->new(items => $_[3]); }
@@ -101,15 +115,16 @@ struct_item:	type IDENT ';' { KBT::StructItem->new(item_type => $_[1], name => $
 list:		LIST '<' type '>' { KBT::List->new(element_type => $_[3]); }
 	;
 
-tuple:		TUPLE '<' tuple_types '>' { KBT::Tuple->new(element_types => $_[3]); }
+tuple:		TUPLE '<' tuple_types '>' { KBT::Tuple->new(element_types => [ map { $_->[0] } @{$_[3]}],
+							    element_names => [ map { $_->[1] } @{$_[3]}] ); }
 	;
 
 tuple_types:	tuple_type { [ $_[1] ] }
 	|	tuple_types ',' tuple_type { [ @{$_[1]}, $_[3] ] }
 	;
 
-tuple_type:	type
-	|	type IDENT { $_[1] }
+tuple_type:	type { [ $_[1], undef ] }
+	|	type IDENT { [ $_[1], $_[2] ] }
 	;
 
 %% 
@@ -120,13 +135,24 @@ sub define_type
     my $def = KBT::Typedef->new(name => $new_type, alias_type => $old_type, comment => $comment);
     push(@{$self->YYData->{type_list}}, $def);
     $self->YYData->{type_table}->{$new_type} = $def;
+    #
+    # Try to name the typedefed type if it is a tuple or struct.
+    #
+    if ($old_type->isa('KBT::Struct') || $old_type->isa('KBT::Tuple'))
+    {
+	$old_type->name_type($new_type);
+	if ($comment)
+	{
+	    $old_type->comment($comment);
+	}
+    }
     return $def;
 }
 
 sub types
 {
     my($self) = @_;
-    return $self->YYData->{type_list};
+    return $self->YYData->{type_list} || [];
 }
 
 sub lookup_type
@@ -138,18 +164,26 @@ sub lookup_type
 
 sub parse
 {
-    my($self, $data) = @_;
+    my($self, $data, $filename) = @_;
+
+    $self->init_state($data, $filename);
+    my $res = $self->YYParse(yylex => \&Lexer, yyerror => \&Error);
+
+    return ($res, $self->YYData->{error_count});;
+}
+
+sub init_state
+{
+    my($self, $data, $filename) = @_;
 
     #
     # Initialize type table to just the builtins.
     #
     $self->YYData->{type_table} = { %builtin_types };
-
     $self->YYData->{INPUT} = $data;
-
-    my $res = $self->YYParse(yylex => \&Lexer, yyerror => \&Error);
-
-    return $res;
+    $self->YYData->{line_number} = 1;
+    $self->YYData->{filename} = $filename;
+    $self->YYData->{error_count} = 0;
 }
 
 
@@ -157,23 +191,33 @@ sub Error {
     my($parser) = @_;
     
     my $data = $parser->YYData;
-    my $bufptr = \$data->{INPUT};
 
-    my $ctx = substr($$bufptr, 0, 100);
+    my $error = $data->{ERRMSG} || "Syntax error";
 
-    if ($data->{ERRMSG})
-    {
-        print $data->{ERRMSG};
-	print "$ctx\n";
-        delete $data->{ERRMSG};
-        return;
-    }
-    else
-    {
-	print "Syntax error.\n";
-	print "$ctx\n";
-    }
+    $parser->emit_error($error);
 }
+
+sub emit_error {
+    my($parser, $message) = @_;
+    
+    my $data = $parser->YYData;
+
+    my $line = $data->{line_number};
+    my $file = $data->{filename};
+
+    my $token = $parser->YYCurtok;
+    my $tval = $parser->YYCurval;
+
+    if ($token eq 'IDENT')
+    {
+	$token = $tval;
+    }
+    
+
+    print STDERR "$file:$line: $message (next token is '$token')\n";
+    $data->{error_count}++;
+}
+
 
 sub Lexer {
     my($parser)=shift;
@@ -186,28 +230,32 @@ sub Lexer {
 	while ($_ ne '')
 	{
 	    # print "Top: '$_'\n";
-	    s/^[ \t\n]+//;
-
+	    next if (s/^[ \t]+//);
+	    if (s/^\n//)
+	    {
+		$data->{line_number}++;
+		next;
+	    }
 	    
 	    if ($_ eq '')
 	    {
 		return ('', undef);
 	    }
-	    elsif (s/^(funcdef|typedef|module|list|mapping|structure|nullable|returns|authenticated|tuple)\b//)
+	    elsif (s/^(funcdef|typedef|module|list|mapping|structure|nullable|returns|authenticated|tuple|async)\b//)
 	    {
 		return (uc($1), $1);
 	    }
 	    elsif (s/^([A-Za-z][A-Za-z0-9_]*)//)
 	    {
-		#print "Check builtin $1 " . Dumper($data->{type_table});
-		
-		if (my $type = $data->{type_table}->{$1})
+		my $str = $1;
+		if ($builtin_types{$str})
 		{
+		    my $type = $data->{type_table}->{$str};
 		    return('TYPENAME', $type);
 		}
 		else
 		{
-		    return('IDENT',$1);
+		    return('IDENT', $str);
 		}
 	    }
 	    elsif (s,^/\*(.*?)\*/,,s)

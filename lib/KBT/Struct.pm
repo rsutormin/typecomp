@@ -6,6 +6,32 @@ use Data::Dumper;
 has 'items' => (isa => 'ArrayRef[KBT::StructItem]',
 		is => 'rw');
 
+has 'name' => (is => 'rw', isa => 'Str',
+	       predicate => 'has_name');
+has 'comment' => (is => 'rw', isa => 'Str',
+		  predicate => 'has_comment');
+
+sub name_type
+{
+    my($self, $name) = @_;
+    if (!$self->has_name)
+    {
+	$self->name($name);
+    }
+}
+
+sub get_validation_routine
+{
+    my($self, $var) = @_;
+    my $val = "ref($var) eq 'HASH'";
+    return $val;
+}
+
+sub get_validation_code
+{
+    return 'Params::Validate::HASHREF';
+}
+
 sub as_string
 {
     my($self) = @_;

@@ -18,6 +18,18 @@ sub english
     return "a reference to a list where each element is $value_eng";
 }
 
+sub get_validation_routine
+{
+    my($self, $var) = @_;
+    my $val = "ref($var) eq 'ARRAY'";
+    return $val;
+}
+
+sub get_validation_code
+{
+    return 'Params::Validate::ARRAYREF';
+}
+
 sub subtypes
 {
     my($self, $seen) = @_;

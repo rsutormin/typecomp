@@ -1,18 +1,27 @@
-use [% impl_package_name %];
+[% FOREACH module IN modules -%]
+use [% module.impl_package_name %];
+[% END %]
 use [% server_package_name %];
 
-[% IF module.options.authenticated %]
+[% IF service_options.authenticated %]
 use UserAuth;
 
 my $user_auth = UserAuth->new();
 [% END %]
 
-my $impl_obj = [% impl_package_name %]->new;
+my @dispatch;
 
-my $server = [% server_package_name %]->new(instance_dispatch => { '[% module.module_name %]' => $impl_obj },
-[% IF module.options.authenticated %]
-				user_auth => $user_auth,
+[% FOREACH module IN modules -%]
+{
+    my $obj = [% module.impl_package_name %]->new;
+    push(@dispatch, '[% module.module_name %]' => $obj);
+}
 [% END %]
+
+my $server = [% server_package_name %]->new(instance_dispatch => { @dispatch },
+[% IF service_options.authenticated %]
+				user_auth => $user_auth,
+[% END -%]
 				allow_get => 0,
 			       );
 

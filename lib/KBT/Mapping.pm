@@ -5,6 +5,19 @@ use Moose;
 has 'key_type' => (is => 'rw');
 has 'value_type' => (is => 'rw');
 
+sub get_validation_code
+{
+    return 'Params::Validate::HASHREF';
+}
+
+sub get_validation_routine
+{
+    my($self, $var) = @_;
+    my $val = "ref($var) eq 'HASH'";
+    return $val;
+}
+
+
 sub as_string
 {
     my($self) = @_;

@@ -3,6 +3,7 @@ package KBT::DefineModule;
 use Moose;
 
 has 'module_name' => (isa => 'Str', is => 'rw');
+has 'service_name' => (isa => 'Str', is => 'rw');
 has 'module_components' => (isa => 'ArrayRef', is => 'rw');
 has 'comment' => (isa => 'Maybe[Str]', is => 'rw');
 has 'options' => (isa => 'ArrayRef', is => 'rw');

@@ -11,8 +11,20 @@ has 'comment' => (isa => 'Str', is => 'rw');
 sub as_string
 {
     my($self) = @_;
-    return join(" ", "typedef", $self->alias_type->as_string, $self->name) . ";";
+#    return join(" ", "typedef", $self->alias_type->as_string, $self->name) . ";";
+    return $self->alias_type->as_string;
+}
 
+sub get_validation_code
+{
+    my($self) = @_;
+    return $self->alias_type->get_validation_code;
+}
+
+sub get_validation_routine
+{
+    my($self, $var) = @_;
+    return $self->alias_type->get_validation_routine($var);
 }
 
 sub english
