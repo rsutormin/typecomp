@@ -1,4 +1,4 @@
-use typedoc;
+use Bio::KBase::KIDL::typedoc;
 use strict;
 use POSIX;
 use Data::Dumper;
@@ -6,7 +6,7 @@ use Template;
 use File::Slurp;
 use File::Basename;
 use File::Path 'make_path';
-use KBT;
+use Bio::KBase::KIDL::KBT;
 use Getopt::Long;
 
 my $scripts_dir;
@@ -158,7 +158,7 @@ sub write_service_stubs
 	service_options => \%service_options,
     };
 
-    my $tmpl_dir = KBT->install_path;
+    my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
 
     $tmpl->process("$tmpl_dir/js.tt", $vars, $js_file) || die Template->error;
     $tmpl->process("$tmpl_dir/python_client.tt", $vars, $py_file) || die Template->error;
@@ -255,7 +255,7 @@ sub compute_module_data
 
     for my $comp (@{$module->module_components})
     {
-	next unless $comp->isa('KBT::Funcdef');
+	next unless $comp->isa('Bio::KBase::KIDL::KBT::Funcdef');
 
 	my $params = $comp->parameters;
 	my @args;
@@ -434,7 +434,7 @@ sub write_module_stubs
 				ABSOLUTE => 1,
 			      });
 
-    my $tmpl_dir = KBT->install_path;
+    my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
 
     my $impl_file = "$output_dir/$impl_module_file";
     if (-f $impl_file)

@@ -4,16 +4,36 @@ include $(TOP_DIR)/tools/Makefile.common
 SRC_PERL = $(wildcard scripts/*.pl)
 BIN_PERL = $(addprefix $(BIN_DIR)/,$(basename $(notdir $(SRC_PERL))))
 
-all: lib/typedoc.pm lib/erdoc.pm bin
+LDEST = lib/Bio/KBase/KIDL
 
-lib/typedoc.pm: typedoc.yp
-	yapp -o lib/typedoc.pm typedoc.yp
+all: $(LDEST)/typedoc.pm $(LDEST)/erdoc.pm bin
 
-lib/erdoc.pm: erdoc.yp
-	yapp -o lib/erdoc.pm erdoc.yp
+$(LDEST)/typedoc.pm: typedoc.yp
+	yapp -o $(LDEST)/typedoc.pm typedoc.yp
+
+$(LDEST)/erdoc.pm: erdoc.yp
+	yapp -o $(LDEST)/erdoc.pm erdoc.yp
 
 what:
 	@echo $(BIN_PERL)
+
+deploy: deploy-scripts deploy-libs
+
+deploy-scripts:
+	export KB_TOP=$(TARGET); \
+	export KB_RUNTIME=$(DEPLOY_RUNTIME); \
+	export KB_PERL_PATH=$(TARGET)/lib bash ; \
+	for src in $(SRC_PERL) ; do \
+		basefile=`basename $$src`; \
+		base=`basename $$src .pl`; \
+		echo install $$src $$base ; \
+		cp $$src $(TARGET)/plbin ; \
+		bash $(TOOLS_DIR)/wrap_perl.sh "$(TARGET)/plbin/$$basefile" $(TARGET)/bin/$$base ; \
+	done 
+
+deploy-libs:
+	rsync -arv lib/. $(TARGET)/lib/.
+
 
 bin: $(BIN_PERL)
 

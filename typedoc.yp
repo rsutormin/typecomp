@@ -3,13 +3,13 @@
 
 %{
     use Devel::StackTrace;
-    use KBT;
+    use Bio::KBase::KIDL::KBT;
     use Data::Dumper;
     use File::Spec;
 
-our %builtin_types = ('int' => KBT::Scalar->new(scalar_type => 'int'),
-		      'string' => KBT::Scalar->new(scalar_type => 'string'),
-		      'float' => KBT::Scalar->new(scalar_type => 'float'),
+our %builtin_types = ('int' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'int'),
+		      'string' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'string'),
+		      'float' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'float'),
     );
 
 
@@ -26,7 +26,7 @@ module_list: 	{ [] }
 	;
 
 module:		module_opts MODULE { $_[0]->get_comment() }  mod_name_def '{' module_components '}' ';' {
-    KBT::DefineModule->new(options => $_[1],
+    Bio::KBase::KIDL::KBT::DefineModule->new(options => $_[1],
 			   @{$_[4]},
 			   module_components => $_[6],
 		           comment => $_[3]);
@@ -64,10 +64,10 @@ typedef:	TYPEDEF type IDENT { $_[0]->get_comment() }  ';' { $_[0]->define_type($
 	;
 
 funcdef:	async_flag FUNCDEF IDENT { $_[0]->get_comment() } '(' funcdef_params ')' RETURNS '(' funcdef_params ')' ';'
-			{ KBT::Funcdef->new(return_type => $_[10], name => $_[3], parameters => $_[6],
+			{ Bio::KBase::KIDL::KBT::Funcdef->new(return_type => $_[10], name => $_[3], parameters => $_[6],
 			      comment => $_[4], async => $_[1] ); }
 	|	async_flag FUNCDEF type IDENT { $_[0]->get_comment() } '(' funcdef_params ')' ';'
-			{ KBT::Funcdef->new(return_type => [$_[3]], name => $_[4], parameters => $_[7],
+			{ Bio::KBase::KIDL::KBT::Funcdef->new(return_type => [$_[3]], name => $_[4], parameters => $_[7],
 			      comment => $_[5], async => $_[1]); }
 	;
 
@@ -98,24 +98,24 @@ type:		TYPENAME
 			$type }
 	;
 
-mapping:	MAPPING '<' tuple_type ',' tuple_type '>' { KBT::Mapping->new(key_type => $_[3]->[0], value_type=> $_[5]->[0]); }
+mapping:	MAPPING '<' tuple_type ',' tuple_type '>' { Bio::KBase::KIDL::KBT::Mapping->new(key_type => $_[3]->[0], value_type=> $_[5]->[0]); }
 	;
 
-structure:	STRUCTURE '{' struct_items '}' { KBT::Struct->new(items => $_[3]); }
+structure:	STRUCTURE '{' struct_items '}' { Bio::KBase::KIDL::KBT::Struct->new(items => $_[3]); }
 	;
 
 struct_items:	struct_item { [$_[1]] }
 	|	struct_items struct_item { [ @{$_[1]}, $_[2] ] }
 	;
 
-struct_item:	type IDENT ';' { KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 0); }
-	|	type IDENT NULLABLE ';' { KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 1); }
+struct_item:	type IDENT ';' { Bio::KBase::KIDL::KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 0); }
+	|	type IDENT NULLABLE ';' { Bio::KBase::KIDL::KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 1); }
 	;
 
-list:		LIST '<' type '>' { KBT::List->new(element_type => $_[3]); }
+list:		LIST '<' type '>' { Bio::KBase::KIDL::KBT::List->new(element_type => $_[3]); }
 	;
 
-tuple:		TUPLE '<' tuple_types '>' { KBT::Tuple->new(element_types => [ map { $_->[0] } @{$_[3]}],
+tuple:		TUPLE '<' tuple_types '>' { Bio::KBase::KIDL::KBT::Tuple->new(element_types => [ map { $_->[0] } @{$_[3]}],
 							    element_names => [ map { $_->[1] } @{$_[3]}] ); }
 	;
 
@@ -132,13 +132,13 @@ tuple_type:	type { [ $_[1], undef ] }
 sub define_type
 {
     my($self, $old_type, $new_type, $comment) = @_;
-    my $def = KBT::Typedef->new(name => $new_type, alias_type => $old_type, comment => $comment);
+    my $def = Bio::KBase::KIDL::KBT::Typedef->new(name => $new_type, alias_type => $old_type, comment => $comment);
     push(@{$self->YYData->{type_list}}, $def);
     $self->YYData->{type_table}->{$new_type} = $def;
     #
     # Try to name the typedefed type if it is a tuple or struct.
     #
-    if ($old_type->isa('KBT::Struct') || $old_type->isa('KBT::Tuple'))
+    if ($old_type->isa('Bio::KBase::KIDL::KBT::Struct') || $old_type->isa('Bio::KBase::KIDL::KBT::Tuple'))
     {
 	$old_type->name_type($new_type);
 	if ($comment)
