@@ -25,6 +25,12 @@ use Exception::Class
 	 isa => 'Bio::KBase::Exceptions::KBaseException',
      },
 
+     Bio::KBase::Exceptions::ClientServerIncompatible => {
+     description => "Client and Server libraries are incompatible with eachother",
+     fields => ['server_version', 'client_version'],
+	 isa => 'Bio::KBase::Exceptions::KBaseException',
+     }
+
     );
 
 Bio::KBase::Exceptions::KBaseException->Trace(1);

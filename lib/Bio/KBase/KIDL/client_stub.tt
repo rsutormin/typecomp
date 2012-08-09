@@ -6,6 +6,11 @@ use Data::Dumper;
 use URI;
 use Bio::KBase::Exceptions;
 
+# Client version should match Impl version
+# This is a Semantic Version number,
+# http://semver.org
+our $VERSION = "0.1.0";
+
 =head1 NAME
 
 [% client_package_name %]
@@ -27,8 +32,9 @@ sub new
     my $ua = $self->{client}->ua;	 
     my $timeout = $ENV{CDMI_TIMEOUT} || (30 * 60);	 
     $ua->timeout($timeout);
-
-    return bless $self, $class;
+    bless $self, $class;
+    $self->_validate_version();
+    return $self;
 }
 
 [% FOREACH module IN modules %]
@@ -135,5 +141,34 @@ sub call {
     }
 }
 
+sub _validate_version {
+    my ($self) = @_;
+    my $svr_version = $self->version();
+    my $client_version = $VERSION;
+    my ($cMajor, $cMinor, $cPatch) = split(/\./, $client_version);
+    $cPatch =~ s/^(\d+).*/$1/;
+    my ($sMajor, $sMinor, $sPatsh) = split(/\./, $svr_version);
+    $sPatch =~ s/^(\d+).*/$1/;
+    if ($sMajor != $cMajor) {
+        Bio::KBase::Exceptions::ClientServerIncompatible->throw(
+            error => "Major version numbers differ.",
+            server_version => $svr_version,
+            client_version => $client_version
+        );
+    }
+    if ($sMinor < $cMinor) {
+        Bio::KBase::Exceptions::ClientServerIncompatible->throw(
+            error => "Client minor version greater than Server minor version.",
+            server_version => $svr_version,
+            client_version => $client_version
+        );
+    }
+    if ($sMinor > $cMinor) {
+        warn "New client version available for [% client_package_name %]";
+    }
+    if ($sMajor == 0) {
+        warn "[% client_package_name %] version is $svr_version. API subject to change.";
+    }
+}
 
 1;
