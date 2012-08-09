@@ -44,4 +44,12 @@ sub full_message
     return $self->message . "\nHTTP status: " . $self->status_line . "\nFunction invoked: " . $self->method_name;
 }
 
+package Bio::KBase::Exceptions::ClientServerIncompatible;
+use strict;
+
+sub full_message
+{
+    my ($self) = @_;
+    return $self->message . "\nClient version: " . $self->client_version . "\nServer version: " . $self->server_version;
+}
 1;

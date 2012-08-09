@@ -98,6 +98,58 @@ sub [% method.name %]
 
 [% END %]
 [% END %]
+sub version {
+    my ($self) = @_;
+    my $result = $self->{client}->call($self->{url}, {
+        method => "[% module.module_name %].version",
+        params => [],
+    });
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(
+                error => $result->error_message,
+                code => $result->content->{code},
+                method_name => '[% method.name %]',
+            );
+        } else {
+            return wantarray ? @{$result->result} : $result->result->[0];
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(
+            error => "Error invoking method [% method.name %]",
+            status_line => $self->{client}->status_line,
+            method_name => '[% method.name %]',
+        );
+    }
+}
+
+sub _validate_version {
+    my ($self) = @_;
+    my $svr_version = $self->version();
+    my $client_version = $VERSION;
+    my ($cMajor, $cMinor) = split(/\./, $client_version);
+    my ($sMajor, $sMinor) = split(/\./, $svr_version);
+    if ($sMajor != $cMajor) {
+        Bio::KBase::Exceptions::ClientServerIncompatible->throw(
+            error => "Major version numbers differ.",
+            server_version => $svr_version,
+            client_version => $client_version
+        );
+    }
+    if ($sMinor < $cMinor) {
+        Bio::KBase::Exceptions::ClientServerIncompatible->throw(
+            error => "Client minor version greater than Server minor version.",
+            server_version => $svr_version,
+            client_version => $client_version
+        );
+    }
+    if ($sMinor > $cMinor) {
+        warn "New client version available for [% client_package_name %]\n";
+    }
+    if ($sMajor == 0) {
+        warn "[% client_package_name %] version is $svr_version. API subject to change.\n";
+    }
+}
 
 package [% client_package_name %]::RpcClient;
 use base 'JSON::RPC::Client';
@@ -138,36 +190,6 @@ sub call {
     }
     else {
         return;
-    }
-}
-
-sub _validate_version {
-    my ($self) = @_;
-    my $svr_version = $self->version();
-    my $client_version = $VERSION;
-    my ($cMajor, $cMinor, $cPatch) = split(/\./, $client_version);
-    $cPatch =~ s/^(\d+).*/$1/;
-    my ($sMajor, $sMinor, $sPatsh) = split(/\./, $svr_version);
-    $sPatch =~ s/^(\d+).*/$1/;
-    if ($sMajor != $cMajor) {
-        Bio::KBase::Exceptions::ClientServerIncompatible->throw(
-            error => "Major version numbers differ.",
-            server_version => $svr_version,
-            client_version => $client_version
-        );
-    }
-    if ($sMinor < $cMinor) {
-        Bio::KBase::Exceptions::ClientServerIncompatible->throw(
-            error => "Client minor version greater than Server minor version.",
-            server_version => $svr_version,
-            client_version => $client_version
-        );
-    }
-    if ($sMinor > $cMinor) {
-        warn "New client version available for [% client_package_name %]";
-    }
-    if ($sMajor == 0) {
-        warn "[% client_package_name %] version is $svr_version. API subject to change.";
     }
 }
 
