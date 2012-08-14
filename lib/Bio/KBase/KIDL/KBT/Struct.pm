@@ -3,7 +3,7 @@ package Bio::KBase::KIDL::KBT::Struct;
 use Moose;
 use Data::Dumper;
 
-has 'items' => (isa => 'ArrayRef[KBT::StructItem]',
+has 'items' => (isa => 'ArrayRef[Bio::KBase::KIDL::KBT::StructItem]',
 		is => 'rw');
 
 has 'name' => (is => 'rw', isa => 'Str',

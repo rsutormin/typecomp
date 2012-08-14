@@ -51,7 +51,7 @@ for my $spec_file (@spec_files)
 {
     my $txt = read_file($spec_file) or die "Cannot read $spec_file: $!";
     my($modules, $errors) = $parser->parse($txt, $spec_file);
-    print Dumper($modules);
+    #print Dumper($modules);
     my $type_info = assemble_types($parser);
     if ($errors)
     {
