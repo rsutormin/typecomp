@@ -17,6 +17,10 @@ $(LDEST)/erdoc.pm: erdoc.yp
 what:
 	@echo $(BIN_PERL)
 
+
+deploy-service: deploy
+deploy-client: deploy
+
 deploy: deploy-scripts deploy-libs
 
 deploy-scripts:
