@@ -1,11 +1,11 @@
-use typedoc;
+use Bio::KBase::KIDL::typedoc;
 use strict;
 use POSIX;
 use Data::Dumper;
 use Template;
 use File::Slurp;
 use File::Path 'make_path';
-use KBT;
+use Bio::KBase::KIDL::KBT;
 use Getopt::Long;
 
 my $scripts_dir;
@@ -104,7 +104,7 @@ sub write_module_stubs
 {
     my($module, $type_info, $type_table) = @_;
     
-    my $tmpl_dir = KBT->install_path;
+    my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
     my $tmpl = Template->new({ ABSOLUTE => 1 });
 
     my %service_options;
@@ -163,7 +163,7 @@ sub java_typing
     
     for my $comp (@{$module->module_components})
     {
-	next unless $comp->isa('KBT::Funcdef');
+	next unless $comp->isa('Bio::KBase::KIDL::KBT::Funcdef');
 
 	my $doc = $comp->comment;
 	$doc =~ s/^\s*\*\s?//mg;
@@ -231,7 +231,7 @@ sub java_typing
 	# We construct a tuple for the arguments.
 	#
 	my $arg_type_name = '$args$' . $comp->name;
-	my $arg_tuple = KBT::Tuple->new(name => $arg_type_name,
+	my $arg_tuple = Bio::KBase::KIDL::KBT::Tuple->new(name => $arg_type_name,
 					element_types => [@argtypes],
 					element_names => [@args]);
 	my $arg_jt = map_type_to_java($arg_tuple, $struct_types);
@@ -267,7 +267,7 @@ sub java_typing
 		push(@$rnames, $name);
 	    }
 	    $rname = '$return$' . $comp->name;
-	    my $tuple = KBT::Tuple->new(name => $rname,
+	    my $tuple = Bio::KBase::KIDL::KBT::Tuple->new(name => $rname,
 					element_types => $rtypes,
 					element_names => $rnames);
 	    
@@ -305,11 +305,11 @@ sub map_type_to_java
 {
     my($type, $struct_types, $toplevel) = @_;
 
-    if ($type->isa('KBT::Typedef'))
+    if ($type->isa('Bio::KBase::KIDL::KBT::Typedef'))
     {
 	return map_type_to_java($type->alias_type, $struct_types);
     }
-    elsif ($type->isa('KBT::Scalar'))
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::Scalar'))
     {
 	if ($toplevel)
 	{
@@ -320,23 +320,23 @@ sub map_type_to_java
 	    return $java_scalar_map{$type->scalar_type};
 	}
     }
-    elsif ($type->isa('KBT::List'))
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::List'))
     {
 	my $elt_type = map_type_to_java($type->element_type, $struct_types);
 	my $ret = "List<$elt_type>";
 	return $ret;
     }
-    elsif ($type->isa('KBT::Mapping'))
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::Mapping'))
     {
 	my $kt = map_type_to_java($type->key_type, $struct_types);
 	my $vt = map_type_to_java($type->value_type, $struct_types);
 	return "Map<$kt, $vt>";
     }
-    elsif ($type->isa('KBT::Tuple'))
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::Tuple'))
     {
 	return construct_tuple($type, $struct_types);
     }
-    elsif ($type->isa('KBT::Struct'))
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::Struct'))
     {
 	return construct_struct($type, $struct_types);
     }
@@ -560,7 +560,7 @@ sub compute_module_data
 
     for my $comp (@{$module->module_components})
     {
-	next unless $comp->isa('KBT::Funcdef');
+	next unless $comp->isa('Bio::KBase::KIDL::KBT::Funcdef');
 
 	my $params = $comp->parameters;
 	my @args;
