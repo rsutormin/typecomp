@@ -3,7 +3,7 @@ use Data::Dumper;
 use XML::LibXML;
 #use String::CamelCase 'decamelize';
 use Template;
-use KBT;
+use Bio::KBase::KIDL::KBT;
 
 @ARGV == 6 or die "Usage: $0 service-name module-name DBD-xml-file spec-file impl-file bin-dir\n";
 
@@ -184,8 +184,8 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
 	from 	     => $to,
 	to 	     => $from,
 	comment      => $com,
-	from_data    => $template_data->{entities_by_name}->{$from},
-	to_data      => $template_data->{entities_by_name}->{$to},
+	from_data    => $template_data->{entities_by_name}->{$to},
+	to_data      => $template_data->{entities_by_name}->{$from},
     };
     push(@$relationships, $rev_edata);
 
@@ -244,7 +244,7 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
 
 print OUT "};\n";
 
-my $tmpl_dir = KBT->install_path;
+my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
 
 my $tmpl = Template->new({ OUTPUT_PATH => '.',
 			       ABSOLUTE => 1,
