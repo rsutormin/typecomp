@@ -35,6 +35,7 @@ my %type_map = (boolean	    => 'int',
 		link	    => 'string',
 		rectangle   => 'rectangle',
 		string	    => 'string',
+		'long-string'	    => 'string',
 		text	    => 'string',
 		);
 
@@ -74,7 +75,7 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
     my $n = $e->getAttribute("name");
     my @cnode = $e->getChildrenByTagName("Notes");
     my $com = join("\n", map { my $s = $_->textContent; $s =~ s/^\s*//gm; $s } @cnode);
-
+    my $keyType = $e->getAttribute("keyType");
     # my $nn = decamelize($n);
     my $nn = $n;
 
@@ -85,6 +86,7 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
 	sapling_name => $n,
 	field_map    => $field_map,
 	comment      => $com,
+	key_type     => $keyType,
     };
     push(@$entities, $edata);
     $template_data->{entities_by_name}->{$n} = $edata;
@@ -92,8 +94,10 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
     my @fields = $e->findnodes('Fields/Field');
     # next if @fields == 0;
 
+    my $id_ftype = $type_map{$keyType};
+
     print OUT "typedef structure {\n";
-    print OUT "\tstring id;\n";
+    print OUT "\t$id_ftype id;\n";
 
     #
     # Relationship linkages.
@@ -189,10 +193,15 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
     };
     push(@$relationships, $rev_edata);
 
+    my $from_ftype = $type_map{$template_data->{entities_by_name}->{$from}->{key_type}};
+    my $to_ftype = $type_map{$template_data->{entities_by_name}->{$to}->{key_type}};
+
     my @fields = $e->findnodes('Fields/Field');
 
     print OUT "typedef structure {\n";
-    print OUT "\tstring id;\n";
+#    print OUT "\tstring id;\n";
+    print OUT "\t$from_ftype from_link;\n";
+    print OUT "\t$to_ftype to_link;\n";
 
     $com .= "\nIt has the following fields:\n\n=over 4\n\n";
     for my $f (@fields)
