@@ -2,6 +2,9 @@ package [% server_package_name %];
 [% SET ctx_pkg = "${server_package_name}Context" %]
 use Data::Dumper;
 use Moose;
+[% IF authenticated -%]
+use Bio::KBase::AuthToken;
+[% END -%]
 
 extends 'RPC::Any::Server::JSONRPC::PSGI';
 
@@ -21,6 +24,17 @@ our %return_counts = (
         'version' => 1,
 );
 
+[% IF authenticated -%]
+our %method_authentication = (
+[% FOREACH module IN modules -%]
+[% FOREACH method IN module.methods -%]
+        '[% method.name %]' => '[% method.authentication %]',
+[% END -%]
+[% END -%]
+);
+[% END -%]
+
+
 sub _build_valid_methods
 {
     my($self) = @_;
@@ -37,47 +51,44 @@ sub _build_valid_methods
 
 sub call_method {
     my ($self, $data, $method_info) = @_;
+
     my ($module, $method) = @$method_info{qw(module method)};
     
     my $ctx = [% ctx_pkg %]->new(client_ip => $self->_plack_req->address);
     
     my $args = $data->{arguments};
 
-    [% IF service_options.authenticated -%]
+[% IF authenticated -%]
+{
     # Service [% service_name %] requires authentication.
 
-    if (@$args == 1 && ref($args->[0]) eq 'HASH')
+    my $method_auth = $method_authentication{$method};
+    $ctx->authenticated(0);
+    if ($method_auth eq 'none')
     {
-	my $actual_args = $args->[0]->{args};
-	my $token = $args->[0]->{auth_token};
-	$data->{arguments} = $actual_args;
-	
-	{
-	    my $auth = $self->user_auth;
-	    if (!$auth)
-	    {
-		die RPC::Any::Exception::PerlError(message => "Authentication required for [% module.module_name %] but no authentication support defined");
-	    }
-	    if (!$token)
-	    {
-		print "raising error\n";
-		$self->exception('PerlError', "Authentication required for [% service_name %] but no token supplied");
-	    }
-	    my $user = $auth->authenticate_token($token);
-	    if (!$user)
-	    {
-		die RPC::Any::Exception::PerlError(message => "Authentication failed");
-	    }
-	    $ctx->user({ map { $_ => $user->$_ } qw(user_id user_name user_email is_admin)});
-	}
+	# No authentication required here. Move along.
     }
     else
     {
-	die RPC::Any::Exception::PerlError(message => "Authentication required for [% module.module_name %] but message format does not conform to authenticated message format");
+	my $token = $self->_plack_req->header("Authorization");
+
+	if (!$token && $method_auth eq 'required')
+	{
+	    $self->exception('PerlError', "Authentication required for [% module.module_name %] but no authentication header was passed");
+	}
+
+	my $auth_token = Bio::KBase::AuthToken->new(token => $token, ignore_authrc => 1);
+	if (!$auth_token->validate())
+	{
+	    $self->exception('PerlError', "Token validation failed: " . $auth_token->error_message);
+	}
+	$ctx->authenticated(1);
+	$ctx->user_id($auth_token->user_id);
     }
-    [% ELSE -%]
+}
+[% ELSE -%]
     # Service [% service_name %] does not require authentication.
-    [% END -%]
+[% END -%]
     
     my $new_isa = $self->get_package_isa($module);
     no strict 'refs';
@@ -182,7 +193,7 @@ is available via $context->client_ip.
 
 use base 'Class::Accessor';
 
-__PACKAGE__->mk_accessors(qw(user client_ip));
+__PACKAGE__->mk_accessors(qw(user_id client_ip authenticated));
 
 sub new
 {

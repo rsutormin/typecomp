@@ -7,11 +7,15 @@
     use Data::Dumper;
     use File::Spec;
 
+our @valid_authentication_values = qw(required optional none);    
+our %valid_authentication_value = map { $_ => 1 } @valid_authentication_values;
+
 our %builtin_types = ('int' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'int'),
 		      'string' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'string'),
 		      'float' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'float'),
     );
 
+our $auth_default = 'none';
 
 %}
 
@@ -41,10 +45,6 @@ module_opts: { [] }
 	|	module_opts module_opt { [ @{$_[1]}, $_[2] ] }
 	;
 
-module_opt:	AUTHENTICATED 
-        ;
-
-
 module_components: { [] }
 	|	module_components module_component_with_doc { [ @{$_[1]}, $_[2] ] }
 	;
@@ -58,17 +58,35 @@ module_component:
 		typedef
 	|	funcdef 
 	|	'use' 'module' ident ';'
+	|	auth_type ';' { $auth_default = $_[1]; 'auth_default' . $_[1] }
+	;
+
+auth_type: 	AUTHENTICATION IDENT { 
+			       if ($valid_authentication_value{$_[2]}) 
+			       {
+				   $_[2];
+			       }
+			       else
+			       {
+				   $_[0]->emit_error("Invalid authentication type '" . $_[2] . "'. Valid types are " . join(" ", map { "'$_'" } @valid_authentication_values));
+				   "none";
+			       }
+			   }
 	;
 
 typedef:	TYPEDEF type IDENT { $_[0]->get_comment() }  ';' { $_[0]->define_type($_[2], $_[3], $_[4]); }
 	;
 
-funcdef:	async_flag FUNCDEF IDENT { $_[0]->get_comment() } '(' funcdef_params ')' RETURNS '(' funcdef_params ')' ';'
+funcdef:	async_flag FUNCDEF IDENT { $_[0]->get_comment() } '(' funcdef_params ')' RETURNS '(' funcdef_params ')' auth_param ';'
 			{ Bio::KBase::KIDL::KBT::Funcdef->new(return_type => $_[10], name => $_[3], parameters => $_[6],
-			      comment => $_[4], async => $_[1] ); }
-	|	async_flag FUNCDEF type IDENT { $_[0]->get_comment() } '(' funcdef_params ')' ';'
+			      comment => $_[4], async => $_[1], authentication => $_[12] ); }
+	|	async_flag FUNCDEF type IDENT { $_[0]->get_comment() } '(' funcdef_params ')' auth_param ';'
 			{ Bio::KBase::KIDL::KBT::Funcdef->new(return_type => [$_[3]], name => $_[4], parameters => $_[7],
-			      comment => $_[5], async => $_[1]); }
+			      comment => $_[5], async => $_[1], authentication => $_[9]); }
+	;
+
+auth_param: { $auth_default }
+	| auth_type
 	;
 
 async_flag: { 0 } 
@@ -241,7 +259,7 @@ sub Lexer {
 	    {
 		return ('', undef);
 	    }
-	    elsif (s/^(funcdef|typedef|module|list|mapping|structure|nullable|returns|authenticated|tuple|async)\b//)
+	    elsif (s/^(funcdef|typedef|module|list|mapping|structure|nullable|returns|authentication|tuple|async)\b//)
 	    {
 		return (uc($1), $1);
 	    }

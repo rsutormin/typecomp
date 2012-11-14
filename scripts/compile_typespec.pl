@@ -17,6 +17,7 @@ my $psgi;
 my $js_module;
 my $py_module;
 my $default_service_url;
+my $dump_parsed;
 
 my $rc = GetOptions("scripts=s" => \$scripts_dir,
 		    "impl=s" 	=> \$impl_module_base,
@@ -26,6 +27,7 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
 		    "js=s"      => \$js_module,
 		    "py=s"      => \$py_module,
 		    "url=s"     => \$default_service_url,
+		    "dump"      => \$dump_parsed,
 		   );
 
 ($rc && @ARGV >= 2) or die "Usage: $0 [--psgi psgi-file] [--impl impl-module] [--service service-module] [--client client-module] [--scripts script-dir] [--py python-module ] [--js js-module] [--url default-service-url] typespec [typespec...] output-dir\n";
@@ -37,7 +39,6 @@ if ($scripts_dir && ! -d $scripts_dir)
 {
     die "Script output directory $scripts_dir does not exist\n";
 }
-
 my $parser = typedoc->new();
 
 #
@@ -72,11 +73,19 @@ if ($errors_found)
 {
     exit 1;
 }
-#print Dumper(\%services);
+
+#
+# Determine if we have any authentication-optional or -required methods. If any of
+# these exist, then we need to compile in the authentication support.
+#
+
+my $need_auth = check_for_authentication(\%services);
+
+print STDERR Dumper(\%services) if $dump_parsed;
 
 while (my($service, $modules) = each %services)
 {
-    write_service_stubs($service, $modules, $output_dir);
+    write_service_stubs($service, $modules, $output_dir, $need_auth->{$service});
 }
 
 =head2 write_service_stubs
@@ -91,7 +100,7 @@ to the impl module for that function.
 
 sub write_service_stubs
 {
-    my($service, $modules, $output_dir) = @_;
+    my($service, $modules, $output_dir, $need_auth) = @_;
 
     my $tmpl = Template->new( { OUTPUT_PATH => $output_dir,
 				ABSOLUTE => 1,
@@ -107,6 +116,7 @@ sub write_service_stubs
     {
 	my($module, $type_info, $type_table) = @$module_ent;
 
+	# print Dumper($module);
 	my $imod;
 	if ($impl_module_base)
 	{
@@ -159,7 +169,9 @@ sub write_service_stubs
 	modules => \@modules,
 	service_options => \%service_options,
 	default_service_url => $default_service_url,
+	authenticated => $need_auth,
     };
+    # print Dumper($vars);
 
     my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
 
@@ -420,6 +432,7 @@ sub compute_module_data
 	    arg_count => scalar @args,
 	    ret_count => scalar @rets,
 	    user_code => $saved_stub{$comp->name},
+	    authentication => $comp->authentication,
 	};
 	push(@$methods, $meth);
     }
@@ -494,4 +507,30 @@ sub assemble_types
 	     });
     }
     return $types;
+}
+
+sub check_for_authentication
+{
+    my($services) = @_;
+    my $out = {};
+
+ SVC:
+    while (my($service, $modules) = each %$services)
+    {
+	$out->{$service} = 0;
+	for my $module_ent (@$modules)
+	{
+	    my($module, $type_info, $type_table) = @$module_ent;
+	    for my $comp (@{$module->module_components})
+	    {
+		next unless $comp->isa('Bio::KBase::KIDL::KBT::Funcdef');
+		if ($comp->authentication eq 'required' || $comp->authentication eq 'optional')
+		{
+		    $out->{$service} = 1;
+		    next SVC;
+		}
+	    }
+	}
+    }
+    return $out;
 }

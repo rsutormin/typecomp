@@ -5,6 +5,9 @@ use strict;
 use Data::Dumper;
 use URI;
 use Bio::KBase::Exceptions;
+[% IF authenticated -%]
+use Bio::KBase::AuthToken;
+[% END -%]
 
 # Client version should match Impl version
 # This is a Semantic Version number,
@@ -23,12 +26,30 @@ our $VERSION = "0.1.0";
 
 sub new
 {
-    my($class, $url) = @_;
+    my($class, $url, @args) = @_;
 
     my $self = {
 	client => [% client_package_name %]::RpcClient->new,
 	url => $url,
     };
+
+[% IF authenticated -%]
+    # This module requires authentication.
+    #
+    # We create an auth token, passing through the arguments that we were (hopefully) given.
+
+    {
+	my $token = Bio::KBase::AuthToken->new(@args);
+	
+	if ($token->error_message)
+	{
+	    die "Authentication failed: " . $token->error_message;
+	}
+	$self->{token} = $token->token;
+	$self->{client}->{token} = $token->token;
+    }
+[% END -%]
+
     my $ua = $self->{client}->ua;	 
     my $timeout = $ENV{CDMI_TIMEOUT} || (30 * 60);	 
     $ua->timeout($timeout);
@@ -77,6 +98,8 @@ sub new
 sub [% method.name %]
 {
     my($self, @args) = @_;
+
+# Authentication: [% method.authentication %]
 
     if ((my $n = @args) != [% method.arg_count %])
     {
@@ -179,6 +202,43 @@ sub _validate_version {
     }
 }
 
+=head1 TYPES
+
+[% FOREACH type IN module.types %]
+
+=head2 [% type.name %]
+
+=over 4
+
+[% IF type.comment %]
+
+=item Description
+
+[% type.comment %]
+[% END %]
+
+=item Definition
+
+=begin html
+
+<pre>
+[% type.english %]
+</pre>
+
+=end html
+
+=begin text
+
+[% type.english %]
+
+=end text
+
+=back
+
+[% END %]
+
+=cut
+
 package [% client_package_name %]::RpcClient;
 use base 'JSON::RPC::Client';
 
@@ -220,5 +280,38 @@ sub call {
         return;
     }
 }
+
+
+sub _post {
+    my ($self, $uri, $obj) = @_;
+    my $json = $self->json;
+
+    $obj->{version} ||= $self->{version} || '1.1';
+
+    if ($obj->{version} eq '1.0') {
+        delete $obj->{version};
+        if (exists $obj->{id}) {
+            $self->id($obj->{id}) if ($obj->{id}); # if undef, it is notification.
+        }
+        else {
+            $obj->{id} = $self->id || ($self->id('JSON::RPC::Client'));
+        }
+    }
+    else {
+        $obj->{id} = $self->id if (defined $self->id);
+    }
+
+    my $content = $json->encode($obj);
+
+    $self->ua->post(
+        $uri,
+        Content_Type   => $self->{content_type},
+        Content        => $content,
+        Accept         => 'application/json',
+	($self->{token} ? (Authorization => $self->{token}) : ()),
+    );
+}
+
+
 
 1;
