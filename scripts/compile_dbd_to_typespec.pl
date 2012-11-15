@@ -19,9 +19,6 @@ my $bin_dir = shift;
 my $doc = XML::LibXML->new->parse_file($in_file);
 $doc or die "cannot parse $in_file\n";
 
-open(OUT, ">", $out_file) or die "cannot write $out_file: $!";
-open(IMPL, ">", $impl_file) or die "cannot write $impl_file: $!";
-
 my %type_map = (boolean	    => 'int',
 		char	    => 'string',
 		countVector => 'countVector',
@@ -39,15 +36,9 @@ my %type_map = (boolean	    => 'int',
 		text	    => 'string',
 		);
 
-print OUT "module $service : $module {\n";
-print OUT "typedef string diamond;\n";
-print OUT "typedef string countVector;\n";
-print OUT "typedef string rectangle;\n";
-print OUT "\n";
 
 my %kids;
-my %revkids;
-my %rel_printed;
+my %names;
 
 for my $r ($doc->findnodes('//Relationships/Relationship'))
 {
@@ -56,9 +47,22 @@ for my $r ($doc->findnodes('//Relationships/Relationship'))
     my $from = $r->getAttribute("from");
     my $to = $r->getAttribute("to");
     my $converse = $r->getAttribute("converse");
-
+    
+    die "Duplicate name detected in relationship: $n" if $names{$n};
+    die "Duplicate name detected in converse relationship: $converse" if $names{$converse};
+	
+	$names{$n} = 1;
+	$names{$converse} = 1;
+	
     push(@{$kids{$from}}, {name => $n, to => $to});
     push(@{$kids{$to}}, {name => $converse, to => $from});
+}
+
+for my $e ($doc->findnodes('//Entities/Entity')) 
+{
+	my $n = $e->getAttribute("name");
+	die "Duplicate name detected in entity: $n" if $names{$n};
+	$names{$n} = 1
 }
 
 my $entities = [];
@@ -69,6 +73,14 @@ my $template_data = {
     relationships => $relationships,
     module => $module,
 };
+
+open(OUT, ">", $out_file) or die "cannot write $out_file: $!";
+open(IMPL, ">", $impl_file) or die "cannot write $impl_file: $!";
+print OUT "module $service : $module {\n";
+print OUT "typedef string diamond;\n";
+print OUT "typedef string countVector;\n";
+print OUT "typedef string rectangle;\n";
+print OUT "\n";
 
 for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc->findnodes('//Entities/Entity'))
 {
