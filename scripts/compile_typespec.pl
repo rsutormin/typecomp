@@ -18,19 +18,21 @@ my $js_module;
 my $py_module;
 my $default_service_url;
 my $dump_parsed;
+my $test_script;
 
 my $rc = GetOptions("scripts=s" => \$scripts_dir,
 		    "impl=s" 	=> \$impl_module_base,
 		    "service=s" => \$service_module,
 		    "psgi=s"    => \$psgi,
 		    "client=s" 	=> \$client_module,
+		    "test=s" 	=> \$test_script,
 		    "js=s"      => \$js_module,
 		    "py=s"      => \$py_module,
 		    "url=s"     => \$default_service_url,
 		    "dump"      => \$dump_parsed,
 		   );
 
-($rc && @ARGV >= 2) or die "Usage: $0 [--psgi psgi-file] [--impl impl-module] [--service service-module] [--client client-module] [--scripts script-dir] [--py python-module ] [--js js-module] [--url default-service-url] typespec [typespec...] output-dir\n";
+($rc && @ARGV >= 2) or die "Usage: $0 [--psgi psgi-file] [--impl impl-module] [--service service-module] [--client client-module] [--scripts script-dir] [--py python-module ] [--js js-module] [--url default-service-url] [--test test-script] typespec [typespec...] output-dir\n";
 
 my $output_dir = pop;
 my @spec_files = @ARGV;
@@ -170,6 +172,7 @@ sub write_service_stubs
 	service_options => \%service_options,
 	default_service_url => $default_service_url,
 	authenticated => $need_auth,
+	psgi_file => $psgi_file,
     };
     # print Dumper($vars);
 
@@ -182,6 +185,11 @@ sub write_service_stubs
     if ($psgi_file)
     {
 	$tmpl->process("$tmpl_dir/psgi_stub.tt", $vars, $psgi_file) || die Template->error;
+    }
+
+    if ($test_script)
+    {
+	$tmpl->process("$tmpl_dir/client_test.tt", $vars, $test_script) || die Template->error;
     }
 
     for my $module_ent (@$modules)
