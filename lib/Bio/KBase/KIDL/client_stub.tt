@@ -20,7 +20,9 @@ our $VERSION = "0.1.0";
 
 =head1 DESCRIPTION
 
-[% module_doc %]
+[% FOREACH module IN modules %]
+[% module.module_doc %]
+[% END %]
 
 =cut
 
