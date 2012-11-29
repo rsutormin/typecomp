@@ -21,7 +21,10 @@ what:
 deploy-service: deploy
 deploy-client: deploy
 
-deploy: deploy-scripts deploy-libs
+deploy: deploy-scripts deploy-libs deploy-docs
+
+deploy-docs:
+	# need to add docs and move them to the deployment directory
 
 bin: $(BIN_PERL)
 
