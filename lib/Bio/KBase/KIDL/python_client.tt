@@ -18,7 +18,7 @@ except ImportError:
     import simplejson as json
     
 import urllib2, httplib
-from urllib2 import URLError
+from urllib2 import URLError, HTTPError
 
 class ServerError(Exception):
 
@@ -48,7 +48,17 @@ class [% module.module_name %]:
                      }
 
         body = json.dumps(arg_hash)
-        ret = urllib2.urlopen(self.url, body, timeout = self.timeout)
+        try:
+        	ret = urllib2.urlopen(self.url, body, timeout = self.timeout)
+        except HTTPError as h:
+        	try:
+        		err = json.loads(h.read())
+        	except:
+        		raise h
+        	if 'error' in err:
+        		raise ServerError(**err['error'])
+        	else:
+        		raise h
         if ret.code != httplib.OK:
             raise URLError('Received bad response code from server:' + ret.code)
         resp = json.loads(ret.read())
@@ -59,8 +69,6 @@ class [% module.module_name %]:
 [% ELSE -%]
             return resp['result']
 [% END -%]
-        elif 'error' in resp:
-            raise ServerError(**resp['error'])
         else:
             raise ServerError('Unknown', 0, 'An unknown server error occurred')
 
