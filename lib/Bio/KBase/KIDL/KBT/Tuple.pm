@@ -103,12 +103,14 @@ sub english
     my($self, $indent) = @_;
     
     my $n = @{$self->element_types};
+    my $names = $self->element_names;
     my $eng = "a reference to a list containing $n items:\n";
     my $i = 0;
     for my $ent (@{$self->element_types})
     {
 	my $item_eng = $ent->english($indent + 1);
-	$eng .= "\t" x $indent. "$i: $item_eng\n";
+	my $item_name = ($names->[$i] && $names->[$i] !~ /^e_\d+$/) ? "($names->[$i]) " : "";
+	$eng .= "\t" x $indent. "$i: $item_name$item_eng\n";
 	$i++;
     }
     return $eng;

@@ -171,6 +171,7 @@ sub _query_entity
     for my $q (@$qry)
     {
         my($field, $op, $value) = @$q;
+	$field =~ s/-/_/g;
         if (!$valid_fields->{$field})
         {
             push(@bad_q, "Field $field does not exist in $tbl");
