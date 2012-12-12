@@ -492,6 +492,39 @@ sub write_module_stubs
 	    }
 	    
 	    $tmpl->process("$tmpl_dir/api_script.tt", \%d, $fh) || die Template->error;
+
+	    #
+	    # Determine if the signature of this method allows the creation of a simple script.
+	    #
+	    my $ok = 1;
+	    for my $param (@{$method->{params}})
+	    {
+		#
+		# Resolve type.
+		#
+		my $type = $param->{type};
+		while ($type->can('alias_type'))
+		{
+		    $type = $type->alias_type;
+		}
+		if (!$type->isa('Bio::KBase::KIDL::KBT::Scalar'))
+		{
+		    $ok = 0;
+		    last;
+		}
+	    }
+	    if ($ok)
+	    {
+		my $fh;
+		if (!open($fh, ">", "$scripts_dir/simple_$name.pl"))
+		{
+		    die "Cannot write $scripts_dir/simple_$name.pl: $!";
+		}
+		
+		$tmpl->process("$tmpl_dir/simple_cmd.tt", \%d, $fh) || die Template->error;
+		close($fh);
+	    }
+	    exit;
 	}
     }
 }
