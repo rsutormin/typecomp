@@ -212,7 +212,7 @@ sub java_typing
 	    $ncount{$name}++;
 	    push(@argtypes, $p->{type});
 
-	    my $jt = map_type_to_java($p->{type}, $struct_types, 1);
+	    my $jt = map_type_to_java($module->module_name, $p->{type}, $struct_types, 1);
 
 	    push(@jtypes, $jt);
 	    push(@decls, "$jt $name");
@@ -234,7 +234,7 @@ sub java_typing
 	my $arg_tuple = Bio::KBase::KIDL::KBT::Tuple->new(name => $arg_type_name,
 					element_types => [@argtypes],
 					element_names => [@args]);
-	my $arg_jt = map_type_to_java($arg_tuple, $struct_types);
+	my $arg_jt = map_type_to_java($module->module_name,$arg_tuple, $struct_types);
 
 	$meth->{args_decl_string} = join(", ", @decls);
 	$meth->{args_type} = $arg_jt;
@@ -271,12 +271,12 @@ sub java_typing
 					element_types => $rtypes,
 					element_names => $rnames);
 	    
-	    $rtype = map_type_to_java($tuple, $struct_types);
+	    $rtype = map_type_to_java($module->module_name, $tuple, $struct_types);
 	    $meth->{json_return_type} = $rtype;
 	    
 	    if (@$returns == 1)
 	    {
-		$meth->{return_type} = map_type_to_java($rtypes->[0], $struct_types);
+		$meth->{return_type} = map_type_to_java($module->module_name, $rtypes->[0], $struct_types);
 		$meth->{return_name} = $rnames->[0];
 		$meth->{return_val} = "res.$rnames->[0]";
 	    }
@@ -303,11 +303,11 @@ to java base types. Otherwise we map to the object-based types (Integer, Float).
 
 sub map_type_to_java
 {
-    my($type, $struct_types, $toplevel) = @_;
+    my($module_name, $type, $struct_types, $toplevel) = @_;
 
     if ($type->isa('Bio::KBase::KIDL::KBT::Typedef'))
     {
-	return map_type_to_java($type->alias_type, $struct_types);
+	return map_type_to_java($module_name, $type->alias_type, $struct_types);
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Scalar'))
     {
@@ -322,23 +322,23 @@ sub map_type_to_java
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::List'))
     {
-	my $elt_type = map_type_to_java($type->element_type, $struct_types);
+	my $elt_type = map_type_to_java($module_name, $type->element_type, $struct_types);
 	my $ret = "List<$elt_type>";
 	return $ret;
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Mapping'))
     {
-	my $kt = map_type_to_java($type->key_type, $struct_types);
-	my $vt = map_type_to_java($type->value_type, $struct_types);
+	my $kt = map_type_to_java($module_name, $type->key_type, $struct_types);
+	my $vt = map_type_to_java($module_name, $type->value_type, $struct_types);
 	return "Map<$kt, $vt>";
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Tuple'))
     {
-	return construct_tuple($type, $struct_types);
+	return construct_tuple($module_name, $type, $struct_types);
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Struct'))
     {
-	return construct_struct($type, $struct_types);
+	return construct_struct($module_name, $type, $struct_types);
     }
     else
     {
@@ -349,7 +349,7 @@ sub map_type_to_java
 
 sub construct_tuple
 {
-    my($type, $struct_types) = @_;
+    my($module_name, $type, $struct_types) = @_;
 
     my $tuple_name;
     if ($type->has_name)
@@ -371,7 +371,7 @@ sub construct_tuple
 	}
 	
 	my $n = $struct_types->{_next_tuple}++;
-	$tuple_name = "tuple_$n";
+	$tuple_name = "${module_name}_tuple_$n";
 	$struct_types->{_existing_tuples}->{$sig} = $tuple_name;
     }
 
@@ -381,7 +381,7 @@ sub construct_tuple
     @subtypes = @{$type->element_types};
     @names = @{$type->element_names};
 
-    my @elt_types = map { map_type_to_java($_, $struct_types) } @subtypes;
+    my @elt_types = map { map_type_to_java($module_name, $_, $struct_types) } @subtypes;
 
     my $elts = [];
     my $tup = { name => $tuple_name, elements => $elts };
@@ -423,7 +423,7 @@ sub construct_tuple
 
 sub construct_struct
 {
-    my($type, $struct_types) = @_;
+    my($module_name, $type, $struct_types) = @_;
 
     my $struct_name;
     if ($type->has_name)
@@ -437,7 +437,7 @@ sub construct_struct
 	#
 	
 	my $n = $struct_types->{_next_struct}++;
-	$struct_name = "struct_$n";
+	$struct_name = "${module_name}_struct_$n";
     }
 
 
@@ -445,7 +445,7 @@ sub construct_struct
     my @subtypes = map { $_->item_type } @items;
     my @names = map { $_->name } @items;
 
-    my @elt_types = map { map_type_to_java($_, $struct_types) } @subtypes;
+    my @elt_types = map { map_type_to_java($module_name, $_, $struct_types) } @subtypes;
 
     my $elts = [];
     my $tup = { name => $struct_name, elements => $elts };
