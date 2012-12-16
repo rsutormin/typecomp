@@ -20,6 +20,7 @@ my $doc = XML::LibXML->new->parse_file($in_file);
 $doc or die "cannot parse $in_file\n";
 
 my %type_map = (boolean	    => 'int',
+		'semi-boolean'	=> 'string',
 		char	    => 'string',
 		countVector => 'countVector',
 		counter	    => 'int',
