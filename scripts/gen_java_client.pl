@@ -230,7 +230,7 @@ sub java_typing
 	#
 	# We construct a tuple for the arguments.
 	#
-	my $arg_type_name = '$args$' . $comp->name;
+	my $arg_type_name = 'args_' . $comp->name;
 	my $arg_tuple = Bio::KBase::KIDL::KBT::Tuple->new(name => $arg_type_name,
 					element_types => [@argtypes],
 					element_names => [@args]);
@@ -266,7 +266,7 @@ sub java_typing
 		my $name = $p->{name} // "return_" . ($i + 1);
 		push(@$rnames, $name);
 	    }
-	    $rname = '$return$' . $comp->name;
+	    $rname = 'return_' . $comp->name;
 	    my $tuple = Bio::KBase::KIDL::KBT::Tuple->new(name => $rname,
 					element_types => $rtypes,
 					element_names => $rnames);
