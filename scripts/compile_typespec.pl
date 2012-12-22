@@ -16,6 +16,7 @@ my $client_module;
 my $psgi;
 my $js_module;
 my $py_module;
+my $py_server_module;
 my $default_service_url;
 my $dump_parsed;
 my $test_script;
@@ -28,11 +29,12 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
 		    "test=s" 	=> \$test_script,
 		    "js=s"      => \$js_module,
 		    "py=s"      => \$py_module,
+		    "pyserver=s"=> \$py_server_module,
 		    "url=s"     => \$default_service_url,
 		    "dump"      => \$dump_parsed,
 		   );
 
-($rc && @ARGV >= 2) or die "Usage: $0 [--psgi psgi-file] [--impl impl-module] [--service service-module] [--client client-module] [--scripts script-dir] [--py python-module ] [--js js-module] [--url default-service-url] [--test test-script] typespec [typespec...] output-dir\n";
+($rc && @ARGV >= 2) or die "Usage: $0 [--psgi psgi-file] [--impl impl-module] [--service service-module] [--client client-module] [--scripts script-dir] [--py python-module ] [--pyserver python-server-module] [--js js-module] [--url default-service-url] [--test test-script] typespec [typespec...] output-dir\n";
 
 my $output_dir = pop;
 my @spec_files = @ARGV;
@@ -143,6 +145,7 @@ sub write_service_stubs
 
     my $client_package_name = $client_module || ($service . "Client");
     my $server_package_name = $service_module || ($service . "Server");
+    my $python_server_name = $py_server_module || ($service . "Server");
 
     my $client_package_file = $client_package_name;
     $client_package_file =~ s,::,/,g;
@@ -153,6 +156,11 @@ sub write_service_stubs
     $server_package_file =~ s,::,/,g;
     $server_package_file .= ".pm";
     make_path(dirname($server_package_file));
+
+    my $python_server_file = $python_server_name;
+    $python_server_file =~ s,::,/,g;
+    $python_server_file .= ".py";
+    make_path(dirname($python_server_file));
 
     my $js_file = $js_module || ($service . "Client");
     $js_file .= ".js";
@@ -167,6 +175,7 @@ sub write_service_stubs
     my $vars = {
 	client_package_name => $client_package_name,
 	server_package_name => $server_package_name,
+	python_server_name => $python_server_name,
 	service_name => $service,
 	modules => \@modules,
 	service_options => \%service_options,
@@ -180,6 +189,7 @@ sub write_service_stubs
 
     $tmpl->process("$tmpl_dir/js.tt", $vars, $js_file) || die Template->error;
     $tmpl->process("$tmpl_dir/python_client.tt", $vars, $py_file) || die Template->error;
+    $tmpl->process("$tmpl_dir/python_server.tt", $vars, $python_server_file) || die Template->error;
     $tmpl->process("$tmpl_dir/client_stub.tt", $vars, $client_package_file) || die Template->error;
     $tmpl->process("$tmpl_dir/server_stub.tt", $vars, $server_package_file) || die Template->error;
     if ($psgi_file)

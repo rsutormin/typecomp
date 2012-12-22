@@ -1,0 +1,120 @@
+from wsgiref.simple_server import make_server
+import pprint,sys
+from getopt import getopt
+from jsonrpcbase import JSONRPCService
+
+[% FOREACH module IN modules %]
+'''
+
+Module Name:
+[% module.module_name %]
+
+Module Description:
+[% module.module_doc %]
+
+'''
+class [% module.impl_package_name %]:
+
+    #BEGIN_HEADER
+[% module.module_header %]
+    #END_HEADER
+
+    def __init__(self):
+        # All methods are called as static methods, so what does
+        # the constructor do there?
+        # BEGIN_CONSTRUCTOR
+        # END_CONSTRUCTOR
+	pass
+
+[% FOREACH method IN module.methods %]
+
+[% SET paramlist = [];
+   FOREACH p IN method.params;
+       paramlist.push(p.name);
+   END;
+   SET retlist = [];
+   FOREACH var IN method.returns;
+   retlist.push(var.name);
+   END -%]
+    @staticmethod
+    def [% method.name %]( [% paramlist.join(', ') %] ):
+        ctx = dict() # TBD - fill in calling context info
+[% IF method.ret_count > 0 %]
+        # initialize return variables [% retlist.join(",") %]
+[% FOR return IN method.returns -%]
+        [% return.name %] = None
+[% END -%]
+[% END -%]
+
+        #BEGIN [% method.name %]
+        #END [% method.name %]
+
+        # Someday we will do some return variable validation here
+
+[% IF method.ret_count > 0 %]
+        # return the results
+        return [ [% retlist.join(',') %] ]
+[% END -%]
+[% END -%]
+[% END -%]
+
+def application( environ, start_response):
+
+    try:
+        body_size = int( environ.get('CONTENT_LENGTH',0))
+    except (ValueError):
+        body_size = 0
+
+    # Bring in the JSON RPC handler
+    rpc_service = JSONRPCService()
+
+[% FOREACH method IN module.methods %]
+    rpc_service.add( [% module.impl_package_name %].[% method.name %],name='[% module.module_name %].[% method.name %]')
+[% END -%]
+
+    request_body = environ['wsgi.input'].read( body_size)
+    try:
+        rpc_result = rpc_service.call( request_body)
+    except Exception, e:
+        print "Error in rpc call: %s" % e
+
+    #print 'The request method was %s\n' % environ['REQUEST_METHOD']
+    #print 'The environment dictionary is:\n%s\n' % pprint.pformat( environ )
+    print 'The request body was: %s' % request_body
+    print 'The result from the method call is:\n%s\n' % pprint.pformat(rpc_result)
+
+    if rpc_result:
+        response_body = rpc_result
+    else:
+        response_body = ''
+
+    status = "200 OK"
+
+    response_headers = [ ('Content-Type', 'text/plain'),
+                         ('Content-Length', str(len(response_body)))]
+    start_response( status, response_headers)
+    return [response_body]
+
+if __name__ == "__main__":
+    try:
+        opts,args = getopt(sys.argv[1:], "", ["port=","host="])
+    except getopt.GetoptError as err:
+        # print help information and exit:
+        print str(err) # will print something like "option -a not recognized"
+        sys.exit(2)      
+    port = 9999
+    host = 'localhost'
+    for o, a in opts:
+        if o == '--port':
+	    port = int(a)
+	elif o == '--host':
+	    host = a
+	    print "Host set to %s" % host
+        else:
+	    assert False, "unhandled option"
+    
+    print "Listening on port %s" % port
+    httpd = make_server( host, port, application)
+
+    while True:
+        httpd.handle_request()

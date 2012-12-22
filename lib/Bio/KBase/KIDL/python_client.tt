@@ -17,7 +17,7 @@ except ImportError:
     sys.path.append('simplejson-2.3.3')
     import simplejson as json
     
-import urllib2, httplib, urlparse
+import urllib2, httplib, urlparse, random
 from urllib2 import URLError, HTTPError
 
 _CT = 'content-type'
@@ -52,7 +52,8 @@ class [% module.module_name %]:
 
         arg_hash = { 'method': '[% module.module_name %].[% method.name %]',
                      'params': [[% method.args %]],
-                     'version': '1.1'
+                     'version': '1.1',
+		     'id': str(random.random())[2:]
                      }
 
         body = json.dumps(arg_hash)
