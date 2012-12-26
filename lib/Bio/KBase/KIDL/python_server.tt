@@ -1,6 +1,6 @@
 from wsgiref.simple_server import make_server
 import pprint,sys
-from getopt import getopt
+from getopt import getopt,GetoptError
 from jsonrpcbase import JSONRPCService
 
 [% FOREACH module IN modules %]
@@ -24,7 +24,7 @@ class [% module.impl_package_name %]:
         # the constructor do there?
         # BEGIN_CONSTRUCTOR
         # END_CONSTRUCTOR
-	pass
+        pass
 
 [% FOREACH method IN module.methods %]
 
@@ -106,12 +106,12 @@ if __name__ == "__main__":
     host = 'localhost'
     for o, a in opts:
         if o == '--port':
-	    port = int(a)
-	elif o == '--host':
-	    host = a
-	    print "Host set to %s" % host
+            port = int(a)
+        elif o == '--host':
+            host = a
+            print "Host set to %s" % host
         else:
-	    assert False, "unhandled option"
+            assert False, "unhandled option"
     
     print "Listening on port %s" % port
     httpd = make_server( host, port, application)
