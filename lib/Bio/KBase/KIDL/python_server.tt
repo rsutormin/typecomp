@@ -34,15 +34,23 @@ class [% module.impl_package_name %]:
    END;
    SET retlist = [];
    FOREACH var IN method.returns;
-   retlist.push(var.name);
+       IF var.name == 'return';
+           retlist.push('returnVal');
+       ELSE;
+           retlist.push(var.name);
+       END;
    END -%]
     @staticmethod
     def [% method.name %]( [% paramlist.join(', ') %] ):
         ctx = dict() # TBD - fill in calling context info
 [% IF method.ret_count > 0 %]
-        # initialize return variables [% retlist.join(",") %]
+        # initialize return variables [% retlist.join(", ") %]
 [% FOR return IN method.returns -%]
+        [% IF return.name == 'return' %]
+        returnVal = None
+        [% ELSE %]
         [% return.name %] = None
+        [% END -%]
 [% END -%]
 [% END -%]
 
@@ -53,7 +61,7 @@ class [% module.impl_package_name %]:
 
 [% IF method.ret_count > 0 %]
         # return the results
-        return [ [% retlist.join(',') %] ]
+        return [ [% retlist.join(', ') %] ]
 [% END -%]
 [% END -%]
 [% END -%]
@@ -97,7 +105,7 @@ def application( environ, start_response):
 
 if __name__ == "__main__":
     try:
-        opts,args = getopt(sys.argv[1:], "", ["port=","host="])
+        opts, args = getopt(sys.argv[1:], "", ["port=","host="])
     except GetoptError as err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
