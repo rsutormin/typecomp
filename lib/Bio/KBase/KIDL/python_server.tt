@@ -1,6 +1,6 @@
 from wsgiref.simple_server import make_server
 import pprint,sys
-from getopt import getopt,GetoptError
+from getopt import getopt, GetoptError
 from jsonrpcbase import JSONRPCService
 
 [% FOREACH module IN modules %]
@@ -98,7 +98,7 @@ def application( environ, start_response):
 if __name__ == "__main__":
     try:
         opts,args = getopt(sys.argv[1:], "", ["port=","host="])
-    except getopt.GetoptError as err:
+    except GetoptError as err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
         sys.exit(2)      
