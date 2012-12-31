@@ -78,7 +78,7 @@ class [% module.impl_package_name %]:
 [% END -%]
 
 def getConfigs():
-    if not environ[DEPLOY] or not environ[SERVICE]:
+    if DEPLOY not in environ or SERVICE not in environ:
         return None
     retconfig = {}
     config = ConfigParser()
