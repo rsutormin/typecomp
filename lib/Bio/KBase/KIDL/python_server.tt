@@ -2,10 +2,17 @@ from wsgiref.simple_server import make_server
 import pprint,sys
 from getopt import getopt, GetoptError
 from jsonrpcbase import JSONRPCService
+from os import environ
+from ConfigParser import ConfigParser
+
+#TODO fix overwrite, handle impl exceptions properly (needs edit to jsonrpcbase)
 
 #BEGIN IMPORT_BLOCK
 
 #END IMPORT_BLOCK
+
+DEPLOY = 'KB_DEPLOYMENT_CONFIG'
+SERVICE = 'KB_SERVICE_NAME'
 
 [% FOREACH module IN modules %]
 '''
@@ -24,8 +31,9 @@ class [% module.impl_package_name %]:
     #END_HEADER
 
     def __init__(self):
-        # All methods are called as static methods, so what does
-        # the constructor do there?
+        config = getConfigs() #contains contents of config file in hash or 
+                              #None if it couldn't be found
+            
         # BEGIN_CONSTRUCTOR
         # END_CONSTRUCTOR
         pass
@@ -68,6 +76,16 @@ class [% module.impl_package_name %]:
 [% END -%]
 [% END -%]
 [% END -%]
+
+def getConfigs():
+    if not environ[DEPLOY] or not environ[SERVICE]:
+        return None
+    retconfig = {}
+    config = ConfigParser()
+    config.read(environ[DEPLOY])
+    for nameval in config.items(environ[SERVICE]):
+        retconfig[nameval[0]] = nameval[1]
+    return retconfig
 
 impl = [% module.impl_package_name %]()
 
