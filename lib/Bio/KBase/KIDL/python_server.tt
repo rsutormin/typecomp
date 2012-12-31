@@ -3,6 +3,10 @@ import pprint,sys
 from getopt import getopt, GetoptError
 from jsonrpcbase import JSONRPCService
 
+#BEGIN IMPORT_BLOCK
+
+#END IMPORT_BLOCK
+
 [% FOREACH module IN modules %]
 '''
 
@@ -40,8 +44,7 @@ class [% module.impl_package_name %]:
            retlist.push(var.name);
        END;
    END -%]
-    @staticmethod
-    def [% method.name %]( [% paramlist.join(', ') %] ):
+    def [% method.name %](self,  [% paramlist.join(', ') %] ):
         ctx = dict() # TBD - fill in calling context info
 [% IF method.ret_count > 0 %]
         # initialize return variables [% retlist.join(", ") %]
@@ -66,6 +69,8 @@ class [% module.impl_package_name %]:
 [% END -%]
 [% END -%]
 
+impl = [% module.impl_package_name %]()
+
 def application( environ, start_response):
 
     try:
@@ -77,7 +82,7 @@ def application( environ, start_response):
     rpc_service = JSONRPCService()
 
 [% FOREACH method IN module.methods %]
-    rpc_service.add( [% module.impl_package_name %].[% method.name %],name='[% module.module_name %].[% method.name %]')
+    rpc_service.add( impl.[% method.name %],name='[% module.module_name %].[% method.name %]')
 [% END -%]
 
     request_body = environ['wsgi.input'].read( body_size)
