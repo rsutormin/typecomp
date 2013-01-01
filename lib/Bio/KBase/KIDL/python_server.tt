@@ -55,16 +55,8 @@ class [% module.impl_package_name %]:
     def [% method.name %](self,  [% paramlist.join(', ') %] ):
         ctx = dict() # TBD - fill in calling context info
 [% IF method.ret_count > 0 %]
-        # initialize return variables [% retlist.join(", ") %]
-[% FOR return IN method.returns -%]
-        [% IF return.name == 'return' %]
-        returnVal = None
-        [% ELSE %]
-        [% return.name %] = None
-        [% END -%]
+        # return variables are: [% retlist.join(", ") %]
 [% END -%]
-[% END -%]
-
         #BEGIN [% method.name %]
         #END [% method.name %]
 
