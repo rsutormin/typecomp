@@ -180,8 +180,10 @@ def application( environ, start_response):
     # Bring in the JSON RPC handler
     rpc_service = JSONRPCServiceCustom()
 
+[% FOREACH module IN modules %]
 [% FOREACH method IN module.methods %]
     rpc_service.add( impl.[% method.name %],name='[% module.module_name %].[% method.name %]')
+[% END -%]
 [% END -%]
 
     request_body = environ['wsgi.input'].read( body_size)
