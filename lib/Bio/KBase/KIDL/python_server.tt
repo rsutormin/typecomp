@@ -1,9 +1,12 @@
 from wsgiref.simple_server import make_server
 import pprint,sys
 from getopt import getopt, GetoptError
-from jsonrpcbase import JSONRPCService
+from jsonrpcbase import JSONRPCService, InvalidParamsError, KeywordError,\
+  JSONRPCError, log, ServerError, ParseError, InvalidRequestError
 from os import environ
 from ConfigParser import ConfigParser
+import json
+import traceback
 
 #TODO fix overwrite, handle impl exceptions properly (needs edit to jsonrpcbase)
 
@@ -81,6 +84,92 @@ def getConfigs():
 
 impl = [% module.impl_package_name %]()
 
+class JSONRPCServiceCustom(JSONRPCService):
+  
+    def _call_method(self, request):
+        """Calls given method with given params and returns it value."""
+        method = self.method_data[request['method']]['method']
+        params = request['params']
+        result = None
+        try:
+            if isinstance(params, list):
+                # Does it have enough arguments?
+                if len(params) < self._man_args(method):
+                    raise InvalidParamsError('not enough arguments')
+                # Does it have too many arguments?
+                if not self._vargs(method) and len(params) > self._max_args(method):
+                    raise InvalidParamsError('too many arguments')
+
+                result = method(*params)
+            elif isinstance(params, dict):
+                # Do not accept keyword arguments if the jsonrpc version is not >=1.1.
+                if request['jsonrpc'] < 11:
+                    raise KeywordError
+
+                result = method(**params)
+            else: # No params
+                result = method()
+        except JSONRPCError:
+            raise
+        except Exception:
+            log.exception('method %s threw an exception' % request['method'])
+            # Exception was raised inside the method.
+            newerr = ServerError()
+            newerr.data = traceback.format_exc()
+            raise newerr
+        return result
+      
+    def call_py(self, jsondata):
+        """
+        Calls jsonrpc service's method and returns its return value in python object format or None if there is none.
+
+        This method is same as call() except the return value is a python object instead of JSON string. This method
+        is mainly only useful for debugging purposes.
+        """
+        try:
+            rdata = json.loads(jsondata)
+        except ValueError:
+            raise ParseError
+
+        # set some default values for error handling
+        request = self._get_default_vals()
+
+        if isinstance(rdata, dict) and rdata:
+            # It's a single request.
+            self._fill_request(request, rdata)
+            respond = self._handle_request(request)
+
+            # Don't respond to notifications
+            if respond is None:
+                return None
+
+            return respond
+        elif isinstance(rdata, list) and rdata:
+            # It's a batch.
+            requests = []
+            responds = []
+
+            for rdata_ in rdata:
+                # set some default values for error handling
+                request_ = self._get_default_vals()
+                self._fill_request(request_, rdata_)
+                requests.append(request_)
+
+            for request_ in requests:
+                respond = self._handle_request(request_)
+                # Don't respond to notifications
+                if respond is not None:
+                    responds.append(respond)
+
+            if responds:
+                return responds
+
+            # Nothing to respond.
+            return None
+        else:
+            # empty dict, list or wrong type
+            raise InvalidRequestError
+
 def application( environ, start_response):
 
     try:
@@ -89,7 +178,7 @@ def application( environ, start_response):
         body_size = 0
 
     # Bring in the JSON RPC handler
-    rpc_service = JSONRPCService()
+    rpc_service = JSONRPCServiceCustom()
 
 [% FOREACH method IN module.methods %]
     rpc_service.add( impl.[% method.name %],name='[% module.module_name %].[% method.name %]')
@@ -98,8 +187,26 @@ def application( environ, start_response):
     request_body = environ['wsgi.input'].read( body_size)
     try:
         rpc_result = rpc_service.call( request_body)
+    except JSONRPCError as jre:
+        status = '500 Internal Server Error'
+        err = {'error': {'code': jre.code,
+                         'name': jre.message,
+                         'message': jre.data
+                         }
+               }
+        rpc_result = json.dumps(err)
     except Exception, e:
+        status = '500 Internal Server Error'
+        err = {'error': {'code': 0,
+                         'name': 'Unexpected Server Error',
+                         'message': traceback.format_exc()
+                         }
+               }
+        rpc_result = json.dumps(err)
+        
         print "Error in rpc call: %s" % e
+    else:
+        status = '200 OK'
 
     #print 'The request method was %s\n' % environ['REQUEST_METHOD']
     #print 'The environment dictionary is:\n%s\n' % pprint.pformat( environ )
@@ -111,10 +218,10 @@ def application( environ, start_response):
     else:
         response_body = ''
 
-    status = "200 OK"
+#    status = "200 OK"
 
-    response_headers = [ ('Content-Type', 'text/plain'),
-                         ('Content-Length', str(len(response_body)))]
+    response_headers = [ ('content-type', 'application/json'),
+                         ('content-length', str(len(response_body)))]
     start_response( status, response_headers)
     return [response_body]
 
