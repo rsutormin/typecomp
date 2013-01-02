@@ -1,5 +1,5 @@
 from wsgiref.simple_server import make_server
-import pprint,sys
+import pprint, sys
 from getopt import getopt, GetoptError
 from jsonrpcbase import JSONRPCService, InvalidParamsError, KeywordError,\
   JSONRPCError, log, ServerError, ParseError, InvalidRequestError
@@ -8,7 +8,7 @@ from ConfigParser import ConfigParser
 import json
 import traceback
 
-#TODO fix overwrite, handle impl exceptions properly (needs edit to jsonrpcbase)
+#TODO fix overwrite
 
 #BEGIN IMPORT_BLOCK
 
