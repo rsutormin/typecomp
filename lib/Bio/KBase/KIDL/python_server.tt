@@ -3,74 +3,13 @@ import pprint, sys
 from getopt import getopt, GetoptError
 from jsonrpcbase import JSONRPCService, InvalidParamsError, KeywordError,\
   JSONRPCError, log, ServerError, ParseError, InvalidRequestError
-from os import environ
-from ConfigParser import ConfigParser
 import json
 import traceback
-
-#TODO fix overwrite
-
-#BEGIN IMPORT_BLOCK
-
-#END IMPORT_BLOCK
+from os import environ
+from ConfigParser import ConfigParser
 
 DEPLOY = 'KB_DEPLOYMENT_CONFIG'
 SERVICE = 'KB_SERVICE_NAME'
-
-[% FOREACH module IN modules %]
-'''
-
-Module Name:
-[% module.module_name %]
-
-Module Description:
-[% module.module_doc %]
-
-'''
-class [% module.impl_package_name %]:
-
-    #BEGIN_HEADER
-[% module.module_header %]
-    #END_HEADER
-
-    def __init__(self):
-        config = getConfigs() #contains contents of config file in hash or 
-                              #None if it couldn't be found
-            
-        # BEGIN_CONSTRUCTOR
-        # END_CONSTRUCTOR
-        pass
-
-[% FOREACH method IN module.methods %]
-
-[% SET paramlist = [];
-   FOREACH p IN method.params;
-       paramlist.push(p.name);
-   END;
-   SET retlist = [];
-   FOREACH var IN method.returns;
-       IF var.name == 'return';
-           retlist.push('returnVal');
-       ELSE;
-           retlist.push(var.name);
-       END;
-   END -%]
-    def [% method.name %](self,  [% paramlist.join(', ') %] ):
-        ctx = dict() # TBD - fill in calling context info
-[% IF method.ret_count > 0 %]
-        # return variables are: [% retlist.join(", ") %]
-[% END -%]
-        #BEGIN [% method.name %]
-        #END [% method.name %]
-
-        # Someday we will do some return variable validation here
-
-[% IF method.ret_count > 0 %]
-        # return the results
-        return [ [% retlist.join(', ') %] ]
-[% END -%]
-[% END -%]
-[% END -%]
 
 def getConfigs():
     if DEPLOY not in environ or SERVICE not in environ:
@@ -81,8 +20,14 @@ def getConfigs():
     for nameval in config.items(environ[SERVICE]):
         retconfig[nameval[0]] = nameval[1]
     return retconfig
+    
+config = getConfigs()
 
-impl = [% module.impl_package_name %]()
+[% FOREACH module IN modules -%]
+[% SET mn = module.module_name -%]
+from [% module_info.$mn.pymodule %] import [% mn %]
+impl_[% mn %] = [% mn %](config)
+[% END -%]
 
 class JSONRPCServiceCustom(JSONRPCService):
   
@@ -180,9 +125,9 @@ def application( environ, start_response):
     # Bring in the JSON RPC handler
     rpc_service = JSONRPCServiceCustom()
 
-[% FOREACH module IN modules %]
-[% FOREACH method IN module.methods %]
-    rpc_service.add( impl.[% method.name %],name='[% module.module_name %].[% method.name %]')
+[% FOREACH module IN modules -%]
+[% FOREACH method IN module.methods -%]
+    rpc_service.add( impl_[% module.module_name %].[% method.name %],name='[% module.module_name %].[% method.name %]')
 [% END -%]
 [% END -%]
 
