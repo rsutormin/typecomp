@@ -7,6 +7,9 @@ from os import environ
 from ConfigParser import ConfigParser
 import json
 import traceback
+[% IF authenticated -%]
+import nexus
+[% END -%]
 
 #TODO fix overwrite
 
@@ -56,7 +59,6 @@ class [% module.impl_package_name %]:
        END;
    END -%]
     def [% method.name %](self,  [% paramlist.join(', ') %] ):
-        ctx = dict() # TBD - fill in calling context info
 [% IF method.ret_count > 0 %]
         # return variables are: [% retlist.join(", ") %]
 [% END -%]
@@ -170,62 +172,110 @@ class JSONRPCServiceCustom(JSONRPCService):
             # empty dict, list or wrong type
             raise InvalidRequestError
 
-def application( environ, start_response):
 
-    try:
-        body_size = int( environ.get('CONTENT_LENGTH',0))
-    except (ValueError):
-        body_size = 0
+class Application:
+    # Wrap the wsgi handler in a class definition so that we can
+    # do some initialization and avoid regenerating stuff over
+    # and over
 
-    # Bring in the JSON RPC handler
-    rpc_service = JSONRPCServiceCustom()
-
-[% FOREACH module IN modules %]
-[% FOREACH method IN module.methods %]
-    rpc_service.add( impl.[% method.name %],name='[% module.module_name %].[% method.name %]')
+    def __init__(self):
+        self.rpc_service = JSONRPCServiceCustom()
+[% IF authenticated -%]
+        self.method_authentication = dict()
 [% END -%]
+[% FOREACH module IN modules -%]
+[%   FOREACH method IN module.methods -%]
+        self.rpc_service.add( impl.[% method.name %],name='[% module.module_name %].[% method.name %]')
+[%     IF authenticated -%]
+        self.method_authentication[ '[% module.module_name %].[% method.name %]' ] = '[% method.authentication %]'
+[%     END -%]
+[%   END -%]
 [% END -%]
+        self.auth_client = nexus.Client( config = { 'server' : 'nexus.api.globusonline.org',
+                                                    'verify_ssl' : False,
+                                                    'client' : None,
+                                                    'client_secret': None})
 
-    request_body = environ['wsgi.input'].read( body_size)
-    try:
-        rpc_result = rpc_service.call( request_body)
-    except JSONRPCError as jre:
-        status = '500 Internal Server Error'
-        err = {'error': {'code': jre.code,
-                         'name': jre.message,
-                         'message': jre.data
-                         }
-               }
-        rpc_result = json.dumps(err)
-    except Exception, e:
-        status = '500 Internal Server Error'
-        err = {'error': {'code': 0,
-                         'name': 'Unexpected Server Error',
-                         'message': traceback.format_exc()
-                         }
-               }
-        rpc_result = json.dumps(err)
-        
-        print "Error in rpc call: %s" % e
-    else:
-        status = '200 OK'
 
-    #print 'The request method was %s\n' % environ['REQUEST_METHOD']
-    #print 'The environment dictionary is:\n%s\n' % pprint.pformat( environ )
-    print 'The request body was: %s' % request_body
-    print 'The result from the method call is:\n%s\n' % pprint.pformat(rpc_result)
+    def __call__( self, environ, start_response):
+        # Context object, equivalent to the perl impl CallContext
+        ctx = { 'client_ip' : environ.get('REMOTE_ADDR'),
+                'user_id' : None,
+                'authenticated' : None,
+                'token' : None }
 
-    if rpc_result:
-        response_body = rpc_result
-    else:
-        response_body = ''
+        try:
+            body_size = int( environ.get('CONTENT_LENGTH',0))
+        except (ValueError):
+            body_size = 0
 
-#    status = "200 OK"
+        request_body = environ['wsgi.input'].read( body_size)
+        try:
+[% IF authenticated -%]
+            token = environ.get( 'HTTP_AUTHORIZATION')
+            # parse out the method being requested and check if it
+            # has an authentication requirement
+            req = json.loads( request_body)
+            auth_req = self.method_authentication.get(req['method'], "none")
+            if auth_req != "none":
+                if token is None and auth_req == 'required':
+                    err = ServerError()
+                    err.data = "Authentication required for [% module.module_name %] but no authentication header was passed"
+                    raise err
+                elif token is None and auth_req == 'optional':
+                    pass
+                else:
+                    try:
+                        user, clientid, nexus_host = self.auth_client.validate_token(token)
+                        ctx['user_id'] = user
+                        ctx['authenticated'] = 1
+                        ctx['token'] = token
+                    except Exception, e:
+                        if auth_req == 'required':
+                            err = ServerError()
+                            err.data = "Token validation failed: %s" % e
+                            raise err
+[% END -%]
+            rpc_result = self.rpc_service.call( request_body)
+        except JSONRPCError as jre:
+            status = '500 Internal Server Error'
+            err = {'error': {'code': jre.code,
+                             'name': jre.message,
+                             'message': jre.data
+                             }
+                   }
+            rpc_result = json.dumps(err)
+        except Exception, e:
+            status = '500 Internal Server Error'
+            err = {'error': {'code': 0,
+                             'name': 'Unexpected Server Error',
+                             'message': traceback.format_exc()
+                             }
+                   }
+            rpc_result = json.dumps(err)
 
-    response_headers = [ ('content-type', 'application/json'),
-                         ('content-length', str(len(response_body)))]
-    start_response( status, response_headers)
-    return [response_body]
+            print "Error in rpc call: %s" % e
+        else:
+            status = '200 OK'
+
+        #print 'The request method was %s\n' % environ['REQUEST_METHOD']
+        #print 'The environment dictionary is:\n%s\n' % pprint.pformat( environ )
+        print 'The request body was: %s' % request_body
+        print 'The result from the method call is:\n%s\n' % pprint.pformat(rpc_result)
+
+        if rpc_result:
+            response_body = rpc_result
+        else:
+            response_body = ''
+
+    #    status = "200 OK"
+
+        response_headers = [ ('content-type', 'application/json'),
+                             ('content-length', str(len(response_body)))]
+        start_response( status, response_headers)
+        return [response_body]
+
+application = Application()
 
 if __name__ == "__main__":
     try:
