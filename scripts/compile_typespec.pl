@@ -23,18 +23,18 @@ my $dump_parsed;
 my $test_script;
 
 my $rc = GetOptions("scripts=s" => \$scripts_dir,
-            "impl=s"    => \$impl_module_base,
-            "service=s" => \$service_module,
-            "psgi=s"    => \$psgi,
-            "client=s"  => \$client_module,
-            "test=s"    => \$test_script,
-            "js=s"      => \$js_module,
-            "py=s"      => \$py_module,
-            "pyserver=s"=> \$py_server_module,
-            "pyimpl=s"  => \$py_impl_module,
-            "url=s"     => \$default_service_url,
-            "dump"      => \$dump_parsed,
-           );
+                    "impl=s"    => \$impl_module_base,
+                    "service=s" => \$service_module,
+                    "psgi=s"    => \$psgi,
+                    "client=s"  => \$client_module,
+                    "test=s"    => \$test_script,
+                    "js=s"      => \$js_module,
+                    "py=s"      => \$py_module,
+                    "pyserver=s"=> \$py_server_module,
+                    "pyimpl=s"  => \$py_impl_module,
+                    "url=s"     => \$default_service_url,
+                    "dump"      => \$dump_parsed,
+                    );
 
 ($rc && @ARGV >= 2) or die "Usage: $0 [--psgi psgi-file] [--impl impl-module] [--service service-module] [--client client-module] [--scripts script-dir] [--py python-module ] [--pyserver python-server-module] [--pyimpl python-implementation-module][--js js-module] [--url default-service-url] [--test test-script] typespec [typespec...] output-dir\n";
 
@@ -94,21 +94,11 @@ while (my($service, $modules) = each %services)
     write_service_stubs($service, $modules, $output_dir, $need_auth->{$service});
 }
 
-=head2 write_service_stubs
-
-Given one more more modules that implement a service, write a single
-psgi, client and service stub for the service, and one impl stub per module.
-
-The service stubs include a mapping from the function name in a module
-to the impl module for that function.
-
-=cut
-
 sub setup_impl_data
 {
-	my($impl_module_base, $module, $ext) = @_;
-	
-	my $imod;
+    my($impl_module_base, $module, $ext) = @_;
+    
+    my $imod;
     if ($impl_module_base)
     {
         $imod = sprintf $impl_module_base, $module->module_name;
@@ -125,13 +115,23 @@ sub setup_impl_data
     return $imod, $ifile;
 }
 
+=head2 write_service_stubs
+
+Given one more more modules that implement a service, write a single
+psgi, client and service stub for the service, and one impl stub per module.
+
+The service stubs include a mapping from the function name in a module
+to the impl module for that function.
+
+=cut
+
 sub write_service_stubs
 {
     my($service, $modules, $output_dir, $need_auth) = @_;
     
     my $tmpl = Template->new( { OUTPUT_PATH => $output_dir,
-                ABSOLUTE => 1,
-                  });
+                                ABSOLUTE => 1,
+                                });
 
     my %service_options;
     my %module_impl_file;
@@ -145,8 +145,8 @@ sub write_service_stubs
 
         # print Dumper($module);
 
-		my($imod, $ifile) = setup_impl_data($impl_module_base, $module, ".pm");
-		my($pymod, $pyfile) = setup_impl_data($py_impl_module, $module, ".py");
+        my($imod, $ifile) = setup_impl_data($impl_module_base, $module, ".pm");
+        my($pymod, $pyfile) = setup_impl_data($py_impl_module, $module, ".py");
 
         $module_info{$module->module_name} = { module => $imod, file => $ifile,
                                                pymodule => $pymod, pyfile => $pyfile
@@ -234,9 +234,9 @@ sub write_service_stubs
 
 sub parse_old_client
 {
-	my($mod_file) = @_;
-	
-	my %saved_stub;
+    my($mod_file) = @_;
+    
+    my %saved_stub;
     my $saved_header;
     my $saved_const;
     
@@ -290,7 +290,6 @@ sub parse_old_client
         close($fh);
     }
     return $saved_header, $saved_const, \%saved_stub;
-	
 }
 
 sub compute_module_data
@@ -324,172 +323,171 @@ sub compute_module_data
 
     for my $comp (@{$module->module_components})
     {
-    next unless $comp->isa('Bio::KBase::KIDL::KBT::Funcdef');
+        next unless $comp->isa('Bio::KBase::KIDL::KBT::Funcdef');
 
-    my $params = $comp->parameters;
-    my @args;
-    my @arg_types;
-    my @arg_validators;
-    my %ncount;
-    my @param_dat;
-    my @return_dat;
-
-    for my $i (0..$#$params)
-    {
-        my $p = $params->[$i];
-
-        my $name;
-        if ($p->{name})
-        {
-        $name = $p->{name};
-        }
-        else
-        {
-        #
-        # if we didn't pass in a name, and if
-        # this parameter is a typedef, use the type name.
-        #
-        if (ref($p->{type}) && $p->{type}->can('alias_type'))
-        {
-            $name = $p->{type}->name;
-        }
-        else
-        {
-            $name = "arg_" . ($i + 1);
-        }
-        }
-        push(@args, $name);
-        $ncount{$name}++;
-    }
-
-    #
-    # Scan args for duplicates and disambiguate.
-    #
-    for my $argi (0..$#args)
-    {
-        if ($ncount{$args[$argi]} > 1)
-        {
-        $args[$argi] .= "_" . ($argi + 1);
-        }
-    }
-    #
-    # Generate english type descriptions.
-    #
-    my %types_seen;
-    my $typenames = [];
-    my @english;
+        my $params = $comp->parameters;
+        my @args;
+        my @arg_types;
+        my @arg_validators;
+        my %ncount;
+        my @param_dat;
+        my @return_dat;
     
-    for my $argi (0..$#args)
-    {
-        my $name = $args[$argi];
-        my $p = $params->[$argi];
-        my $type = $p->{type};
-        my $eng = $type->english(1);
-        my $tn = $type->subtypes(\%types_seen);
-        # print "arg $argi $type subtypes @$tn\n";
-        push(@$typenames, @$tn);
-        push(@english, "\$$name is $eng");
-        my $perl_var = "\$$name";
-                 
-        my $validator = $type->get_validation_routine($perl_var);
-        push(@arg_validators, $validator);
-        $param_dat[$argi] = {
-        index => ($argi + 1),
-        name => $name,
-        perl_var => '$' . $name,
-        english => $eng,
-        type => $type,
-        validator => $validator,
-        };
+        for my $i (0..$#$params)
+        {
+            my $p = $params->[$i];
+    
+            my $name;
+            if ($p->{name})
+            {
+                $name = $p->{name};
+            }
+            else
+            {
+                #
+                # if we didn't pass in a name, and if
+                # this parameter is a typedef, use the type name.
+                #
+                if (ref($p->{type}) && $p->{type}->can('alias_type'))
+                {
+                    $name = $p->{type}->name;
+                }
+                else
+                {
+                    $name = "arg_" . ($i + 1);
+                }
+            }
+            push(@args, $name);
+            $ncount{$name}++;
+        }
+
+        #
+        # Scan args for duplicates and disambiguate.
+        #
+        for my $argi (0..$#args)
+        {
+            if ($ncount{$args[$argi]} > 1)
+            {
+                $args[$argi] .= "_" . ($argi + 1);
+            }
+        }
+        #
+        # Generate english type descriptions.
+        #
+        my %types_seen;
+        my $typenames = [];
+        my @english;
         
-    }
+        for my $argi (0..$#args)
+        {
+            my $name = $args[$argi];
+            my $p = $params->[$argi];
+            my $type = $p->{type};
+            my $eng = $type->english(1);
+            my $tn = $type->subtypes(\%types_seen);
+            # print "arg $argi $type subtypes @$tn\n";
+            push(@$typenames, @$tn);
+            push(@english, "\$$name is $eng");
+            my $perl_var = "\$$name";
+                     
+            my $validator = $type->get_validation_routine($perl_var);
+            push(@arg_validators, $validator);
+            $param_dat[$argi] = {
+                index => ($argi + 1),
+                name => $name,
+                perl_var => '$' . $name,
+                english => $eng,
+                type => $type,
+                validator => $validator,
+            };
+        
+        }
 
-    my $args = join(", ", @args);
-    my $arg_vars = join(", ", map { "\$$_" } @args);
+        my $args = join(", ", @args);
+        my $arg_vars = join(", ", map { "\$$_" } @args);
 
-    my $returns = $comp->return_type;
+        my $returns = $comp->return_type;
     
-    my @rets;
+        my @rets;
 
-    if (@$returns == 1)
-    {
-        my $p = $returns->[0];
-        my $name = $p->{name} // "return";
-        push(@rets, $name);
-        my $tn = $p->{type}->subtypes(\%types_seen);
-        push(@$typenames, @$tn);
-        my $eng = $p->{type}->english(1);
-        push(@english, "\$$name is $eng");
-    }
-    else
-    {
+        if (@$returns == 1)
+        {
+            my $p = $returns->[0];
+            my $name = $p->{name} // "return";
+            push(@rets, $name);
+            my $tn = $p->{type}->subtypes(\%types_seen);
+            push(@$typenames, @$tn);
+            my $eng = $p->{type}->english(1);
+            push(@english, "\$$name is $eng");
+        }
+        else
+        {
+            for my $i (0..$#$returns)
+            {
+                my $p = $returns->[$i];
+                my $name = $p->{name} // "return_" . ($i + 1);
+                push(@rets, $name);
+                my $tn = $p->{type}->subtypes(\%types_seen);
+                push(@$typenames, @$tn);
+                my $eng = $p->{type}->english(1);
+                push(@english, "\$$name is $eng");
+            }
+        }
+
         for my $i (0..$#$returns)
         {
-        my $p = $returns->[$i];
-        my $name = $p->{name} // "return_" . ($i + 1);
-        push(@rets, $name);
-        my $tn = $p->{type}->subtypes(\%types_seen);
-        push(@$typenames, @$tn);
-        my $eng = $p->{type}->english(1);
-        push(@english, "\$$name is $eng");
+            my $name = $rets[$i];
+            my $perl_var = "\$$name";
+            my $type = $returns->[$i]->{type};
+            my $validator = $type->get_validation_routine($perl_var);
+            $return_dat[$i] = {
+                name => $name,
+                perl_var => '$' . $name,
+                english => $english[$i],
+                type => $type,
+                validator => $validator,
+            };
         }
-    }
 
-    for my $i (0..$#$returns)
-    {
-        my $name = $rets[$i];
-        my $perl_var = "\$$name";
-        my $type = $returns->[$i]->{type};
-        my $validator = $type->get_validation_routine($perl_var);
-        $return_dat[$i] = {
-        name => $name,
-        perl_var => '$' . $name,
-        english => $english[$i],
-        type => $type,
-        validator => $validator,
-        };
-    }
+        my $rets = join(", ", @rets);
+        my $ret_vars = join(", ", map { "\$$_" } @rets);
 
-
-    my $rets = join(", ", @rets);
-    my $ret_vars = join(", ", map { "\$$_" } @rets);
-
-    for my $tn (@$typenames)
-    {
-        my $type = $type_table->{$tn};
-        if (!defined($type))
+        for my $tn (@$typenames)
         {
-        die "Type $tn is not defined in module " . $module->module_name . "\n";
-        }
-
-        push(@english, "$tn is " . $type->alias_type->english(1));
-    }
+            my $type = $type_table->{$tn};
+            if (!defined($type))
+            {
+                die "Type $tn is not defined in module " . $module->module_name . "\n";
+            }
     
-    my $doc = $comp->comment;
-    $doc =~ s/^\s*\*\s?//mg;
-
-    chomp @english;
-
-    my $meth = {
-        name => $comp->name,
-        arg_doc => [grep { !/^\s*$/ } @english],
-        doc => $doc,
-        args => $args,
-        arg_vars => $arg_vars,
-        arg_types => \@arg_types,
-        arg_validators => \@arg_validators,
-        params => \@param_dat,
-        returns => \@return_dat,
+            push(@english, "$tn is " . $type->alias_type->english(1));
+        }
         
-        rets => $rets,
-        ret_vars => $ret_vars,
-        arg_count => scalar @args,
-        ret_count => scalar @rets,
-        user_code => $saved_stub{$comp->name},
-        py_user_code => $py_saved_stub{$comp->name},
-        authentication => $comp->authentication,
-    };
-    push(@$methods, $meth);
+        my $doc = $comp->comment;
+        $doc =~ s/^\s*\*\s?//mg;
+    
+        chomp @english;
+    
+        my $meth = {
+            name => $comp->name,
+            arg_doc => [grep { !/^\s*$/ } @english],
+            doc => $doc,
+            args => $args,
+            arg_vars => $arg_vars,
+            arg_types => \@arg_types,
+            arg_validators => \@arg_validators,
+            params => \@param_dat,
+            returns => \@return_dat,
+            
+            rets => $rets,
+            ret_vars => $ret_vars,
+            arg_count => scalar @args,
+            ret_count => scalar @rets,
+            user_code => $saved_stub{$comp->name},
+            py_user_code => $py_saved_stub{$comp->name},
+            authentication => $comp->authentication,
+        };
+        push(@$methods, $meth);
     }
     
     return $vars;
@@ -507,8 +505,8 @@ sub write_module_stubs
     my($my_module) = grep { $_->{module_name} eq $module->module_name } @{$vars->{modules}};
     
     my $tmpl = Template->new( { OUTPUT_PATH => $output_dir,
-                ABSOLUTE => 1,
-                  });
+                                ABSOLUTE => 1,
+                                });
 
     my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
 
@@ -521,9 +519,9 @@ sub write_module_stubs
     }
 
     my $mvars = {
-        %$vars,
-        module => $my_module,
-    };
+                  %$vars,
+                  module => $my_module,
+                 };
 
     open(IM, ">", $impl_file) or die "Cannot write $impl_file: $!";
     $tmpl->process("$tmpl_dir/$template", $mvars, \*IM) || die Template->error;
@@ -589,15 +587,15 @@ sub assemble_types
 
     for my $type (@{$parser->types()})
     {
-    my $name = $type->name;
-    my $ref = $type->alias_type;
-    my $eng = $ref->english(0);
-    push(@$types, {
-        name => $name,
-        ref => $ref,
-        english => $eng,
-        comment => $type->comment,
-        });
+        my $name = $type->name;
+        my $ref = $type->alias_type;
+        my $eng = $ref->english(0);
+        push(@$types, {
+            name => $name,
+            ref => $ref,
+            english => $eng,
+            comment => $type->comment,
+            });
     }
     return $types;
 }
@@ -610,20 +608,20 @@ sub check_for_authentication
  SVC:
     while (my($service, $modules) = each %$services)
     {
-    $out->{$service} = 0;
-    for my $module_ent (@$modules)
-    {
-        my($module, $type_info, $type_table) = @$module_ent;
-        for my $comp (@{$module->module_components})
+        $out->{$service} = 0;
+        for my $module_ent (@$modules)
         {
-        next unless $comp->isa('Bio::KBase::KIDL::KBT::Funcdef');
-        if ($comp->authentication eq 'required' || $comp->authentication eq 'optional')
-        {
-            $out->{$service} = 1;
-            next SVC;
+            my($module, $type_info, $type_table) = @$module_ent;
+            for my $comp (@{$module->module_components})
+            {
+                next unless $comp->isa('Bio::KBase::KIDL::KBT::Funcdef');
+                if ($comp->authentication eq 'required' || $comp->authentication eq 'optional')
+                {
+                    $out->{$service} = 1;
+                    next SVC;
+                }
+            }
         }
-        }
-    }
     }
     return $out;
 }
