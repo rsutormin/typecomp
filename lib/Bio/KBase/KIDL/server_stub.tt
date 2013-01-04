@@ -84,6 +84,7 @@ sub call_method {
 	}
 	$ctx->authenticated(1);
 	$ctx->user_id($auth_token->user_id);
+	$ctx->token( $token);
     }
 }
 [% ELSE -%]
