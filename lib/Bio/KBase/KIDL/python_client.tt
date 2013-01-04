@@ -27,7 +27,7 @@ _URL_SCHEME = frozenset(['http', 'https'])
 
 # This is bandaid helper function until we get a full
 # KBase python auth client released
-def get_token( username, password,
+def _get_token( username, password,
                auth_svc="https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials"):
     h = httplib2.Http( disable_ssl_certificate_validation=True)
     
@@ -74,8 +74,7 @@ class ServerError(Exception):
 [% FOREACH module IN modules %]
 class [% module.module_name %]:
 
-    def __init__(self, url, timeout = 30 * 60,user_id=None,password=None,token=None,
-                 ignore_authrc=False):
+    def __init__(self, url, timeout = 30 * 60, user_id=None, password=None, token=None):
         if url is None:
             raise ValueError('A url is required')
         scheme, _, _, _, _, _ = urlparse.urlparse(url)
@@ -88,7 +87,7 @@ class [% module.module_name %]:
         if token is not None:
             self.headers['AUTHORIZATION'] = token
         elif user_id is not None and password is not None:
-            self.headers['AUTHORIZATION'] = get_token( username = user_id, password=password)
+            self.headers['AUTHORIZATION'] = _get_token( username = user_id, password=password)
         elif not ignore_authrc:
             authdata = _read_rcfile()
             if authdata is not None:
