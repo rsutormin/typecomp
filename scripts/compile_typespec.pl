@@ -591,7 +591,6 @@ sub write_scripts
                 $tmpl->process("$tmpl_dir/simple_cmd.tt", \%d, $fh) || die Template->error;
                 close($fh);
             }
-            exit;
         }
     }
 }
