@@ -7,10 +7,10 @@ import json
 import traceback
 from os import environ
 from ConfigParser import ConfigParser
-
 [% IF authenticated -%]
 import nexus
 [% END -%]
+
 [% 	specToPy.list = 'list';
 	specToPy.tuple = 'list';
 	specToPy.struct = 'dict';

@@ -40,7 +40,7 @@ class [% module.module_name %]:
        END;
        retlist.push(var.name);
    END -%]
-    def [% method.name %](self,  [% paramlist.join(', ') %] ):
+    def [% method.name %](self, [% paramlist.join(', ') %]):
         # self.ctx should be set by the wsgi application class
 [% IF method.ret_count > 0 -%]
         # return variables are: [% retlist.join(", ") %]
@@ -49,14 +49,14 @@ class [% module.module_name %]:
 [% method.py_user_code -%]
         #END [% method.name %]
 
+[% IF method.ret_count > 0 %]
         #At some point might do deeper type checking...
-[% FOREACH ret IN method.returns -%]
-[%    spectype = ret.baretype -%]
-[%    type = specToPy.$spectype -%]
+[% 	FOREACH ret IN method.returns -%]
+[%    	spectype = ret.baretype -%]
+[%    	type = specToPy.$spectype -%]
         if not isinstance([% ret.name %], [% type %]):
             raise ValueError('Method [% method.name %] return value [% ret.name %] is not type [% type %] as required.')
 [% END -%]
-[% IF method.ret_count > 0 %]
         # return the results
         return [ [% retlist.join(', ') %] ]
         
