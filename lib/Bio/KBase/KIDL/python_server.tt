@@ -186,7 +186,9 @@ class Application:
                             raise err
 [% END -%]
             # push the context object into the implementation instance's namespace
+[% FOREACH module IN modules -%]
             impl_[% module.module_name %].ctx = ctx
+[% END -%]
             rpc_result = self.rpc_service.call( request_body)
         except JSONRPCError as jre:
             status = '500 Internal Server Error'
