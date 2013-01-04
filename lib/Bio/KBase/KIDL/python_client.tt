@@ -19,7 +19,7 @@ except ImportError:
     
 import urllib2, httplib, urlparse, random, base64, httplib2
 from urllib2 import URLError, HTTPError
-from os import environ
+import os
 
 _CT = 'content-type'
 _AJ = 'application/json'
@@ -27,14 +27,14 @@ _URL_SCHEME = frozenset(['http', 'https'])
 
 # This is bandaid helper function until we get a full
 # KBase python auth client released
-def _get_token( username, password,
-               auth_svc="https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials"):
+def _get_token( user_id, password,
+                auth_svc="https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials"):
     h = httplib2.Http( disable_ssl_certificate_validation=True)
     
-    auth = base64.encodestring( username + ':' + password )
+    auth = base64.encodestring( user_id + ':' + password )
     headers = { 'Authorization' : 'Basic ' + auth }
     
-    h.add_credentials(username, password)
+    h.add_credentials(user_id, password)
     h.follow_all_redirects = True
     url = auth_svc
     
@@ -48,7 +48,7 @@ def _get_token( username, password,
     return tok['access_token']
 
 # Another bandaid to read in the ~/.authrc file if one is present
-def _read_rcfile( file=environ['HOME']+"/.authrc"):
+def _read_rcfile( file=os.environ['HOME']+"/.authrc"):
     authdata = None
     if os.path.exists( file):
         try:
@@ -74,7 +74,8 @@ class ServerError(Exception):
 [% FOREACH module IN modules %]
 class [% module.module_name %]:
 
-    def __init__(self, url, timeout = 30 * 60, user_id=None, password=None, token=None):
+    def __init__(self, url, timeout = 30 * 60, user_id=None, password=None, token=None,
+                 ignore_authrc = False):
         if url is None:
             raise ValueError('A url is required')
         scheme, _, _, _, _, _ = urlparse.urlparse(url)
@@ -87,14 +88,14 @@ class [% module.module_name %]:
         if token is not None:
             self.headers['AUTHORIZATION'] = token
         elif user_id is not None and password is not None:
-            self.headers['AUTHORIZATION'] = _get_token( username = user_id, password=password)
+            self.headers['AUTHORIZATION'] = _get_token( user_id, password)
         elif not ignore_authrc:
             authdata = _read_rcfile()
             if authdata is not None:
-                user_id = authdata['user_id']
-                password = authdata['password']
-                token = authdata['token']
-                # the rest of the stuff in authrc is not currently supported
+                if token in authdata:
+                    self.headers['AUTHORIZATION'] = authdata['token']
+                else:
+                    self.headers['AUTHORIZATION'] = _get_token( authdata['user_id'],authdata['password'] )
         if self.timeout < 1:
             raise ValueError('Timeout value must be at least 1 second')
 
