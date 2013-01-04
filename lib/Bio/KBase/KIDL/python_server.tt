@@ -11,7 +11,14 @@ from ConfigParser import ConfigParser
 [% IF authenticated -%]
 import nexus
 [% END -%]
-
+[% 	specToPy.list = 'list';
+	specToPy.tuple = 'list';
+	specToPy.struct = 'dict';
+	specToPy.mapping = 'dict';
+	specToPy.int = 'int';
+	specToPy.float = 'float';
+	specToPy.string = 'basestring'; 
+-%]
 DEPLOY = 'KB_DEPLOYMENT_CONFIG'
 SERVICE = 'KB_SERVICE_NAME'
 
@@ -130,9 +137,16 @@ class Application:
 [% IF authenticated -%]
         self.method_authentication = dict()
 [% END -%]
-[% FOREACH module IN modules -%]
-[%   FOREACH method IN module.methods -%]
-        self.rpc_service.add( impl_[% module.module_name %].[% method.name %],name='[% module.module_name %].[% method.name %]')
+[% FOREACH module IN modules;
+	FOREACH method IN module.methods;
+		typelist = [];
+		FOREACH p IN method.params; -%]
+[%			spectype = p.baretype; -%]
+[%		    type = specToPy.$spectype; -%]
+[%     		typelist.push(type); -%]
+[%   		END -%]
+        self.rpc_service.add(impl_[% module.module_name %].[% method.name %], name = '[% module.module_name %].[% method.name %]',
+                             types = [[% typelist.join(", ") %]])
 [%     IF authenticated -%]
         self.method_authentication[ '[% module.module_name %].[% method.name %]' ] = '[% method.authentication %]'
 [%     END -%]
