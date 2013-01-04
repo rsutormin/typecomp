@@ -242,6 +242,27 @@ class Application:
 
 application = Application()
 
+# This is the uwsgi application dictionary. On startup uwsgi will look
+# for this dict and pull its configuration from here.
+# The first section is simply which simply lists where to "mount"
+# the application.
+# This module "magically" appears when running the app is run within
+# uwsgi and is not available otherwise, so wrap an exception handler
+# around it
+# There are a bunch of other things in the uwsgi as well that are useful
+# for metrics and tuning, mostly they seem to be read-only
+# See http://uwsgi-docs.readthedocs.org/en/latest/PythonModule.html
+
+try:
+    import uwsgi
+    uwsgi.applications = {
+        '' : application
+        }
+except ImportError:
+    # Not available outside of wsgi, ignore
+    pass
+
+
 if __name__ == "__main__":
     try:
         opts, args = getopt(sys.argv[1:], "", ["port=","host="])

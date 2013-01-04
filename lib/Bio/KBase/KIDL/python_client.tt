@@ -42,7 +42,9 @@ def _get_token( user_id, password,
     status = int(resp['status'])
     if status>=200 and status<=299:
         tok = json.loads(content)
-    else: 
+    elif status == 403: 
+        raise Exception( "Authentication failed: Bad user_id/password combination")
+    else:
         raise Exception(str(resp))
         
     return tok['access_token']
