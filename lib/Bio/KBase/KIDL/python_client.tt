@@ -19,6 +19,7 @@ except ImportError:
     
 import urllib2, httplib, urlparse, random, base64, httplib2
 from urllib2 import URLError, HTTPError
+from os import environ
 
 _CT = 'content-type'
 _AJ = 'application/json'
@@ -46,6 +47,21 @@ def get_token( username, password,
         
     return tok['access_token']
 
+# Another bandaid to read in the ~/.authrc file if one is present
+def _read_rcfile( file=environ['HOME']+"/.authrc"):
+    authdata = None
+    if os.path.exists( file):
+        try:
+            with open( file ) as authrc:
+                rawdata = json.load( authrc)
+                # strip down whatever we read to only what is legit
+                authdata = { x : rawdata.get(x) for x in ( 'user_id', 'auth_token',
+                                                           'client_secret', 'keyfile',
+                                                           'keyfile_passphrase','password')}
+        except Exception, e:
+            print "Error while reading authrc file %s: %s" % (file, e)
+    return authdata
+
 class ServerError(Exception):
 
     def __init__(self, name, code, message):
@@ -58,7 +74,8 @@ class ServerError(Exception):
 [% FOREACH module IN modules %]
 class [% module.module_name %]:
 
-    def __init__(self, url, timeout = 30 * 60,user_id=None,password=None,token=None):
+    def __init__(self, url, timeout = 30 * 60,user_id=None,password=None,token=None,
+                 ignore_authrc=False):
         if url is None:
             raise ValueError('A url is required')
         scheme, _, _, _, _, _ = urlparse.urlparse(url)
@@ -72,6 +89,13 @@ class [% module.module_name %]:
             self.headers['AUTHORIZATION'] = token
         elif user_id is not None and password is not None:
             self.headers['AUTHORIZATION'] = get_token( username = user_id, password=password)
+        elif not ignore_authrc:
+            authdata = _read_rcfile()
+            if authdata is not None:
+                user_id = authdata['user_id']
+                password = authdata['password']
+                token = authdata['token']
+                # the rest of the stuff in authrc is not currently supported
         if self.timeout < 1:
             raise ValueError('Timeout value must be at least 1 second')
 
