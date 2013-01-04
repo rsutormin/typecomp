@@ -17,12 +17,34 @@ except ImportError:
     sys.path.append('simplejson-2.3.3')
     import simplejson as json
     
-import urllib2, httplib, urlparse, random
+import urllib2, httplib, urlparse, random, base64, httplib2
 from urllib2 import URLError, HTTPError
 
 _CT = 'content-type'
 _AJ = 'application/json'
 _URL_SCHEME = frozenset(['http', 'https']) 
+
+# This is bandaid helper function until we get a full
+# KBase python auth client released
+def get_token( username, password,
+               auth_svc="https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials"):
+    h = httplib2.Http( disable_ssl_certificate_validation=True)
+    
+    auth = base64.encodestring( username + ':' + password )
+    headers = { 'Authorization' : 'Basic ' + auth }
+    
+    h.add_credentials(username, password)
+    h.follow_all_redirects = True
+    url = auth_svc
+    
+    resp, content = h.request(url, 'GET', headers=headers)
+    status = int(resp['status'])
+    if status>=200 and status<=299:
+        tok = json.loads(content)
+    else: 
+        raise Exception(str(resp))
+        
+    return tok['access_token']
 
 class ServerError(Exception):
 
@@ -45,8 +67,11 @@ class [% module.module_name %]:
         self.url = url
         self.timeout = int(timeout)
         self.headers = dict()
+        # token overrides user_id and password
         if token is not None:
-            self.headers['token'] = token
+            self.headers['AUTHORIZATION'] = token
+        elif user_id is not None and password is not None:
+            self.headers['AUTHORIZATION'] = get_token( username = user_id, password=password)
         if self.timeout < 1:
             raise ValueError('Timeout value must be at least 1 second')
 

@@ -213,8 +213,8 @@ class Application:
 
         #print 'The request method was %s\n' % environ['REQUEST_METHOD']
         #print 'The environment dictionary is:\n%s\n' % pprint.pformat( environ )
-        print 'The request body was: %s' % request_body
-        print 'The result from the method call is:\n%s\n' % pprint.pformat(rpc_result)
+        #print 'The request body was: %s' % request_body
+        #print 'The result from the method call is:\n%s\n' % pprint.pformat(rpc_result)
 
         if rpc_result:
             response_body = rpc_result
@@ -251,5 +251,4 @@ if __name__ == "__main__":
     print "Listening on port %s" % port
     httpd = make_server( host, port, application)
 
-    while True:
-        httpd.handle_request()
+    httpd.serve_forever()
