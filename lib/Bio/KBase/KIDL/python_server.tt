@@ -185,6 +185,8 @@ class Application:
                             err.data = "Token validation failed: %s" % e
                             raise err
 [% END -%]
+            # push the context object into the implementation instance's namespace
+            impl_[% module.module_name %].ctx = ctx
             rpc_result = self.rpc_service.call( request_body)
         except JSONRPCError as jre:
             status = '500 Internal Server Error'

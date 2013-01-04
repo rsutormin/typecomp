@@ -35,7 +35,7 @@ class [% module.module_name %]:
        END;
    END -%]
     def [% method.name %](self,  [% paramlist.join(', ') %] ):
-        ctx = dict() # TBD - fill in calling context info
+        # self.ctx should be set by the wsgi application class
 [% IF method.ret_count > 0 %]
         # return variables are: [% retlist.join(", ") %]
 [% END -%]
