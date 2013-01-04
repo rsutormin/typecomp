@@ -4,6 +4,14 @@
 
 '''
 
+[% 	specToPy.list = 'list';
+	specToPy.tuple = 'list';
+	specToPy.struct = 'dict';
+	specToPy.mapping = 'dict';
+	specToPy.int = 'int';
+	specToPy.float = 'float';
+	specToPy.string = 'basestring'; 
+-%]
 Module Name:
 [% module.module_name %]
 
@@ -20,8 +28,7 @@ class [% module.module_name %]:
         #END_CONSTRUCTOR
         pass
 
-[% FOREACH method IN module.methods %]
-
+[% FOREACH method IN module.methods -%]
 [% SET paramlist = [];
    FOREACH p IN method.params;
        paramlist.push(p.name);
@@ -29,24 +36,29 @@ class [% module.module_name %]:
    SET retlist = [];
    FOREACH var IN method.returns;
        IF var.name == 'return';
-           retlist.push('returnVal');
-       ELSE;
-           retlist.push(var.name);
+           var.name = 'returnVal';
        END;
+       retlist.push(var.name);
    END -%]
     def [% method.name %](self,  [% paramlist.join(', ') %] ):
         # self.ctx should be set by the wsgi application class
-[% IF method.ret_count > 0 %]
+[% IF method.ret_count > 0 -%]
         # return variables are: [% retlist.join(", ") %]
 [% END -%]
         #BEGIN [% method.name %]
 [% method.py_user_code -%]
         #END [% method.name %]
 
-        # Someday we will do some return variable validation here
-
+        #At some point might do deeper type checking...
+[% FOREACH ret IN method.returns -%]
+[%    spectype = ret.baretype -%]
+[%    type = specToPy.$spectype -%]
+        if not isinstance([% ret.name %], [% type %]):
+            raise ValueError('Method [% method.name %] return value [% ret.name %] is not type [% type %] as required.')
+[% END -%]
 [% IF method.ret_count > 0 %]
         # return the results
         return [ [% retlist.join(', ') %] ]
+        
 [% END -%]
 [% END -%]

@@ -201,7 +201,7 @@ sub write_service_stubs
         authenticated => $need_auth,
         psgi_file => $psgi_file,
     };
-    # print Dumper($vars);
+#    print Dumper($vars);
 
     my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
 
@@ -291,6 +291,16 @@ sub parse_old_client
         close($fh);
     }
     return $saved_header, $saved_const, \%saved_stub;
+}
+
+sub get_type_names
+{
+    my($type) = @_;
+    
+    my $typedef = $type->as_string();
+    $typedef =~ m/^\s*(\w+)\s*(?:[<{].+)?$/; #this is a bit hacky, maybe add a method to each type - should ask Bob
+    my $baretype = $1;
+    return $typedef, $baretype;
 }
 
 sub compute_module_data
@@ -390,7 +400,9 @@ sub compute_module_data
             push(@$typenames, @$tn);
             push(@english, "\$$name is $eng");
             my $perl_var = "\$$name";
-                     
+            
+            my($typedef, $baretype) = get_type_names($type);
+            
             my $validator = $type->get_validation_routine($perl_var);
             push(@arg_validators, $validator);
             $param_dat[$argi] = {
@@ -400,6 +412,8 @@ sub compute_module_data
                 english => $eng,
                 type => $type,
                 validator => $validator,
+                typedef => $typedef,
+                baretype => $baretype,
             };
         
         }
@@ -441,12 +455,15 @@ sub compute_module_data
             my $perl_var = "\$$name";
             my $type = $returns->[$i]->{type};
             my $validator = $type->get_validation_routine($perl_var);
+            my($typedef, $baretype) = get_type_names($type);
             $return_dat[$i] = {
                 name => $name,
                 perl_var => '$' . $name,
                 english => $english[$i],
                 type => $type,
                 validator => $validator,
+                typedef => $typedef,
+                baretype => $baretype,
             };
         }
 
