@@ -83,19 +83,19 @@ class [% module.module_name %]:
             raise ValueError(url + " isn't a valid http url")
         self.url = url
         self.timeout = int(timeout)
-        self.headers = dict()
+        self._headers = dict()
         # token overrides user_id and password
         if token is not None:
-            self.headers['AUTHORIZATION'] = token
+            self._headers['AUTHORIZATION'] = token
         elif user_id is not None and password is not None:
-            self.headers['AUTHORIZATION'] = _get_token( user_id, password)
+            self._headers['AUTHORIZATION'] = _get_token( user_id, password)
         elif not ignore_authrc:
             authdata = _read_rcfile()
             if authdata is not None:
                 if token in authdata:
-                    self.headers['AUTHORIZATION'] = authdata['token']
+                    self._headers['AUTHORIZATION'] = authdata['token']
                 else:
-                    self.headers['AUTHORIZATION'] = _get_token( authdata['user_id'],authdata['password'] )
+                    self._headers['AUTHORIZATION'] = _get_token( authdata['user_id'],authdata['password'] )
         if self.timeout < 1:
             raise ValueError('Timeout value must be at least 1 second')
 
@@ -110,7 +110,7 @@ class [% module.module_name %]:
 
         body = json.dumps(arg_hash)
         try:
-            request = urllib2.Request( self.url, body, self.headers)
+            request = urllib2.Request( self.url, body, self._headers)
 #            ret = urllib2.urlopen(self.url, body, timeout = self.timeout)
             ret = urllib2.urlopen(request, timeout = self.timeout)
         except HTTPError as h:
