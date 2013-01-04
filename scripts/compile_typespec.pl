@@ -228,7 +228,8 @@ sub write_service_stubs
         my($pyfile, $pymod) = @{$module_info{$module->module_name}}{'pyfile', 'pymodule'};
 
         write_module_stubs($service, $imod, $ifile, $module, $type_info, $vars, $output_dir);
-        write_module_stubs($service, $pymod, $pyfile, $module, $type_info, $vars, $output_dir, 'python_impl.tt')
+        write_module_stubs($service, $pymod, $pyfile, $module, $type_info, $vars, $output_dir, 'python_impl.tt');
+        write_scripts($scripts_dir, $module, $vars, $output_dir);
     }
 }
 
@@ -493,6 +494,21 @@ sub compute_module_data
     return $vars;
 }
 
+sub get_module_script_info
+{
+    my($module, $vars, $output_dir) = @_;
+    
+    my($my_module) = grep { $_->{module_name} eq $module->module_name } @{$vars->{modules}};
+    
+    my $tmpl = Template->new( { OUTPUT_PATH => $output_dir,
+                                ABSOLUTE => 1,
+                                });
+
+    my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
+    
+    return $my_module, $tmpl, $tmpl_dir;
+}
+
 sub write_module_stubs
 {
     my($service, $impl_module_name, $impl_module_file, $module, $type_info, $vars, $output_dir, $template) = @_;
@@ -502,14 +518,8 @@ sub write_module_stubs
         $template = 'impl_stub.tt';
     }
     
-    my($my_module) = grep { $_->{module_name} eq $module->module_name } @{$vars->{modules}};
+    my($my_module, $tmpl, $tmpl_dir) = get_module_script_info($module, $vars, $output_dir);
     
-    my $tmpl = Template->new( { OUTPUT_PATH => $output_dir,
-                                ABSOLUTE => 1,
-                                });
-
-    my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
-
     my $impl_file = "$output_dir/$impl_module_file";
     if (-f $impl_file)
     {
@@ -526,6 +536,13 @@ sub write_module_stubs
     open(IM, ">", $impl_file) or die "Cannot write $impl_file: $!";
     $tmpl->process("$tmpl_dir/$template", $mvars, \*IM) || die Template->error;
     close(IM);
+}
+    
+sub write_scripts
+{
+    my($scripts_dir, $module, $vars, $output_dir) = @_;
+
+    my($my_module, $tmpl, $tmpl_dir) = get_module_script_info($module, $vars, $output_dir);
 
     if ($scripts_dir)
     {
