@@ -12,12 +12,6 @@ from ConfigParser import ConfigParser
 import nexus
 [% END -%]
 
-#TODO fix overwrite
-
-#BEGIN IMPORT_BLOCK
-
-#END IMPORT_BLOCK
-
 DEPLOY = 'KB_DEPLOYMENT_CONFIG'
 SERVICE = 'KB_SERVICE_NAME'
 
@@ -138,16 +132,18 @@ class Application:
 [% END -%]
 [% FOREACH module IN modules -%]
 [%   FOREACH method IN module.methods -%]
-        self.rpc_service.add( impl.[% method.name %],name='[% module.module_name %].[% method.name %]')
+        self.rpc_service.add( impl_[% module.module_name %].[% method.name %],name='[% module.module_name %].[% method.name %]')
 [%     IF authenticated -%]
         self.method_authentication[ '[% module.module_name %].[% method.name %]' ] = '[% method.authentication %]'
 [%     END -%]
 [%   END -%]
 [% END -%]
+[% IF authenticated -%]
         self.auth_client = nexus.Client( config = { 'server' : 'nexus.api.globusonline.org',
                                                     'verify_ssl' : False,
                                                     'client' : None,
                                                     'client_secret': None})
+[% END -%]
 
 
     def __call__( self, environ, start_response):
