@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 from wsgiref.simple_server import make_server
-import sys
+import sys, json, traceback, threading
 from getopt import getopt, GetoptError
 from jsonrpcbase import JSONRPCService, InvalidParamsError, KeywordError,\
   JSONRPCError, log, ServerError, ParseError, InvalidRequestError
-import json
-import traceback
 from os import environ
 from ConfigParser import ConfigParser
 [% IF authenticated -%]
@@ -243,6 +241,32 @@ class Application:
 
 application = Application()
 
+_httpd = None
+  
+def start_server(host = 'localhost', port = 0, thread = False):
+    '''
+    By default, will start the server on localhost on a system assigned port
+    in the main thread. Excecution of the main thread will stay in the server 
+    main loop until interrupted. To run the server in a separate thread, and 
+    thus allow the stop_server method to be called, set thread = True. This
+    will also allow returning of the port number.'''
+    
+    global _httpd
+    _httpd = make_server(host, port, application)
+    port = _httpd.server_address[1]
+    print "Listening on port %s" % port
+    if thread:
+      t = threading.Thread(target = _httpd.serve_forever)
+      t.daemon = True
+      t.start()
+    else:
+      _httpd.serve_forever()
+    return port
+  
+def stop_server():
+    global _httpd
+    _httpd.shutdown()
+
 # This is the uwsgi application dictionary. On startup uwsgi will look
 # for this dict and pull its configuration from here.
 # This simply lists where to "mount" the application in the URL path
@@ -265,7 +289,6 @@ except ImportError:
     # Not available outside of wsgi, ignore
     pass
 
-
 if __name__ == "__main__":
     try:
         opts, args = getopt(sys.argv[1:], "", ["port=","host="])
@@ -284,7 +307,8 @@ if __name__ == "__main__":
         else:
             assert False, "unhandled option"
     
-    print "Listening on port %s" % port
-    httpd = make_server( host, port, application)
-
-    httpd.serve_forever()
+    start_server(host = host, port = port)
+#    print "Listening on port %s" % port
+#    httpd = make_server( host, port, application)
+#
+#    httpd.serve_forever()
