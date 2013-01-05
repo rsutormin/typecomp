@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from wsgiref.simple_server import make_server
 import sys
 from getopt import getopt, GetoptError
@@ -244,15 +245,17 @@ application = Application()
 
 # This is the uwsgi application dictionary. On startup uwsgi will look
 # for this dict and pull its configuration from here.
-# The first section is simply which simply lists where to "mount"
-# the application.
-# This module "magically" appears when running the app is run within
+# This simply lists where to "mount" the application in the URL path
+#
+# This uwsgi module "magically" appears when running the app within
 # uwsgi and is not available otherwise, so wrap an exception handler
 # around it
-# There are a bunch of other things in the uwsgi as well that are useful
-# for metrics and tuning, mostly they seem to be read-only
-# See http://uwsgi-docs.readthedocs.org/en/latest/PythonModule.html
-
+# 
+# To run this server in uwsgi with 4 workers listening on port 9999 use:
+# uwsgi -M -p 4 --http :9999 --wsgi-file _this_file_
+# To run a using the single threaded python BaseHTTP service
+# listening on port 9999 by default execute this file
+#
 try:
     import uwsgi
     uwsgi.applications = {
