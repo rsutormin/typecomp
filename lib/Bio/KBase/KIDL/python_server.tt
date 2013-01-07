@@ -252,6 +252,8 @@ def start_server(host = 'localhost', port = 0, thread = False):
     will also allow returning of the port number.'''
     
     global _httpd
+    if _httpd:
+      raise RuntimeError("server is already running")
     _httpd = make_server(host, port, application)
     port = _httpd.server_address[1]
     print "Listening on port %s" % port
@@ -266,6 +268,7 @@ def start_server(host = 'localhost', port = 0, thread = False):
 def stop_server():
     global _httpd
     _httpd.shutdown()
+    _httpd = None
 
 # This is the uwsgi application dictionary. On startup uwsgi will look
 # for this dict and pull its configuration from here.
