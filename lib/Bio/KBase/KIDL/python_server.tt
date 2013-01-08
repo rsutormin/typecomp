@@ -9,15 +9,6 @@ from ConfigParser import ConfigParser
 [% IF authenticated -%]
 import nexus
 [% END -%]
-
-[% 	specToPy.list = 'list';
-	specToPy.tuple = 'list';
-	specToPy.struct = 'dict';
-	specToPy.mapping = 'dict';
-	specToPy.int = 'int';
-	specToPy.float = 'float';
-	specToPy.string = 'basestring'; 
--%]
 DEPLOY = 'KB_DEPLOYMENT_CONFIG'
 SERVICE = 'KB_SERVICE_NAME'
 
@@ -32,6 +23,25 @@ def getConfigs():
     return retconfig
     
 config = getConfigs()
+
+# Before we do anything with the application, see if the
+# configs specify patching all std routines to be asynch
+# *ONLY* use this if you are going to wrap the service in
+# a wsgi container that has enabled gevent, such as
+# uwsgi with the --gevent option
+if config.get('gevent_monkeypatch_all', False):
+    from gevent import monkey;
+    monkey.patch_all()
+
+
+[% 	specToPy.list = 'list';
+	specToPy.tuple = 'list';
+	specToPy.struct = 'dict';
+	specToPy.mapping = 'dict';
+	specToPy.int = 'int';
+	specToPy.float = 'float';
+	specToPy.string = 'basestring'; 
+-%]
 
 [% FOREACH module IN modules -%]
 [% SET mn = module.module_name -%]
