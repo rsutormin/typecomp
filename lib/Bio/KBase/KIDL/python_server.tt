@@ -29,7 +29,8 @@ config = getConfigs()
 # *ONLY* use this if you are going to wrap the service in
 # a wsgi container that has enabled gevent, such as
 # uwsgi with the --gevent option
-if config.get('gevent_monkeypatch_all', False):
+if config is not None and config.get('gevent_monkeypatch_all', False):
+    print "Monkeypatching std libraries for async"
     from gevent import monkey;
     monkey.patch_all()
 
