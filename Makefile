@@ -28,4 +28,14 @@ deploy-docs:
 
 bin: $(BIN_PERL)
 
+# test targets
+test: test-client test-scripts test-service
+test-client:
+	@echo "client tests not defined"
+test-scripts:
+	@echo "script tests not defined"
+test-service:
+	@echo "service tests not defined"
+
+
 include $(TOP_DIR)/tools/Makefile.common.rules
