@@ -10,6 +10,7 @@ from ConfigParser import ConfigParser
 [% IF authenticated -%]
 import nexus
 [% END -%]
+
 DEPLOY = 'KB_DEPLOYMENT_CONFIG'
 SERVICE = 'KB_SERVICE_NAME'
 
@@ -34,8 +35,7 @@ if config is not None and config.get('gevent_monkeypatch_all', False):
     print "Monkeypatching std libraries for async"
     from gevent import monkey;
     monkey.patch_all()
-
-
+    
 [% 	specToPy.list = 'list';
 	specToPy.tuple = 'list';
 	specToPy.struct = 'dict';
@@ -44,14 +44,37 @@ if config is not None and config.get('gevent_monkeypatch_all', False):
 	specToPy.float = 'float';
 	specToPy.string = 'basestring'; 
 -%]
-
 [% FOREACH module IN modules -%]
 [% SET mn = module.module_name -%]
 from [% module_info.$mn.pymodule %] import [% mn %]
 impl_[% mn %] = [% mn %](config)
 [% END -%]
 
+class JSONObjectEncoder(json.JSONEncoder):
+  
+    def default(self, obj):
+        if isinstance(obj, set):
+            return list(obj)
+        if isinstance(obj, frozenset):
+            return list(obj)
+        if hasattr(obj, 'toJSONable'):
+            return obj.toJSONable()
+        return json.JSONEncoder.default(self, obj)
+
 class JSONRPCServiceCustom(JSONRPCService):
+  
+    def call(self, jsondata):
+        """
+        Calls jsonrpc service's method and returns its return value in a JSON string or None if there is none.
+
+        Arguments:
+        jsondata -- remote method call in jsonrpc format
+        """
+        result = self.call_py(jsondata)
+        if result != None:
+            return json.dumps(result, cls = JSONObjectEncoder)
+
+        return None
   
     def _call_method(self, request):
         """Calls given method with given params and returns it value."""
@@ -136,7 +159,6 @@ class JSONRPCServiceCustom(JSONRPCService):
         else:
             # empty dict, list or wrong type
             raise InvalidRequestError
-
 
 class Application:
     # Wrap the wsgi handler in a class definition so that we can
@@ -281,7 +303,6 @@ def stop_server():
     global _proc
     _proc.terminate()
     _proc = None
-
 
 # This is the uwsgi application dictionary. On startup uwsgi will look
 # for this dict and pull its configuration from here.
