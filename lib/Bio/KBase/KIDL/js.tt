@@ -39,10 +39,11 @@ function [% module.module_name %](url) {
             version: "1.1",
         };
         
+        var body = JSON.stringify(rpc);
         jQuery.ajax({
             dataType:    "text",
             url:         _url,
-            data:        JSON.stringify(rpc),
+            data:        body,
             processData: false,
             type:        "POST",
             success: function (data, status, xhr) {
