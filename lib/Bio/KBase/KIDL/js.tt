@@ -3,13 +3,33 @@
 function [% module.module_name %](url) {
 
     var _url = url;
+    var deprecationWarningSent = false;
+    
+    function deprecationWarning() {
+        if (!deprecationWarningSent) {
+            console.log(
+                "WARNING: '*_async' method names will be deprecated ",
+                "on 2/4/2013. Please use the methods without the ",
+                "'_async' suffix.");
+            deprecationWarningSent = true;
+        }
+    }
 
 [% FOREACH method IN module.methods %]
-[% IF method.arg_count == 0 -%]
+    [% IF method.arg_count == 0 -%]
+    this.[% method.name %] = function(_callback, _error_callback) {
+    [% ELSE -%]
+    this.[% method.name %] = function([% method.args %], _callback, _error_callback) {
+    [% END -%]
+        json_call_ajax_async("[% module.module_name %].[% method.name %]", [[% method.args %]], [% method.ret_count %], _callback, _error_callback)
+    }
+
+    [% IF method.arg_count == 0 -%]
     this.[% method.name %]_async = function(_callback, _error_callback) {
-[% ELSE -%]
+    [% ELSE -%]
     this.[% method.name %]_async = function([% method.args %], _callback, _error_callback) {
-[% END -%]
+    [% END -%]
+        deprecationWarning();
         json_call_ajax_async("[% module.module_name %].[% method.name %]", [[% method.args %]], [% method.ret_count %], _callback, _error_callback)
     }
 [% END -%]
