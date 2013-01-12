@@ -46,12 +46,21 @@ function [% module.module_name %](url) {
             processData: false,
             type:        "POST",
             success: function (data, status, xhr) {
-                resp = JSON.parse(data);
-                var result = resp["result"];
-                if (num_rets == 1) {
-                    callback(result[0]);
-                } else {
-                    callback(result);
+                try {
+                    resp = JSON.parse(data);
+                    var result = resp["result"];
+                    if (num_rets == 1) {
+                        callback(result[0]);
+                    } else {
+                        callback(result);
+                    }
+                } catch (err) {
+                    error_callback({
+                        status: 503,
+                        error: err,
+                        url: _url,
+                        body: body
+                    });
                 }
             },
             error: function (xhr, textStatus, errorThrown) {
