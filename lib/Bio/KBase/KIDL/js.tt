@@ -21,7 +21,7 @@ function [% module.module_name %](url) {
 [% ELSE -%]
     this.[% method.name %] = function([% method.args %], _callback, _error_callback) {
 [% END -%]
-        json_call_ajax_async("[% module.module_name %].[% method.name %]", [[% method.args %]], [% method.ret_count %], _callback, _error_callback);
+        return json_call_ajax_async("[% module.module_name %].[% method.name %]", [[% method.args %]], [% method.ret_count %], _callback, _error_callback);
     };
 
 [% IF method.arg_count == 0 -%]
@@ -30,29 +30,21 @@ function [% module.module_name %](url) {
     this.[% method.name %]_async = function([% method.args %], _callback, _error_callback) {
 [% END -%]
         deprecationWarning();
-        json_call_ajax_async("[% module.module_name %].[% method.name %]", [[% method.args %]], [% method.ret_count %], _callback, _error_callback);
+        return json_call_ajax_async("[% module.module_name %].[% method.name %]", [[% method.args %]], [% method.ret_count %], _callback, _error_callback);
     };
 [% END -%]
 
-    function _json_call_prepare(url, method, params, async_flag) {
-        var rpc = {
-            params:  params,
-            method:  method,
-            version: "1.1"
-        };
-    
-        var body = JSON.stringify(rpc);
-    
-        var http = new XMLHttpRequest();
-    
-        http.open("POST", url, async_flag);
-    
-        //Send the proper header information along with the request
-        http.setRequestHeader("Content-type", "application/json");
-        return [http, body];
-    }
-
     function json_call_ajax_async(method, params, num_rets, callback, error_callback) {
+        var deferred = $.Deferred();
+
+        if (typeof callback === 'function') {
+           deferred.done(callback);
+        }
+
+        if (typeof error_callback === 'function') {
+           deferred.fail(error_callback);
+        }
+
         var rpc = {
             params:  params,
             method:  method,
@@ -68,15 +60,15 @@ function [% module.module_name %](url) {
             type:        "POST",
             success: function (data, status, xhr) {
                 try {
-                    resp = JSON.parse(data);
-                    var result = resp["result"];
-                    if (num_rets == 1) {
-                        callback(result[0]);
+                    var resp = JSON.parse(data);
+                    var result = resp.result;
+                    if (num_rets === 1) {
+                        deferred.resolve(result[0]);
                     } else {
-                        callback(result);
+                        deferred.resolve(result);
                     }
                 } catch (err) {
-                    error_callback({
+                    deferred.reject({
                         status: 503,
                         error: err,
                         url: _url,
@@ -86,39 +78,17 @@ function [% module.module_name %](url) {
             },
             error: function (xhr, textStatus, errorThrown) {
                 if (xhr.responseText) {
-                    resp = JSON.parse(xhr.responseText);
-                    if (error_callback) {
-                        error_callback(resp.error);
-                    } else {
-                        throw resp.error;
-                    }
+                    var resp = JSON.parse(xhr.responseText);
+                    deferred.reject(resp.error);
+                } else {
+                    deferred.reject({
+                        message: "Unknown Error"
+                    });
                 }
             }
         });
-    }
 
-    function json_call_async(method, params, num_rets, callback) {
-        var tup = _json_call_prepare(_url, method, params, true);
-        var http = tup[0];
-        var body = tup[1];
-    
-        http.onreadystatechange = function() {
-            if (http.readyState == 4 && http.status == 200) {
-            var resp_txt = http.responseText;
-            var resp = JSON.parse(resp_txt);
-            var result = resp["result"];
-            if (num_rets == 1)
-            {
-                callback(result[0]);
-            }
-            else
-            {
-                callback(result);
-            }
-            }
-        }
-    
-        http.send(body);
+        return deferred.promise();
     }
 }
 
