@@ -21,6 +21,10 @@ Module Description:
 '''
 class [% module.module_name %]:
 
+    #BEGIN_CLASS_HEADER
+[% module.py_module_class_header -%]
+    #END_CLASS_HEADER
+
     def __init__(self, config): #config contains contents of config file in hash or 
                                 #None if it couldn't be found
         #BEGIN_CONSTRUCTOR
@@ -41,7 +45,7 @@ class [% module.module_name %]:
        retlist.push(var.name);
    END -%]
     def [% method.name %](self, [% paramlist.join(', ') %]):
-        # self.ctx should be set by the wsgi application class
+        # self.ctx is set by the wsgi application class
 [% IF method.ret_count > 0 -%]
         # return variables are: [% retlist.join(", ") %]
 [% END -%]
@@ -49,7 +53,7 @@ class [% module.module_name %]:
 [% method.py_user_code -%]
         #END [% method.name %]
 
-[% IF method.ret_count > 0 %]
+[% IF method.ret_count > 0 -%]
         #At some point might do deeper type checking...
 [% 	FOREACH ret IN method.returns -%]
 [%    	spectype = ret.baretype -%]

@@ -228,7 +228,8 @@ sub write_service_stubs
         my($pyfile, $pymod) = @{$module_info{$module->module_name}}{'pyfile', 'pymodule'};
 
         write_module_stubs($service, $imod, $ifile, $module, $type_info, $vars, $output_dir);
-        write_module_stubs($service, $pymod, $pyfile, $module, $type_info, $vars, $output_dir, 'python_impl.tt');
+        write_module_stubs($service, $pymod, $pyfile, $module, $type_info, 
+                           $vars, $output_dir, 'python_impl.tt');
         write_scripts($scripts_dir, $module, $vars, $output_dir);
     }
 }
@@ -240,6 +241,7 @@ sub parse_old_client
     my %saved_stub;
     my $saved_header;
     my $saved_const;
+    my $saved_cls_hdr;
     
     if (open(my $fh, "<", "$output_dir/$mod_file"))
     {
@@ -249,6 +251,7 @@ sub parse_old_client
         my $cur_rtn;
         my $cur_hdr;
         my $cur_const;
+        my $cur_clshdr;
         while (<$fh>)
         {
             if (/^\s*\#BEGIN\s+(\S+)/)
@@ -271,6 +274,14 @@ sub parse_old_client
             {
                 $cur_hdr = 0;
             }
+            elsif (/^\s*\#BEGIN_CLASS_HEADER\s*$/)
+            {
+                $cur_clshdr = 1;
+            }
+            elsif (/^\s*\#END_CLASS_HEADER\s*$/)
+            {
+                $cur_clshdr = 0;
+            }
             elsif (/^\s*\#BEGIN_CONSTRUCTOR\s*$/)
             {
                 $cur_const = 1;
@@ -283,6 +294,10 @@ sub parse_old_client
             {
                 $saved_header .= $_;
             }
+            elsif ($cur_clshdr)
+            {
+                $saved_cls_hdr .= $_;
+            }
             elsif ($cur_const)
             {
                 $saved_const .= $_;
@@ -290,7 +305,7 @@ sub parse_old_client
         }
         close($fh);
     }
-    return $saved_header, $saved_const, \%saved_stub;
+    return $saved_header, $saved_cls_hdr, $saved_const, \%saved_stub;
 }
 
 sub get_type_names
@@ -305,15 +320,18 @@ sub get_type_names
 
 sub compute_module_data
 {
-    my($module, $impl_module_name, $impl_module_file, $py_impl_mod, $py_impl_file, $type_info, $type_table) = @_;
+    my($module, $impl_module_name, $impl_module_file, $py_impl_mod, 
+       $py_impl_file, $type_info, $type_table) = @_;
     
     my $doc = $module->comment;
     $doc =~ s/^\s*\*\s?//mg;
     
-    my($saved_header, $saved_const, $saved_stub) = parse_old_client($impl_module_file);
+    my($saved_header, $saved_cls_hdr, $saved_const, $saved_stub) = 
+                parse_old_client($impl_module_file);
     my %saved_stub = %$saved_stub;
     
-    my($py_saved_header, $py_saved_const, $py_saved_stub) = parse_old_client($py_impl_file);
+    my($py_saved_header, $py_saved_clshdr, $py_saved_const, $py_saved_stub) = 
+                parse_old_client($py_impl_file);
     my %py_saved_stub = %$py_saved_stub;
     
     my $methods = [];
@@ -329,6 +347,7 @@ sub compute_module_data
         module_header => $saved_header,
         module_constructor => $saved_const,
         py_module_header => $py_saved_header,
+        py_module_class_header => $py_saved_clshdr,
         py_module_constructor => $py_saved_const,
     };
 
