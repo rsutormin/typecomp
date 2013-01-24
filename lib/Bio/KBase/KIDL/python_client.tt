@@ -73,6 +73,15 @@ class ServerError(Exception):
 
     def __str__(self):
         return self.name + ': ' + str(self.code) + '. ' + self.message
+        
+class JSONObjectEncoder(json.JSONEncoder):
+  
+    def default(self, obj):
+        if isinstance(obj, set):
+            return list(obj)
+        if isinstance(obj, frozenset):
+            return list(obj)
+        return json.JSONEncoder.default(self, obj)
 [% FOREACH module IN modules %]
 class [% module.module_name %]:
 
@@ -110,7 +119,7 @@ class [% module.module_name %]:
                      'id': str(random.random())[2:]
                      }
 
-        body = json.dumps(arg_hash)
+        body = json.dumps(arg_hash, cls = JSONObjectEncoder)
         try:
             request = urllib2.Request( self.url, body, self._headers)
 #            ret = urllib2.urlopen(self.url, body, timeout = self.timeout)
