@@ -69,7 +69,7 @@ class ServerError(Exception):
     def __init__(self, name, code, message):
         self.name = name
         self.code = code
-        self.message = message
+        self.message = '' if message is None else message
 
     def __str__(self):
         return self.name + ': ' + str(self.code) + '. ' + self.message
