@@ -183,6 +183,7 @@ sub write_service_stubs
     $js_file .= ".js";
 
     my $py_file = $py_module || ($service . "Client");
+    $py_file =~ s,\.,/,g;
     $py_file .= ".py";
 
     # don't create psgi if not requested
