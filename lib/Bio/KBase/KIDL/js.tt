@@ -3,6 +3,13 @@
 function [% module.module_name %](url, auth, auth_cb) {
 
     var _url = url;
+
+[% IF default_service_url -%]
+    if (typeof(_url) != "string" || _url.length == 0)
+    {
+	_url = "[% default_service_url %]";
+    }
+[% END -%]
     var _auth = auth ? auth : { 'token' : '',
                                 'user_id' : ''};
     var _auth_cb = auth_cb;

@@ -24,7 +24,9 @@ deploy-client: deploy
 deploy: deploy-scripts deploy-libs deploy-docs
 
 deploy-docs:
-	# need to add docs and move them to the deployment directory
+	$(DEPLOY_RUNTIME)/bin/pod2html -t "KBase Type Compiler" scripts/compile_typespec.pl > doc/compile_typespec.html
+	$(DEPLOY_RUNTIME)/bin/pod2html -t "KBase Java Client Compiler" scripts/gen_java_client.pl > doc/gen_java_client.html
+	cp doc/*html $(SERVICE_DIR)/webroot/.
 
 bin: $(BIN_PERL)
 
