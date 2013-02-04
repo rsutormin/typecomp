@@ -81,7 +81,7 @@ if (!$rc || $help || @ARGV < 2)
 	last if /^=/;
 	print $_;
     }
-    exit 0;
+    exit($help ? 0 : 1);
 }
 
 ($rc && @ARGV >= 2) or die "Usage: $0 [--psgi psgi-file] [--impl impl-module] [--service service-module] [--client client-module] [--scripts script-dir] [--py python-module ] [--js js-module] [--url default-service-url] [--test test-script] typespec [typespec...] output-dir\n";

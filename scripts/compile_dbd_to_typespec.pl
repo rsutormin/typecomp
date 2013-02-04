@@ -4,8 +4,49 @@ use XML::LibXML;
 #use String::CamelCase 'decamelize';
 use Template;
 use Bio::KBase::KIDL::KBT;
+use Getopt::Long;
 
-@ARGV == 6 or die "Usage: $0 service-name module-name DBD-xml-file spec-file impl-file bin-dir\n";
+=head1 NAME
+
+compile_dbd_to_typespec
+
+=head1 SYNOPSIS
+
+compile_dbd_to_typespec service-name module-name DBD-xml-file spec-file impl-file bin-dir
+
+=head1 DESCRIPTION
+
+compile_dbd_to_typespec creates the type specification, implementation module, and command
+line scripts for an ERDB database as defined by its XML specification.
+
+=head1 COMMAND-LINE OPTIONS
+
+Usage: compile_dbd_to_typespec service-name module-name DBD-xml-file spec-file impl-file bin-dir
+
+=head1 AUTHORS
+
+Robert Olson, Argonne National Laboratory, olson@mcs.anl.gov
+
+=cut
+
+my $help;
+my $rc = GetOptions("h|help" => \$help);    
+
+if (!$rc || $help || @ARGV < 6)
+{
+    seek(DATA, 0, 0);
+    while (<DATA>)
+    {
+	last if /^=head1 COMMAND-LINE /;
+    }
+    while (<DATA>)
+    {
+	last if /^=/;
+	print $_;
+    }
+    exit($help ? 0 : 1);
+}
+
 
 my $service = shift;
 my $module = shift;
@@ -145,6 +186,8 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
 
 	my @fcnode = $f->getChildrenByTagName("Notes");
 	my $fcom = join("\n", map { my $s = $_->textContent; $s =~ s/^\s*//gm; $s } @fcnode);
+	$field_ent->{notes} = $fcom;
+	$field_ent->{notes} =~ s/\n/ /gs;
 
 	$com .= "\n=item $fnn\n\n$fcom\n\n";
     }
@@ -296,3 +339,5 @@ for my $rel (@{$relationships})
     close($fh);
 }
 $tmpl->process("$tmpl_dir/sapling_impl.tt", $template_data, \*IMPL) || die Template->error;
+
+__DATA__
