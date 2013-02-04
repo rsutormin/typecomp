@@ -142,15 +142,11 @@ while (my($service, $modules) = each %services)
     write_service_stubs($service, $modules, $output_dir, $need_auth->{$service});
 }
 
-=head2 write_service_stubs
-
-Given one more more modules that implement a service, write a single
-psgi, client and service stub for the service, and one impl stub per module.
-
-The service stubs include a mapping from the function name in a module
-to the impl module for that function.
-
-=cut
+# Given one more more modules that implement a service, write a single
+# psgi, client and service stub for the service, and one impl stub per module.
+# 
+# The service stubs include a mapping from the function name in a module
+# to the impl module for that function.
 
 sub write_service_stubs
 {

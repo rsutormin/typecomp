@@ -110,11 +110,6 @@ while (my($service, $modules) = each %services)
     write_service_stubs($service, $modules, $dir);
 }
 
-=head2 write_service_stubs
-
-
-=cut
-
 sub write_service_stubs
 {
     my($service, $modules, $dir) = @_;
@@ -328,14 +323,10 @@ sub java_typing
     return $struct_types;
 }
 
-=head3 map_type_to_java
-
-Map a type object to the corresponding Java type.
-
-The C<$toplevel> flag is true when we can map the base types (int float) directly
-to java base types. Otherwise we map to the object-based types (Integer, Float).
-    
-=cut
+# Map a type object to the corresponding Java type.
+# 
+# The C<$toplevel> flag is true when we can map the base types (int float) directly
+# to java base types. Otherwise we map to the object-based types (Integer, Float).
 
 sub map_type_to_java
 {
