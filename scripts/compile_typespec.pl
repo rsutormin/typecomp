@@ -182,7 +182,6 @@ sub write_service_stubs
 	}
 	my $ifile = $imod . ".pm";
 	$ifile =~ s,::,/,g;
-	make_path(dirname($ifile));
 
 	$module_info{$module->module_name} = { module => $imod, file => $ifile };
 	
@@ -199,12 +198,12 @@ sub write_service_stubs
     my $client_package_file = $client_package_name;
     $client_package_file =~ s,::,/,g;
     $client_package_file .= ".pm";
-    make_path(dirname($client_package_file));
+    make_path($output_dir . "/" . dirname($client_package_file));
 
     my $server_package_file = $server_package_name;
     $server_package_file =~ s,::,/,g;
     $server_package_file .= ".pm";
-    make_path(dirname($server_package_file));
+    make_path($output_dir . "/" . dirname($server_package_file));
 
     my $js_file = $js_module || ($service . "Client");
     $js_file .= ".js";
@@ -513,6 +512,7 @@ sub write_module_stubs
     my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
 
     my $impl_file = "$output_dir/$impl_module_file";
+    make_path(dirname($impl_file), { verbose => 1 });
     if (-f $impl_file)
     {
 	my $ts = strftime("%Y-%m-%d-%H-%M-%S", localtime);
