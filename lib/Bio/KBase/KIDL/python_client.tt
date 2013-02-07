@@ -85,8 +85,12 @@ class JSONObjectEncoder(json.JSONEncoder):
 [% FOREACH module IN modules %]
 class [% module.module_name %]:
 
-    def __init__(self, url, timeout = 30 * 60, user_id=None, password=None, token=None,
-                 ignore_authrc = False):
+    def __init__(self, url = None, timeout = 30 * 60, user_id = None, 
+                 password = None, token = None, ignore_authrc = False):
+[% IF default_service_url -%]
+        if url is None:
+            url = '[% default_service_url %]';
+[% END -%]
         if url is None:
             raise ValueError('A url is required')
         scheme, _, _, _, _, _ = urlparse.urlparse(url)

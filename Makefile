@@ -1,6 +1,12 @@
 TOP_DIR = ../..
 include $(TOP_DIR)/tools/Makefile.common
 
+DEPLOY_RUNTIME ?= /kb/runtime
+TARGET ?= /kb/deployment
+
+SERVICE_NAME = typecomp
+SERVICE = $(SERVICE_NAME)
+
 SRC_PERL = $(wildcard scripts/*.pl)
 BIN_PERL = $(addprefix $(BIN_DIR)/,$(basename $(notdir $(SRC_PERL))))
 
@@ -21,10 +27,13 @@ what:
 deploy-service: deploy
 deploy-client: deploy
 
-deploy: deploy-scripts deploy-libs deploy-docs
+deploy: deploy-dir-service deploy-scripts deploy-libs deploy-docs
 
 deploy-docs:
-	# need to add docs and move them to the deployment directory
+	-mkdir -p doc
+	$(DEPLOY_RUNTIME)/bin/pod2html -t "KBase Type Compiler" scripts/compile_typespec.pl > doc/compile_typespec.html
+	$(DEPLOY_RUNTIME)/bin/pod2html -t "KBase Java Client Compiler" scripts/gen_java_client.pl > doc/gen_java_client.html
+	cp doc/*html $(SERVICE_DIR)/webroot/.
 
 bin: $(BIN_PERL)
 

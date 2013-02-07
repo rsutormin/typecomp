@@ -8,7 +8,30 @@ use File::Path 'make_path';
 use Bio::KBase::KIDL::KBT;
 use Getopt::Long;
 
+=head1 NAME
+
+gen_java_client
+
+=head1 SYNOPSIS
+
+gen_java_client typespec [typespec...] package output-dir
+
+=head1 DESCRIPTION
+
+gen_java_client is the java client compiler for the KBase Interface Description Language (KIDL).
+
+=head1 COMMAND-LINE OPTIONS
+
+Usage: gen_java_client typespec [typespec...] package output-dir
+
+=head1 AUTHORS
+
+Robert Olson, Argonne National Laboratory olson@mcs.anl.gov
+
+=cut
+
 my $scripts_dir;
+my $help;
 
 our %java_scalar_map = (int => 'Integer',
 			string => 'String',
@@ -18,9 +41,22 @@ our %java_topscalar_map = (int => 'int',
 			string => 'String',
 			float => 'float');
 
-my $rc = GetOptions();
+my $rc = GetOptions('help|h' => \$help);
 
-($rc && @ARGV >= 3) or die "Usage: $0 typespec [typespec...] package output-dir\n";
+if (!$rc || $help || @ARGV < 3)
+{
+    seek(DATA, 0, 0);
+    while (<DATA>)
+    {
+	last if /^=head1 COMMAND-LINE /;
+    }
+    while (<DATA>)
+    {
+	last if /^=/;
+	print $_;
+    }
+    exit 0;
+}
 
 my $dir = pop;
 my $package = pop;
@@ -73,11 +109,6 @@ while (my($service, $modules) = each %services)
 {
     write_service_stubs($service, $modules, $dir);
 }
-
-=head2 write_service_stubs
-
-
-=cut
 
 sub write_service_stubs
 {
@@ -292,14 +323,10 @@ sub java_typing
     return $struct_types;
 }
 
-=head3 map_type_to_java
-
-Map a type object to the corresponding Java type.
-
-The C<$toplevel> flag is true when we can map the base types (int float) directly
-to java base types. Otherwise we map to the object-based types (Integer, Float).
-    
-=cut
+# Map a type object to the corresponding Java type.
+# 
+# The C<$toplevel> flag is true when we can map the base types (int float) directly
+# to java base types. Otherwise we map to the object-based types (Integer, Float).
 
 sub map_type_to_java
 {
@@ -709,3 +736,4 @@ sub assemble_types
     }
     return $types;
 }
+__DATA__

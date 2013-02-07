@@ -9,6 +9,41 @@ use File::Path 'make_path';
 use Bio::KBase::KIDL::KBT;
 use Getopt::Long;
 
+=head1 NAME
+
+compile_typespec
+
+=head1 SYNOPSIS
+
+compile_typespec [arguments] spec-file output-dir
+
+=head1 DESCRIPTION
+
+compile_typespec is the KBase type compiler. It reads a KBase Interface Description
+Language (KIDL) file and generates the client and server interface code for it.
+
+=head1 COMMAND-LINE OPTIONS
+
+Usage: compile_typespec [arguments] spec-file output-dir
+
+Arguments:
+
+    --scripts dir	       Generate simple wrapper scripts
+    --impl name		       Use name as the classname for the generated perl implementation module
+    --service name	       Use name as the classname for the generated service module
+    --psgi name		       Write a PSGI file as name
+    --client name	       Use name as the classname for the generated client module
+    --js name		       Use name as the basename for the generated Javascript client module
+    --py name		       Use name as the basename for the generated Python client module
+    --url URL		       Use URL as the default service URL in the generated clients
+    --dump		       Dump the parsed type specification file to stdout
+
+=head1 AUTHORS
+
+Robert Olson, Argonne National Laboratory olson@mcs.anl.gov
+
+=cut
+
 my $scripts_dir;
 my $impl_module_base;
 my $service_module;
@@ -21,6 +56,7 @@ my $py_impl_module;
 my $default_service_url;
 my $dump_parsed;
 my $test_script;
+my $help;
 
 my $rc = GetOptions("scripts=s" => \$scripts_dir,
                     "impl=s"    => \$impl_module_base,
@@ -34,9 +70,25 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
                     "pyimpl=s"  => \$py_impl_module,
                     "url=s"     => \$default_service_url,
                     "dump"      => \$dump_parsed,
+                    "help|h"	=> \$help,
                     );
 
 ($rc && @ARGV >= 2) or die "Usage: $0 [--psgi psgi-file] [--impl impl-module] [--service service-module] [--client client-module] [--scripts script-dir] [--py python-module ] [--pyserver python-server-module] [--pyimpl python-implementation-module][--js js-module] [--url default-service-url] [--test test-script] typespec [typespec...] output-dir\n";
+
+if (!$rc || $help || @ARGV < 2)
+{
+    seek(DATA, 0, 0);
+    while (<DATA>)
+    {
+	last if /^=head1 COMMAND-LINE /;
+    }
+    while (<DATA>)
+    {
+	last if /^=/;
+	print $_;
+    }
+    exit($help ? 0 : 1);
+}
 
 my $output_dir = pop;
 my @spec_files = @ARGV;
@@ -115,15 +167,11 @@ sub setup_impl_data
     return $imod, $ifile;
 }
 
-=head2 write_service_stubs
-
-Given one more more modules that implement a service, write a single
-psgi, client and service stub for the service, and one impl stub per module.
-
-The service stubs include a mapping from the function name in a module
-to the impl module for that function.
-
-=cut
+# Given one more more modules that implement a service, write a single
+# psgi, client and service stub for the service, and one impl stub per module.
+# 
+# The service stubs include a mapping from the function name in a module
+# to the impl module for that function.
 
 sub write_service_stubs
 {
@@ -166,12 +214,12 @@ sub write_service_stubs
     my $client_package_file = $client_package_name;
     $client_package_file =~ s,::,/,g;
     $client_package_file .= ".pm";
-    make_path(dirname($client_package_file));
+    make_path($output_dir . "/" . dirname($client_package_file));
 
     my $server_package_file = $server_package_name;
     $server_package_file =~ s,::,/,g;
     $server_package_file .= ".pm";
-    make_path(dirname($server_package_file));
+    make_path($output_dir . "/" . dirname($server_package_file));
 
     my $python_server_file = $python_server_name;
     $python_server_file =~ s,\.,/,g;
@@ -558,6 +606,7 @@ sub write_module_stubs
     my($my_module, $tmpl, $tmpl_dir) = get_module_script_info($module, $vars, $output_dir);
     
     my $impl_file = "$output_dir/$impl_module_file";
+    make_path(dirname($impl_file), { verbose => 1 });
     if (-f $impl_file)
     {
         my $ts = strftime("%Y-%m-%d-%H-%M-%S", localtime);
@@ -678,3 +727,4 @@ sub check_for_authentication
     }
     return $out;
 }
+__DATA__

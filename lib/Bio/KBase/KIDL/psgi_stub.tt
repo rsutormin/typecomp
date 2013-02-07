@@ -2,6 +2,7 @@
 use [% module.impl_package_name %];
 [% END %]
 use [% server_package_name %];
+use Plack::Middleware::CrossOrigin;
 
 [% IF service_options.authenticated %]
 use UserAuth;
@@ -27,4 +28,4 @@ my $server = [% server_package_name %]->new(instance_dispatch => { @dispatch },
 
 my $handler = sub { $server->handle_input(@_) };
 
-$handler;
+$handler = Plack::Middleware::CrossOrigin->wrap( $handler, origins => "*", headers => "*");
