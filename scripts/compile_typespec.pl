@@ -225,7 +225,7 @@ sub write_service_stubs
     $python_server_file =~ s,\.,/,g;
     $python_server_file =~ s,::,/,g;
     $python_server_file .= ".py";
-    make_path(dirname($python_server_file));
+    make_path($output_dir . "/" . dirname($python_server_file));
     
     my $js_file = $js_module || ($service . "Client");
     $js_file .= ".js";
