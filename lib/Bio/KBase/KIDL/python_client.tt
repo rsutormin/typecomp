@@ -119,6 +119,8 @@ class [% module.module_name %]:
             self._headers['AUTHORIZATION'] = token
         elif user_id is not None and password is not None:
             self._headers['AUTHORIZATION'] = _get_token( user_id, password)
+        elif 'KB_AUTH_TOKEN' in os.environ:
+            self._headers['AUTHORIZATION'] = os.environ.get('KB_AUTH_TOKEN')
         elif not ignore_authrc:
             authdata = _read_inifile()
             if authdata is None:
