@@ -128,8 +128,8 @@ class [% module.module_name %]:
             if authdata is not None:
                 if authdata.get('auth_token') is not None:
                     self._headers['AUTHORIZATION'] = authdata['auth_token']
-                else:
-                    self._headers['AUTHORIZATION'] = _get_token( authdata.get('user_id'),authdata.get('password') )
+                elif authdata.get('user_id') is not None and authdata.get('password') is not None:
+                    self._headers['AUTHORIZATION'] = _get_token( authdata['user_id'],authdata['password'] )
         if self.timeout < 1:
             raise ValueError('Timeout value must be at least 1 second')
 
