@@ -2,6 +2,9 @@
 git checkout -b dist
 
 
+# to push a new branch to the remote origin
+git push -u origin dist
+
 # merging updates to dist branch
 git merge master
 
