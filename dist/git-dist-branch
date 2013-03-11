@@ -1,9 +1,15 @@
-# to checkout the dist branch
+# to create a new local branch called dist
 git checkout -b dist
 
 
 # to push a new branch to the remote origin
 git push -u origin dist
+
+
+# getting the dist branch from the remote
+# for use somewhere else
+git checkout --track origin/dist
+
 
 # merging updates to dist branch
 git merge master
