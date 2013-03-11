@@ -9,3 +9,14 @@ You will need administrative privileges to install
 in the default location. See the documentation on
 Module::Build to specificy an alternative location.
 
+TESTING:
+
+For now, testing involves running the compiler
+on a Interface Description Document (IDD). An IDD
+is provided in the dist/t directory. Assuming
+the compiler is installed in /usr/local/bin you
+can run a simple test like this:
+
+/usr/local/bin/compile_typespec.pl 
+
+
