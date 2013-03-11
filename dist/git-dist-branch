@@ -1,0 +1,7 @@
+# to checkout the dist branch
+git checkout -b dist
+
+
+# merging updates to dist branch
+git merge master
+

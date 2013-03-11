@@ -1,0 +1,11 @@
+
+1.  perl Build.PL
+2.  ./Build installdeps
+3.  ./Build
+4.  ./Build test
+5.  ./Build install
+
+You will need administrative privileges to install
+in the default location. See the documentation on
+Module::Build to specificy an alternative location.
+
