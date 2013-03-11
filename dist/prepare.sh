@@ -19,6 +19,8 @@ done
 # put the build script in place
 cp Build.PL $PACKAGE_DIR/
 cp INSTALL.txt $PACKAGE_DIR/
+cp -r t $PACKAGE_DIR/
+
 
 cd $PACKAGE_DIR
 perl ./Build.PL
@@ -29,4 +31,4 @@ cd ..
 
 tar -cvf $PACKAGE_DIR.tar $PACKAGE_DIR
 gzip $PACKAGE_DIR.tar
-
+rm -rf $PACKAGE_DIR
