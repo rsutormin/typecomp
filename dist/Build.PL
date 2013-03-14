@@ -30,7 +30,7 @@ my $build = Module::Build->new
 	       },
   );
 
-
+unshift @{$build->build_elements}, 'installdeps'
 $build->add_build_element('tt');
 $build->create_build_script;
 

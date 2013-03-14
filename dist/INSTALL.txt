@@ -19,4 +19,10 @@ can run a simple test like this:
 
 /usr/local/bin/compile_typespec.pl 
 
+NON STANDARD INSTALLATION LOCATION
+
+perl Build.PL --base_dir /var/tmp/local
+./Build installdeps --base_dir /var/tmp/local
+./Build install --base_dir /var/tmp/local
+
 

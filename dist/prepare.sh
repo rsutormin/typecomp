@@ -17,16 +17,16 @@ do
 done
 
 # put the build script in place
-cp Build.PL $PACKAGE_DIR/
+cp Makefile.PL $PACKAGE_DIR/
 cp INSTALL.txt $PACKAGE_DIR/
 cp -r t $PACKAGE_DIR/
 
 
 cd $PACKAGE_DIR
-perl ./Build.PL
-./Build manifest
-./Build realclean
-rm -f MANIFEST.SKIP.bak
+perl ./Makefile.PL
+make manifest
+make realclean
+# rm -f MANIFEST.SKIP.bak
 cd ..
 
 tar -cvf $PACKAGE_DIR.tar $PACKAGE_DIR
