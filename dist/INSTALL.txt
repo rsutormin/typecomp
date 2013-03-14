@@ -1,9 +1,8 @@
 
-1.  perl Build.PL
-2.  ./Build installdeps
-3.  ./Build
-4.  ./Build test
-5.  ./Build install
+1.  perl Makefile.PL
+2.  make
+3.  make test
+4.  make install
 
 You will need administrative privileges to install
 in the default location. See the documentation on
@@ -15,14 +14,16 @@ For now, testing involves running the compiler
 on a Interface Description Document (IDD). An IDD
 is provided in the dist/t directory. Assuming
 the compiler is installed in /usr/local/bin you
-can run a simple test like this:
+can run a simple test manually like this:
 
 /usr/local/bin/compile_typespec.pl 
 
-NON STANDARD INSTALLATION LOCATION
+NON STANDARD INSTALLATION LOCATION (Untested at this
+time)
 
-perl Build.PL --base_dir /var/tmp/local
-./Build installdeps --base_dir /var/tmp/local
-./Build install --base_dir /var/tmp/local
+1.  perl Makefile.PL BASE_DIR=/var/tmp/local
+2.  make
+3.  make test
+4.  make install
 
 
