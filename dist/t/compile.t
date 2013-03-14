@@ -1,7 +1,10 @@
-#!/bin/sh
+use Test::More;
 
-mkdir -p t/script
-mkdir -p t/lib
-PERL5LIB=blib
-blib/script/compile_typespec.pl --scripts t/script --psgi service.psgi t/MyFirstService.spec t/lib
+use lib qw(blib);
+unless (-e "t/script") {mkdir "t/script" or die "can not make dir t/script";}
+unless (-e "t/lib") {mkdir "t/lib" or die "can not make t/lib";}
+my $rv = system "blib/script/compile_typespec.pl --scripts t/script --psgi service.psgi t/MyFirstService.spec t/lib";
+ok($rv==0, "$?, $!");
+
+done_testing;
 
