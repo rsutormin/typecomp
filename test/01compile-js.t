@@ -13,7 +13,8 @@ my $jsname = "simple";
 my $outdir = tempdir("/tmp/typecomp-test-XXXX");
 my $jslibrary = "$outdir/$jsname.js";
 
-system "perl", "-I$LIBS", $script, "--js", $jsname, "$FIXTURES/simple-service.spec", $outdir;
+system "perl -I/kb/deployment/lib/perl5 -I$LIBS $script " .
+    "--js $jsname $FIXTURES/simple-service.spec $outdir 2> /dev/null";
 ok($? == 0, "compile_typesec ran correctly");
 ok(-e $jslibrary, "JS library was generated");
 
