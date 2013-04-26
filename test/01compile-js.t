@@ -1,8 +1,6 @@
 use strict;
 use warnings;
 
-use lib 'lib';
-
 use Test::Simple tests => 2;
 use File::Temp qw/tempfile tempdir/;
 
