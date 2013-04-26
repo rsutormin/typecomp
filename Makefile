@@ -42,7 +42,7 @@ test: test-client test-scripts test-service
 test-client:
 	@echo "client tests not defined"
 test-scripts:
-	@echo "script tests not defined"
+	prove
 test-service:
 	@echo "service tests not defined"
 
