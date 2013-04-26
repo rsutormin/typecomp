@@ -73,8 +73,6 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
                     "help|h"	=> \$help,
                     );
 
-($rc && @ARGV >= 2) or die "Usage: $0 [--psgi psgi-file] [--impl impl-module] [--service service-module] [--client client-module] [--scripts script-dir] [--py python-module ] [--pyserver python-server-module] [--pyimpl python-implementation-module][--js js-module] [--url default-service-url] [--test test-script] typespec [typespec...] output-dir\n";
-
 if (!$rc || $help || @ARGV < 2)
 {
     seek(DATA, 0, 0);
@@ -89,6 +87,8 @@ if (!$rc || $help || @ARGV < 2)
     }
     exit($help ? 0 : 1);
 }
+
+($rc && @ARGV >= 2) or die "Usage: $0 [--psgi psgi-file] [--impl impl-module] [--service service-module] [--client client-module] [--scripts script-dir] [--py python-module ] [--pyserver python-server-module] [--pyimpl python-implementation-module][--js js-module] [--url default-service-url] [--test test-script] typespec [typespec...] output-dir\n";
 
 my $output_dir = pop;
 my @spec_files = @ARGV;
