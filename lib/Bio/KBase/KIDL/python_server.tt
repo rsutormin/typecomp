@@ -283,7 +283,7 @@ class Application(object):
         return [response_body]
 
     def complete_err(self, err, req):
-        if 'id' in err:
+        if 'id' in req:
             err['id'] = req['id']
         if 'version' in req:
             err['version'] = req['version']
