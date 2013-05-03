@@ -163,7 +163,6 @@ sub setup_impl_data
     $ifile =~ s,::,/,g; #convert perl module separators to /
     $ifile =~ s,\.,/,g; #convert py module separators to /
     $ifile .= $ext;
-    make_path(dirname($ifile));
     return $imod, $ifile;
 }
 
