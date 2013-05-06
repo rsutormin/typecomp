@@ -14,7 +14,7 @@ import nexus
 DEPLOY = 'KB_DEPLOYMENT_CONFIG'
 SERVICE = 'KB_SERVICE_NAME'
 
-#Note that the error fields do not match the 2.0 JSONRPC spec
+# Note that the error fields do not match the 2.0 JSONRPC spec
 
 def getConfigs():
     if DEPLOY not in environ or SERVICE not in environ:
