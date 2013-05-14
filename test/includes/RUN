@@ -1,0 +1,6 @@
+
+cd ../../
+make
+cd test/includes
+compile_typespec MultiModule.spec out/.
+

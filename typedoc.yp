@@ -30,10 +30,12 @@ module_list: 	{ [] }
 	;
 
 module:		module_opts MODULE { $_[0]->get_comment() }  mod_name_def '{' module_components '}' ';' {
-    Bio::KBase::KIDL::KBT::DefineModule->new(options => $_[1],
+    my $module = Bio::KBase::KIDL::KBT::DefineModule->new(options => $_[1],
 			   @{$_[4]},
 			   module_components => $_[6],
 		           comment => $_[3]);
+    $_[0]->clear_symbol_table($module->module_name);
+    $module;
     }
 	;
 
@@ -331,4 +333,17 @@ sub get_comment
     $ret =~ s/\s+$//;
     return $ret;
 }
-    
+
+
+#
+# Once a module has been parsed, clear the active type table and save
+# the parsed types from the parsed module for future lookups
+#
+sub clear_symbol_table
+{
+    my($self,$module_name) = @_;
+    print "finished parse of '$module_name' clearing symbol table\n";
+    $self->YYData->{external_type_tables}->{$module_name} = $self->YYData->{type_table};
+    $self->YYData->{type_table} = { %builtin_types };
+}
+

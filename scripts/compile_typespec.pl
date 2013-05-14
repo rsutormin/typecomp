@@ -53,6 +53,7 @@ my $js_module;
 my $py_module;
 my $py_server_module;
 my $py_impl_module;
+my $include_path;
 my $default_service_url;
 my $dump_parsed;
 my $test_script;
@@ -68,6 +69,7 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
                     "py=s"      => \$py_module,
                     "pyserver=s"=> \$py_server_module,
                     "pyimpl=s"  => \$py_impl_module,
+                    "path=s"    => \$include_path,
                     "url=s"     => \$default_service_url,
                     "dump"      => \$dump_parsed,
                     "help|h"	=> \$help,
@@ -88,7 +90,7 @@ if (!$rc || $help || @ARGV < 2)
     exit($help ? 0 : 1);
 }
 
-($rc && @ARGV >= 2) or die "Usage: $0 [--psgi psgi-file] [--impl impl-module] [--service service-module] [--client client-module] [--scripts script-dir] [--py python-module ] [--pyserver python-server-module] [--pyimpl python-implementation-module][--js js-module] [--url default-service-url] [--test test-script] typespec [typespec...] output-dir\n";
+($rc && @ARGV >= 2) or die "Usage: $0 [--psgi psgi-file] [--impl impl-module] [--service service-module] [--client client-module] [--scripts script-dir] [--py python-module ] [--pyserver python-server-module] [--pyimpl python-implementation-module][--js js-module] [--url default-service-url] [--test test-script] [--path include-path] typespec [typespec...] output-dir\n";
 
 my $output_dir = pop;
 my @spec_files = @ARGV;
@@ -131,6 +133,10 @@ if ($errors_found)
 {
     exit 1;
 }
+
+print "-------------all parsed\n";
+print Dumper(%services)."\n";
+exit(1);
 
 #
 # Determine if we have any authentication-optional or -required methods. If any of
