@@ -468,6 +468,7 @@ sub compute_module_data
         #
         my %types_seen;
         my $typenames = [];
+        
         my @english;
         
         for my $argi (0..$#args)
@@ -478,7 +479,9 @@ sub compute_module_data
             my $p_src_module = $type->{module};
             my $eng = $type->english(1);
             my $tn = $type->subtypes(\%types_seen);
+            
             # print "arg $argi $type subtypes @$tn\n";
+            
             push(@$typenames, @$tn);
             push(@english, "\$$name is $eng");
             my $perl_var = "\$$name";
@@ -554,6 +557,8 @@ sub compute_module_data
 
         for my $tn (@$typenames)
         {
+             my $src_module = $tn->[0]; my $name = $tn->[1];
+            print 'lookup of '.$src_module.".".$name."\n";
             my $type = $type_table->{$tn};
             if (!defined($type))
             {
