@@ -2,5 +2,6 @@
 cd ../../
 make
 cd test/includes
+rm -rf out
 compile_typespec MultiModule.spec out/.
 

@@ -115,7 +115,7 @@ for my $spec_file (@spec_files)
     my $txt = read_file($spec_file) or die "Cannot read $spec_file: $!";
     my($modules, $errors) = $parser->parse($txt, $spec_file);
     #print Dumper($modules);
-    my $type_info = assemble_types($parser);
+    my $type_info = assemble_types($parser);  #type_info is now a hash with module names as keys, and lists as before
     if ($errors)
     {
         print STDERR "$errors errors were found in $spec_file\n";
@@ -123,10 +123,22 @@ for my $spec_file (@spec_files)
     }
     for my $mod (@$modules)
     {
+    
         my $mod_name = $mod->module_name;
         my $serv_name = $mod->service_name;
         print STDERR "$spec_file: module $mod_name service $serv_name\n";
-        push(@{$services{$serv_name}}, [$mod, $type_info, $parser->YYData->{type_table}]);
+        #push(@{$services{$serv_name}}, [$mod, $type_info, $parser->YYData->{type_table}]);
+        push(@{$services{$serv_name}}, [$mod, $type_info->{$mod_name}, $parser->YYData->{cached_type_tables}->{$mod_name}]);
+        
+        #{
+        #      'float' => bless( {
+        #                          'scalar_type' => 'float'
+        #                        }, 'Bio::KBase::KIDL::KBT::Scalar' ),
+        #      'int' => $VAR2->[0][0]{'module_components'}[1]{'alias_type'},
+        #      'string' => $VAR2->[0][0]{'module_components'}[0]{'alias_type'}
+        #    }
+
+        
     }
 }
 if ($errors_found)
@@ -703,21 +715,27 @@ sub assemble_types
 {
     my($parser) = @_;
 
-    my $types = [];
-
-    for my $type (@{$parser->types()})
+    my $all_types = {};
+    for my $mod_name (@{$parser->modulelist()})
     {
-        my $name = $type->name;
-        my $ref = $type->alias_type;
-        my $eng = $ref->english(0);
-        push(@$types, {
-            name => $name,
-            ref => $ref,
-            english => $eng,
-            comment => $type->comment,
-            });
+        my $types = [];
+    
+        for my $type (@{$parser->moduletypes($mod_name)})
+        {
+            my $name = $type->name;
+            my $ref = $type->alias_type;
+            my $eng = $ref->english(0);
+            push(@$types, {
+                name => $name,
+                ref => $ref,
+                english => $eng,
+                comment => $type->comment,
+                });
+        }
+        
+        $all_types->{$mod_name} = $types;
     }
-    return $types;
+    return $all_types;
 }
 
 sub check_for_authentication

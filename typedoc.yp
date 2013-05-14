@@ -110,6 +110,15 @@ type:		TYPENAME
 	|	structure
 	|	list
 	|	tuple
+	|       IDENT '.' IDENT {
+		    print "type ".$_[3]."-- from module ".$_[1]."\n";
+		    my $type = $_[0]->lookup_type($_[3],$_[1]);
+		    if (!defined($type))
+		    {
+		        $_[0]->emit_error("Attempt to use undefined type '$_[3]' from module '$_[1]'");
+		    }
+		    $type
+		}
 	| 	IDENT { my $type = $_[0]->lookup_type($_[1]);
 			if (!defined($type))
 			{
@@ -169,15 +178,36 @@ sub define_type
     return $def;
 }
 
+# used to return the ACTIVE type list
 sub types
 {
     my($self) = @_;
     return $self->YYData->{type_list} || [];
 }
 
+# used to return type definitions for a specific module
+sub moduletypes
+{
+    my($self,$module_name) = @_;
+    return $self->YYData->{cached_type_lists}->{$module_name} || [];
+}
+sub modulelist
+{
+    my($self) = @_;
+    return $self->YYData->{module_list};
+}
+
 sub lookup_type
 {
-    my($self, $name) = @_;
+    my($self, $name, $src_module) = @_;
+    
+    # if we are trying to lookup a type in an external module, then we have to
+    # look in the right place
+    if($src_module) {
+	print "looking up a type from an external module\n";
+	return $self->YYData->{cached_type_tables}->{$src_module}->{$name};
+    }
+    
     return $self->YYData->{type_table}->{$name};
 }
 
@@ -196,6 +226,7 @@ sub init_state
 {
     my($self, $data, $filename) = @_;
 
+    $self->YYData->{module_list} = [];
     #
     # Initialize type table to just the builtins.
     #
@@ -204,6 +235,7 @@ sub init_state
     $self->YYData->{line_number} = 1;
     $self->YYData->{filename} = $filename;
     $self->YYData->{error_count} = 0;
+    
 }
 
 
@@ -343,7 +375,13 @@ sub clear_symbol_table
 {
     my($self,$module_name) = @_;
     print "finished parse of '$module_name' clearing symbol table\n";
-    $self->YYData->{external_type_tables}->{$module_name} = $self->YYData->{type_table};
+    
+    push(@{$self->YYData->{module_list}}, $module_name);
+    
+    $self->YYData->{cached_type_tables}->{$module_name} = $self->YYData->{type_table};
+    $self->YYData->{cached_type_lists}->{$module_name}  = $self->YYData->{type_list};
     $self->YYData->{type_table} = { %builtin_types };
+    $self->YYData->{type_list} = [];
+    print Dumper($self->YYData)
 }
 
