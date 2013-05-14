@@ -6,6 +6,7 @@ use Lingua::EN::Inflect 'A';
 
 has 'alias_type' => (is => 'rw');
 has 'name' => (isa => 'Str', is => 'rw');
+has 'module' => (isa => 'Str', is => 'rw');
 has 'comment' => (isa => 'Str', is => 'rw');
 
 sub as_string

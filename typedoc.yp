@@ -29,14 +29,14 @@ module_list: 	{ [] }
 	|      	module_list module { [ @{$_[1]}, $_[2] ] }
 	;
 
-module:		module_opts MODULE { $_[0]->get_comment() }  mod_name_def '{' module_components '}' ';' {
-    my $module = Bio::KBase::KIDL::KBT::DefineModule->new(options => $_[1],
-			   @{$_[4]},
-			   module_components => $_[6],
-		           comment => $_[3]);
-    $_[0]->clear_symbol_table($module->module_name);
-    $module;
-    }
+module:		module_opts MODULE { $_[0]->get_comment() } mod_name_def { $_[0]->set_active_module($_[4]->[1]) }  '{' module_components '}' ';' {
+			my $module = Bio::KBase::KIDL::KBT::DefineModule->new(options => $_[1],
+					       @{$_[4]},
+					       module_components => $_[7],
+					       comment => $_[3]);
+			$_[0]->clear_symbol_table($module->module_name);
+			$module;
+		    }
 	;
 
 mod_name_def:	IDENT { [ module_name => $_[1], service_name => $_[1] ] }
@@ -161,7 +161,8 @@ tuple_type:	type { [ $_[1], undef ] }
 sub define_type
 {
     my($self, $old_type, $new_type, $comment) = @_;
-    my $def = Bio::KBase::KIDL::KBT::Typedef->new(name => $new_type, alias_type => $old_type, comment => $comment);
+    my $active_module = $self->YYData->{active_module};
+    my $def = Bio::KBase::KIDL::KBT::Typedef->new(name => $new_type, module => $active_module, alias_type => $old_type, comment => $comment);
     push(@{$self->YYData->{type_list}}, $def);
     $self->YYData->{type_table}->{$new_type} = $def;
     #
@@ -227,6 +228,7 @@ sub init_state
     my($self, $data, $filename) = @_;
 
     $self->YYData->{module_list} = [];
+    $self->YYData->{active_module} = '';
     #
     # Initialize type table to just the builtins.
     #
@@ -367,6 +369,16 @@ sub get_comment
 }
 
 
+
+#
+# as soon as we start reading a module, set it as the active module
+#
+sub set_active_module {
+    my ($self,$module_name) = @_;
+    print 'setting active module to '.$module_name."\n";
+    $self->YYData->{active_module} = $module_name;
+}
+
 #
 # Once a module has been parsed, clear the active type table and save
 # the parsed types from the parsed module for future lookups
@@ -376,12 +388,16 @@ sub clear_symbol_table
     my($self,$module_name) = @_;
     print "finished parse of '$module_name' clearing symbol table\n";
     
+    # remember that we parsed this module
     push(@{$self->YYData->{module_list}}, $module_name);
-    
+
+    # cache the objects so we can look them up later    
     $self->YYData->{cached_type_tables}->{$module_name} = $self->YYData->{type_table};
     $self->YYData->{cached_type_lists}->{$module_name}  = $self->YYData->{type_list};
+    
+    # clear the type table and list, and make sure the active module is inactivated
     $self->YYData->{type_table} = { %builtin_types };
     $self->YYData->{type_list} = [];
-    print Dumper($self->YYData)
+    $self->YYData->{active_module} = '';
 }
 

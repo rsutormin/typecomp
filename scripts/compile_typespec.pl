@@ -107,6 +107,7 @@ my $parser = typedoc->new();
 #
 
 my %services;
+my $available_type_table; # this is global over all modules included, and keeps a table of all available types
 
 my $errors_found;
 
@@ -115,6 +116,7 @@ for my $spec_file (@spec_files)
     my $txt = read_file($spec_file) or die "Cannot read $spec_file: $!";
     my($modules, $errors) = $parser->parse($txt, $spec_file);
     #print Dumper($modules);
+    my $available_type_table = $parser->YYData->{cached_type_tables};
     my $type_info = assemble_types($parser);  #type_info is now a hash with module names as keys, and lists as before
     if ($errors)
     {
@@ -123,22 +125,11 @@ for my $spec_file (@spec_files)
     }
     for my $mod (@$modules)
     {
-    
         my $mod_name = $mod->module_name;
         my $serv_name = $mod->service_name;
         print STDERR "$spec_file: module $mod_name service $serv_name\n";
         #push(@{$services{$serv_name}}, [$mod, $type_info, $parser->YYData->{type_table}]);
-        push(@{$services{$serv_name}}, [$mod, $type_info->{$mod_name}, $parser->YYData->{cached_type_tables}->{$mod_name}]);
-        
-        #{
-        #      'float' => bless( {
-        #                          'scalar_type' => 'float'
-        #                        }, 'Bio::KBase::KIDL::KBT::Scalar' ),
-        #      'int' => $VAR2->[0][0]{'module_components'}[1]{'alias_type'},
-        #      'string' => $VAR2->[0][0]{'module_components'}[0]{'alias_type'}
-        #    }
-
-        
+        push(@{$services{$serv_name}}, [$mod, $type_info->{$mod_name}, $available_type_table->{$mod_name}]);
     }
 }
 if ($errors_found)
@@ -147,8 +138,7 @@ if ($errors_found)
 }
 
 print "-------------all parsed\n";
-print Dumper(%services)."\n";
-exit(1);
+print Dumper(\%services)."\n";
 
 #
 # Determine if we have any authentication-optional or -required methods. If any of
@@ -161,8 +151,14 @@ print STDERR Dumper(\%services) if $dump_parsed;
 
 while (my($service, $modules) = each %services)
 {
-    write_service_stubs($service, $modules, $output_dir, $need_auth->{$service});
+    if(has_funcdefs($modules)) {
+        write_service_stubs($service, $modules, $output_dir, $need_auth->{$service},$available_type_table);
+    }
 }
+
+
+
+
 
 sub setup_impl_data
 {
@@ -192,7 +188,7 @@ sub setup_impl_data
 
 sub write_service_stubs
 {
-    my($service, $modules, $output_dir, $need_auth) = @_;
+    my($service, $modules, $output_dir, $need_auth, $available_type_table) = @_;
     
     my $tmpl = Template->new( { OUTPUT_PATH => $output_dir,
                                 ABSOLUTE => 1,
@@ -219,7 +215,7 @@ sub write_service_stubs
     
         $service_options{$_} = 1 foreach @{$module->options};
         
-        my $data = compute_module_data($module, $imod, $ifile, $pymod, $pyfile, $type_info, $type_table);
+        my $data = compute_module_data($module, $imod, $ifile, $pymod, $pyfile, $type_info, $type_table,$available_type_table);
         
         push(@modules, $data);
     }
@@ -387,7 +383,7 @@ sub get_type_names
 sub compute_module_data
 {
     my($module, $impl_module_name, $impl_module_file, $py_impl_mod, 
-       $py_impl_file, $type_info, $type_table) = @_;
+       $py_impl_file, $type_info, $type_table, $available_type_table) = @_;
     
     my $doc = $module->comment;
     $doc =~ s/^\s*\*\s?//mg;
@@ -479,6 +475,7 @@ sub compute_module_data
             my $name = $args[$argi];
             my $p = $params->[$argi];
             my $type = $p->{type};
+            my $p_src_module = $type->{module};
             my $eng = $type->english(1);
             my $tn = $type->subtypes(\%types_seen);
             # print "arg $argi $type subtypes @$tn\n";
@@ -727,6 +724,7 @@ sub assemble_types
             my $eng = $ref->english(0);
             push(@$types, {
                 name => $name,
+                module=> $mod_name,
                 ref => $ref,
                 english => $eng,
                 comment => $type->comment,
@@ -763,4 +761,30 @@ sub check_for_authentication
     }
     return $out;
 }
+
+
+#  given a reference to a list of module objects as parsed by the type compiler, return 1 if any one of the
+#  modules contains a function definition, 0 otherwise.  This method allows us to check if funcdefs exist
+#  before creating all the stubs.
+sub has_funcdefs
+{
+    my($modules) = @_;
+    #print "------\n";
+    #print Dumper($modules)."\n";
+    #exit(1);
+    
+    # is there a better way than just looping over everything??
+    foreach my $module (@{$modules})
+    {
+        foreach my $component (@{$module->[0]->module_components})
+        {
+            return 1 if ($component->isa('Bio::KBase::KIDL::KBT::Funcdef'));
+        }
+    }
+    return 0;
+}
+
+
+
+
 __DATA__
