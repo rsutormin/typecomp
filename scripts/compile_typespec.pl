@@ -116,7 +116,8 @@ for my $spec_file (@spec_files)
     my $txt = read_file($spec_file) or die "Cannot read $spec_file: $!";
     my($modules, $errors) = $parser->parse($txt, $spec_file);
     #print Dumper($modules);
-    my $available_type_table = $parser->YYData->{cached_type_tables};
+    # WARNING!! we need to merge the hashes here to properly handle multiple spec files!!
+    $available_type_table = $parser->YYData->{cached_type_tables};
     my $type_info = assemble_types($parser);  #type_info is now a hash with module names as keys, and lists as before
     if ($errors)
     {
@@ -406,6 +407,7 @@ sub compute_module_data
         module_doc => $doc,
         methods => $methods,
         types => $type_info,
+        available_types => $available_type_table,
         module_header => $saved_header,
         module_constructor => $saved_const,
         py_module_header => $py_saved_header,
@@ -557,15 +559,24 @@ sub compute_module_data
 
         for my $tn (@$typenames)
         {
-             my $src_module = $tn->[0]; my $name = $tn->[1];
-            print 'lookup of '.$src_module.".".$name."\n";
-            my $type = $type_table->{$tn};
-            if (!defined($type))
-            {
-                die "Type $tn is not defined in module " . $module->module_name . "\n";
+            my $src_module = $tn->[0]; my $tname = $tn->[1];
+            print 'lookup of '.$src_module.".".$tname."\n";
+            if($src_module eq $module->module_name) {
+                my $type = $type_table->{$tname};
+                if (!defined($type))
+                {
+                    die "Type $tname is not defined in module " . $module->module_name . "\n";
+                }
+                push(@english, "$tname is " . $type->alias_type->english(1));
+            } else {
+                my $type = $available_type_table->{$src_module}->{$tname};
+                if (!defined($type))
+                {
+                    print Dumper($available_type_table)."\n";
+                    die "Type $tname is not defined in module " . $src_module . "\n";
+                }
+                push(@english, "$tname is " . $type->alias_type->english(1) . " from Module $src_module");
             }
-    
-            push(@english, "$tn is " . $type->alias_type->english(1));
         }
         
         my $doc = $comp->comment;
