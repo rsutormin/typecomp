@@ -1,0 +1,11 @@
+
+- added YAPP rules to accept parsing of MODULENAME.TYPENAME to refer to types in a different module
+- type_table and type_list are cleared after each module is parsed, and cached in the parser to
+  cached_type_tables and cached_type_lists, which are stored as hashes with module names as the
+  keys and the same data structures for each module associated with the keys.
+- had to extend KIDL::KBT::Typedef so that the source module where the type was defined is remembered
+  (this is needed to resolve parameters and return types in funcdefs)
+- if a defined service includes no function definitions, then no client/server code is generated UNLESS only
+  one module is defined.
+   Reason => when we are including external modules, we do not want to create client/server stubs for each
+   included module, we only want to do so if some methods are defined.

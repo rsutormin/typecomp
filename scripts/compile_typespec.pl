@@ -5,6 +5,8 @@ use Data::Dumper;
 use Template;
 use File::Slurp;
 use File::Basename;
+use File::Spec;
+use Cwd;
 use File::Path 'make_path';
 use Bio::KBase::KIDL::KBT;
 use Getopt::Long;
@@ -99,64 +101,316 @@ if ($scripts_dir && ! -d $scripts_dir)
 {
     die "Script output directory $scripts_dir does not exist\n";
 }
+# instatiate the YAPP parser with the typedoc grammer
 my $parser = typedoc->new();
+
+# parse the include path string into a ref to a list of include paths
+my @include_path_list = split(/:/,$include_path);
+my $include_paths = \@include_path_list;
+
+
 
 #
 # Read and parse all the given documents. We collect all documents
 # that comprise each service, and process the services as units.
 #
-
-my %services;
-my $available_type_table; # this is global over all modules included, and keeps a table of all available types
-
 my $errors_found;
+my $error_msg;
 
 for my $spec_file (@spec_files)
 {
-    my $txt = read_file($spec_file) or die "Cannot read $spec_file: $!";
-    my($modules, $errors) = $parser->parse($txt, $spec_file);
-    #print Dumper($modules);
-    # WARNING!! we need to merge the hashes here to properly handle multiple spec files!!
-    $available_type_table = $parser->YYData->{cached_type_tables};
-    my $type_info = assemble_types($parser);  #type_info is now a hash with module names as keys, and lists as before
-    if ($errors)
-    {
-        print STDERR "$errors errors were found in $spec_file\n";
-        $errors_found += $errors;
-    }
-    for my $mod (@$modules)
-    {
-        my $mod_name = $mod->module_name;
-        my $serv_name = $mod->service_name;
-        print STDERR "$spec_file: module $mod_name service $serv_name\n";
-        #push(@{$services{$serv_name}}, [$mod, $type_info, $parser->YYData->{type_table}]);
-        push(@{$services{$serv_name}}, [$mod, $type_info->{$mod_name}, $available_type_table->{$mod_name}]);
-    }
-}
-if ($errors_found)
-{
-    exit 1;
+    # extract the file name and absolute path to the enclosing folder
+    my $filename = basename($spec_file);
+    my $abs_filecontainer = File::Spec->rel2abs(dirname($spec_file));
+    print "looking at $filename located in '$abs_filecontainer'\n";
+    
+    my $parsed_data = {};
+    my $resolved_includes = {}; #a hash of abs path of included files, init to empty
+    my $return_data = 1; #indicate that we want the parsed data
+    ($parsed_data,$errors_found,$error_msg)
+        = parse_spec($filename,$abs_filecontainer,$parser,$include_paths,$resolved_includes,$return_data);
 }
 
-print "-------------all parsed\n";
-print Dumper(\%services)."\n";
+if($errors_found) {
+    print STDERR $error_msg;
+    exit(1);
+}
+exit(1);
+
+
+#my %services;
+#my $available_type_table; # this is global over all modules included, and keeps a table of all available types
+#
+#my $errors_found;
+#
+#for my $spec_file (@spec_files)
+#{
+#    my $txt = read_file($spec_file) or die "Cannot read $spec_file: $!";
+#    my($modules, $errors) = $parser->parse($txt, $spec_file);
+#    #print Dumper($modules);
+#    # WARNING!! we need to merge the hashes here to properly handle multiple spec files!!
+#    $available_type_table = $parser->YYData->{cached_type_tables};
+#    my $type_info = assemble_types($parser);  #type_info is now a hash with module names as keys, and lists as before
+#    if ($errors)
+#    {
+#        print STDERR "$errors errors were found in $spec_file\n";
+#        $errors_found += $errors;
+#    }
+#    for my $mod (@$modules)
+#    {
+#        my $mod_name = $mod->module_name;
+#        my $serv_name = $mod->service_name;
+#        print STDERR "$spec_file: module $mod_name service $serv_name\n";
+#        #push(@{$services{$serv_name}}, [$mod, $type_info, $parser->YYData->{type_table}]);
+#        push(@{$services{$serv_name}}, [$mod, $type_info->{$mod_name}, $available_type_table->{$mod_name}]);
+#    }
+#}
+#if ($errors_found)
+#{
+#    exit 1;
+#}
+#
+#print "-------------all parsed\n";
+#print Dumper(\%services)."\n";
 
 #
 # Determine if we have any authentication-optional or -required methods. If any of
 # these exist, then we need to compile in the authentication support.
 #
 
-my $need_auth = check_for_authentication(\%services);
+#my $need_auth = check_for_authentication(\%services);
+#
+#print STDERR Dumper(\%services) if $dump_parsed;
+#
+#while (my($service, $modules) = each %services)
+#{
+#    if(has_funcdefs($modules)) {
+#        write_service_stubs($service, $modules, $output_dir, $need_auth->{$service},$available_type_table);
+#    }
+#}
 
-print STDERR Dumper(\%services) if $dump_parsed;
 
-while (my($service, $modules) = each %services)
-{
-    if(has_funcdefs($modules)) {
-        write_service_stubs($service, $modules, $output_dir, $need_auth->{$service},$available_type_table);
+
+#
+#
+#   $resolved_includes
+#   $return_data = 1 if you want the parsed data returned, 0 if you don't need the parsed data yet.
+#
+sub parse_spec {
+    my ($filename, $abs_filecontainer, $parser, $include_paths, $resolved_includes, $return_data) = @_;
+    
+    # reconstruct the full path so we can open it
+    my @directories = File::Spec->splitdir( $abs_filecontainer );
+    my $abs_filepath = File::Spec->catfile( @directories, $filename );
+    
+    # read the file looking for include directives
+    my $fileHandle;
+    open($fileHandle, "<", $abs_filepath);
+    if(!$fileHandle) {
+        print STDERR "FAILURE - cannot open '.$abs_filepath.' \n$!\n";
+        exit(1);  # we should exit more gracefully...
     }
+    
+    # read the file to grab the content and resolve includes
+    my $content = '';
+    my $line_number = 0;
+    my $error_message = '';
+    my $errors_found;
+    while (my $line = <$fileHandle>) {
+        chomp($line);
+        $line_number++;
+        
+        # for now, just search for a '#' flag in a very simple way
+        # (note that this ignores where in the file it is defined!!)
+        if($line =~ /^#include /) {
+            my ($included_filename, $abs_included_filecontainer, $include_error_msg) =
+                    resolve_include_location($line,$abs_filecontainer,$include_paths,$resolved_includes);
+            if($include_error_msg) {
+                $error_message .= $include_error_msg;
+                $error_message .= "Cannot resolve include on line $line_number of $filename (located in $abs_filecontainer) \n";
+                $error_message .= "Line was: $line\n";
+                $errors_found = 1;
+            } elsif ($included_filename) {
+                # if we have a filename and no error message, then recurse down and parse the included file
+                my ($empty_parsed_data,$returned_errors_found,$returned_error_message) =
+                        parse_spec($included_filename,$abs_included_filecontainer,$parser,$include_paths,$resolved_includes,0);
+                # parsed
+                if($returned_errors_found) {
+                    $error_message .= $returned_error_message;
+                    $error_message .= "Cannot resolve include on line $line_number of $filename (located in $abs_filecontainer) \n";
+                    $error_message .= "Line was: $line\n";
+                    $errors_found += $returned_errors_found;
+                }
+            
+            }
+            # since there was a #include detected and processed at this point, remove it from the content
+            $content .= "\n";
+        } else {
+            # remember the content otherwise
+            $content .= $line;
+        }
+    }
+    
+    my $parsed_data = {};
+    if(!$errors_found) {
+    
+        # we can finally parse the file content
+        print "\nreading file $filename\n";
+        my($modules, $errors) = $parser->parse($content, $filename);
+        
+        # if there are errors, boot them back to the top
+        if ($errors) {
+            $error_message .= "\n$errors error(s) were found in file '$filename'\n\n";
+            $errors_found += $errors;
+        } else {
+        
+            # if the call requested that the parsed data be returned, then assemble it
+            if($return_data) {
+                $parsed_data = {myData=>'yeppers'}
+            }
+            
+        }
+    }
+    
+    
+    # the structure of this object:
+    #
+    #   {
+    #      service_list => serviceName => [
+    #                                        module_name => [ Module, ]
+    #                                     ]
+    #
+    #      complete_data_table    => {
+    #                                   module_name => { type_name => [] }
+    #                                }
+    #   }
+    #
+    
+    
+    
+
+    
+    return ($parsed_data,$errors_found,$error_message);
 }
 
+
+
+# Given a line in a spec file that starts with '#include', resolve the include location and return
+# the filename and absolute path to the folder containing the file, or an error.
+#
+#  $line = the line that starts with #include
+#  $abs_current_dir = the absolute current directory of the file containing this include directive
+#  $path_list = a ref to a list of possible paths to check for files
+#  $resolved_includes = a ref to a hash with keys storing absolute path strings of includes
+#                       that have already been resolved, so that we don't parse the same file twice;
+#                       values in the hash mean nothing, but are set to 1.
+#
+#  Returns: ($filename, $abs_filecontainer, $error_msg)
+#    if an error was encountered, $error_msg will be defined and set to a message string
+#    if no error was encountered and $filename and $abs_filecontainer are not empty strings, then
+#         the resolved include was a success and the file exists
+#    if $filename is an empty string, and error_msg is undef, then the include was properly resolved,
+#         but the file has already been processed so there is nothing to do.
+#
+sub resolve_include_location
+{
+    my ($line,$abs_current_dir,$path_list,$resolved_includes) = @_;
+    
+    my $error_msg;
+    
+    $line =~ s/^#include //; #drop the #include directive token
+    $line =~ s/\s+$//; #trim trailing whitespace
+    
+    # C style includes??  is this what we want??
+    # split on '<' should produce exactly two tokens, first of which we can throw away
+    my $include_name = ''; my $include_version = '';
+    my @post_tokens = split /</,$line;
+    unless (scalar(@post_tokens)==2) {
+        $error_msg = "malformed include statement, cannot understand: '$line'\n";
+        return ('','',$error_msg);
+    }
+    # now split on '>', which should also give exactly one token 
+    my @pre_tokens = split />/,$post_tokens[1];
+    if(scalar(@pre_tokens)==1) {
+        $include_name = $pre_tokens[0];
+    } else {
+        $error_msg = "malformed include statement, cannot understand: '$line'\n";
+        return ('','',$error_msg);
+    }
+    
+    
+    my $filename; my $abs_filecontainer;
+    # handle cases where 1) path is absolute, 2) path is relative, 3) path is relative to an included base path
+    if ( File::Spec->file_name_is_absolute( $include_name ) ) {
+        # make sure it exists
+        print STDERR "checking absolute path: $include_name\n";
+        if (-e $include_name) {
+            #check if we've hit it before
+            if(!exists($resolved_includes->{$include_name})) {
+                $resolved_includes->{$include_name}='1';
+                # the parsed include path is absolute, so ignore the current directory
+                $filename = basename($include_name);
+                $abs_filecontainer = File::Spec->rel2abs(dirname($include_name));
+            } else {
+                $filename = ''; $abs_filecontainer = '';
+            }
+        } else {
+            $error_msg = "Absolute location of an include file does not exist\n";
+            $error_msg = "The path you provided was '$include_name'\n";
+        }
+    } else {
+        # path is relative, so first check relative to current directory
+        $filename = basename($include_name);
+        my @current_dirs  = File::Spec->splitdir( $abs_current_dir );
+        my @relative_dirs = File::Spec->splitdir( dirname($include_name) );
+        
+        my @possible_path_dirs = (@current_dirs,@relative_dirs);
+        my $possible_path = File::Spec->catfile( @possible_path_dirs, $filename );
+        
+        # if the relative path from the current directory exists, use this first
+        print STDERR "checking for: $possible_path\n";
+        if (-e $possible_path) {
+            #check if we've hit it before
+            if(!exists($resolved_includes->{$possible_path})) {
+                $resolved_includes->{$possible_path}='1';
+                $abs_filecontainer = dirname($possible_path);
+            } else {
+                $filename = ''; $abs_filecontainer = '';
+            } 
+        }
+        
+        # abs_filecontainer will be undef if we couldn't find the file relative to the current directory
+        if(!$abs_filecontainer) {
+            # if this file doesn't exist, then look through every location on our path (in order!)
+            # note that we assume path_list contains absolute paths
+            foreach my $include_path (@{$path_list}) {
+            
+                # get a string of the full absolute path to the possible file location
+                my @include_path_dirs = File::Spec->splitdir( $include_path );
+                @possible_path_dirs = (@include_path_dirs,@relative_dirs); #relative_dirs was parsed from the include line
+                $possible_path = File::Spec->catfile( @possible_path_dirs, $filename );
+
+                # check if a file exists here
+                print STDERR "checking for: $possible_path\n";
+                if (-e $possible_path) {
+                    if(!exists($resolved_includes->{$possible_path})) {
+                        $resolved_includes->{$possible_path}='1';
+                        $abs_filecontainer = dirname($possible_path);
+                        last;
+                    } else {
+                        $filename = ''; $abs_filecontainer = '';
+                    }
+                }
+            }
+        }
+        
+        # if we still could not find the abs_filecontainer, then we must abort
+        if(!$abs_filecontainer) {
+            $error_msg = "Could not resolve include of '$include_name'\n";
+        }
+    }
+    return ($filename, $abs_filecontainer, $error_msg);
+}
 
 
 
@@ -180,6 +434,8 @@ sub setup_impl_data
     $ifile .= $ext;
     return $imod, $ifile;
 }
+
+
 
 # Given one more more modules that implement a service, write a single
 # psgi, client and service stub for the service, and one impl stub per module.

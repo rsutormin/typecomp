@@ -1,0 +1,10 @@
+
+
+
+#include <KB.types>
+
+
+module A {
+    typedef KB.kb_id a1;
+    typedef int a2;
+};

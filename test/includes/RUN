@@ -3,5 +3,4 @@ cd ../../
 make
 cd test/includes
 rm -rf out
-compile_typespec --psgi MultiModule.psgi MultiModule.spec out/.
-
+compile_typespec --path "/kb:/kb/dev_container/modules/kbtypedef_common/include" --psgi MultiModule.psgi MultiModule.spec out/.
