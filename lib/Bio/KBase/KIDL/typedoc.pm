@@ -756,7 +756,7 @@ sub
 	[#Rule 6
 		 'module', 9,
 sub
-#line 32 "typedoc.yp"
+#line 33 "typedoc.yp"
 {
 			my $module = Bio::KBase::KIDL::KBT::DefineModule->new(options => $_[1],
 					       @{$_[4]},
@@ -769,37 +769,37 @@ sub
 	[#Rule 7
 		 'mod_name_def', 1,
 sub
-#line 42 "typedoc.yp"
+#line 43 "typedoc.yp"
 { [ module_name => $_[1], service_name => $_[1] ] }
 	],
 	[#Rule 8
 		 'mod_name_def', 3,
 sub
-#line 43 "typedoc.yp"
+#line 44 "typedoc.yp"
 { [ module_name => $_[3], service_name => $_[1] ] }
 	],
 	[#Rule 9
 		 'module_opts', 0,
 sub
-#line 46 "typedoc.yp"
+#line 47 "typedoc.yp"
 { [] }
 	],
 	[#Rule 10
 		 'module_opts', 2,
 sub
-#line 47 "typedoc.yp"
+#line 48 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
 	[#Rule 11
 		 'module_components', 0,
 sub
-#line 50 "typedoc.yp"
+#line 51 "typedoc.yp"
 { [] }
 	],
 	[#Rule 12
 		 'module_components', 2,
 sub
-#line 51 "typedoc.yp"
+#line 52 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
 	[#Rule 13
@@ -808,7 +808,7 @@ sub
 	[#Rule 14
 		 'module_component_with_doc', 2,
 sub
-#line 56 "typedoc.yp"
+#line 57 "typedoc.yp"
 { $_[2]->comment($_[1]); $_[2] }
 	],
 	[#Rule 15
@@ -823,13 +823,13 @@ sub
 	[#Rule 18
 		 'module_component', 2,
 sub
-#line 63 "typedoc.yp"
+#line 64 "typedoc.yp"
 { $auth_default = $_[1]; 'auth_default' . $_[1] }
 	],
 	[#Rule 19
 		 'auth_type', 2,
 sub
-#line 66 "typedoc.yp"
+#line 67 "typedoc.yp"
 { 
 			       if ($valid_authentication_value{$_[2]}) 
 			       {
@@ -845,45 +845,45 @@ sub
 	[#Rule 20
 		 '@3-3', 0,
 sub
-#line 79 "typedoc.yp"
+#line 80 "typedoc.yp"
 { $_[0]->get_comment() }
 	],
 	[#Rule 21
 		 'typedef', 5,
 sub
-#line 79 "typedoc.yp"
+#line 80 "typedoc.yp"
 { $_[0]->define_type($_[2], $_[3], $_[4]); }
 	],
 	[#Rule 22
 		 '@4-3', 0,
 sub
-#line 82 "typedoc.yp"
+#line 83 "typedoc.yp"
 { $_[0]->get_comment() }
 	],
 	[#Rule 23
 		 'funcdef', 13,
 sub
-#line 83 "typedoc.yp"
+#line 84 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Funcdef->new(return_type => $_[10], name => $_[3], parameters => $_[6],
 			      comment => $_[4], async => $_[1], authentication => $_[12] ); }
 	],
 	[#Rule 24
 		 '@5-4', 0,
 sub
-#line 85 "typedoc.yp"
+#line 86 "typedoc.yp"
 { $_[0]->get_comment() }
 	],
 	[#Rule 25
 		 'funcdef', 10,
 sub
-#line 86 "typedoc.yp"
+#line 87 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Funcdef->new(return_type => [$_[3]], name => $_[4], parameters => $_[7],
 			      comment => $_[5], async => $_[1], authentication => $_[9]); }
 	],
 	[#Rule 26
 		 'auth_param', 0,
 sub
-#line 90 "typedoc.yp"
+#line 91 "typedoc.yp"
 { $auth_default }
 	],
 	[#Rule 27
@@ -892,43 +892,43 @@ sub
 	[#Rule 28
 		 'async_flag', 0,
 sub
-#line 94 "typedoc.yp"
+#line 95 "typedoc.yp"
 { 0 }
 	],
 	[#Rule 29
 		 'async_flag', 1,
 sub
-#line 95 "typedoc.yp"
+#line 96 "typedoc.yp"
 { 1 }
 	],
 	[#Rule 30
 		 'funcdef_params', 0,
 sub
-#line 98 "typedoc.yp"
+#line 99 "typedoc.yp"
 { [] }
 	],
 	[#Rule 31
 		 'funcdef_params', 1,
 sub
-#line 99 "typedoc.yp"
+#line 100 "typedoc.yp"
 { [ $_[1] ] }
 	],
 	[#Rule 32
 		 'funcdef_params', 3,
 sub
-#line 100 "typedoc.yp"
+#line 101 "typedoc.yp"
 { [ @{$_[1]}, $_[3] ] }
 	],
 	[#Rule 33
 		 'funcdef_param', 2,
 sub
-#line 103 "typedoc.yp"
+#line 104 "typedoc.yp"
 { { type => $_[1], name => $_[2] } }
 	],
 	[#Rule 34
 		 'funcdef_param', 1,
 sub
-#line 104 "typedoc.yp"
+#line 105 "typedoc.yp"
 { { type => $_[1] } }
 	],
 	[#Rule 35
@@ -949,7 +949,7 @@ sub
 	[#Rule 40
 		 'type', 3,
 sub
-#line 113 "typedoc.yp"
+#line 114 "typedoc.yp"
 {
 		    print "type ".$_[3]."-- from module ".$_[1]."\n";
 		    my $type = $_[0]->lookup_type($_[3],$_[1]);
@@ -963,7 +963,7 @@ sub
 	[#Rule 41
 		 'type', 1,
 sub
-#line 122 "typedoc.yp"
+#line 123 "typedoc.yp"
 { my $type = $_[0]->lookup_type($_[1]);
 			if (!defined($type))
 			{
@@ -974,74 +974,74 @@ sub
 	[#Rule 42
 		 'mapping', 6,
 sub
-#line 130 "typedoc.yp"
+#line 131 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Mapping->new(key_type => $_[3]->[0], value_type=> $_[5]->[0]); }
 	],
 	[#Rule 43
 		 'structure', 4,
 sub
-#line 133 "typedoc.yp"
+#line 134 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Struct->new(items => $_[3]); }
 	],
 	[#Rule 44
 		 'struct_items', 1,
 sub
-#line 136 "typedoc.yp"
+#line 137 "typedoc.yp"
 { [$_[1]] }
 	],
 	[#Rule 45
 		 'struct_items', 2,
 sub
-#line 137 "typedoc.yp"
+#line 138 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
 	[#Rule 46
 		 'struct_item', 3,
 sub
-#line 140 "typedoc.yp"
+#line 141 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 0); }
 	],
 	[#Rule 47
 		 'struct_item', 4,
 sub
-#line 141 "typedoc.yp"
+#line 142 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 1); }
 	],
 	[#Rule 48
 		 'list', 4,
 sub
-#line 144 "typedoc.yp"
+#line 145 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::List->new(element_type => $_[3]); }
 	],
 	[#Rule 49
 		 'tuple', 4,
 sub
-#line 147 "typedoc.yp"
+#line 148 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Tuple->new(element_types => [ map { $_->[0] } @{$_[3]}],
 							    element_names => [ map { $_->[1] } @{$_[3]}] ); }
 	],
 	[#Rule 50
 		 'tuple_types', 1,
 sub
-#line 151 "typedoc.yp"
+#line 152 "typedoc.yp"
 { [ $_[1] ] }
 	],
 	[#Rule 51
 		 'tuple_types', 3,
 sub
-#line 152 "typedoc.yp"
+#line 153 "typedoc.yp"
 { [ @{$_[1]}, $_[3] ] }
 	],
 	[#Rule 52
 		 'tuple_type', 1,
 sub
-#line 155 "typedoc.yp"
+#line 156 "typedoc.yp"
 { [ $_[1], undef ] }
 	],
 	[#Rule 53
 		 'tuple_type', 2,
 sub
-#line 156 "typedoc.yp"
+#line 157 "typedoc.yp"
 { [ $_[1], $_[2] ] }
 	]
 ],
@@ -1049,7 +1049,7 @@ sub
     bless($self,$class);
 }
 
-#line 159 "typedoc.yp"
+#line 160 "typedoc.yp"
  
 
 sub define_type
@@ -1107,31 +1107,35 @@ sub lookup_type
 }
 
 
+
+#
+#  provide the text string of data and a filename
+#
 sub parse
 {
     my($self, $data, $filename) = @_;
 
-    $self->init_state($data, $filename);
+    $self->set_active_file($data, $filename);
     my $res = $self->YYParse(yylex => \&Lexer, yyerror => \&Error);
-
     return ($res, $self->YYData->{error_count});;
 }
 
-sub init_state
+
+
+sub set_active_file #previously named init_state
 {
     my($self, $data, $filename) = @_;
 
-    $self->YYData->{module_list} = [];
-    $self->YYData->{active_module} = '';
+    
     #
     # Initialize type table to just the builtins.
     #
     $self->YYData->{type_table} = { %builtin_types };
     $self->YYData->{INPUT} = $data;
+    $self->YYData->{active_module} = '';
     $self->YYData->{line_number} = 1;
     $self->YYData->{filename} = $filename;
     $self->YYData->{error_count} = 0;
-    
 }
 
 
@@ -1269,6 +1273,15 @@ sub get_comment
 #
 sub set_active_module {
     my ($self,$module_name) = @_;
+    
+    # check that this module hasn't been defined already, if it has emit an error
+    foreach my $m (@{$self->YYData->{module_list}}) {
+        if($m eq $module_name) {
+            $self->emit_error("Duplicate definition of Module '$module_name' not allowed.");
+        }
+    }
+    # remember that we parsed this module and set it to active
+    push(@{$self->YYData->{module_list}}, $module_name);
     print 'setting active module to '.$module_name."\n";
     $self->YYData->{active_module} = $module_name;
 }
@@ -1281,9 +1294,6 @@ sub clear_symbol_table
 {
     my($self,$module_name) = @_;
     print "finished parse of '$module_name' clearing symbol table\n";
-    
-    # remember that we parsed this module
-    push(@{$self->YYData->{module_list}}, $module_name);
 
     # cache the objects so we can look them up later    
     $self->YYData->{cached_type_tables}->{$module_name} = $self->YYData->{type_table};

@@ -116,6 +116,7 @@ my $include_paths = \@include_path_list;
 #
 my $errors_found;
 my $error_msg;
+my $parsed_data = {}; # formally this was a hash named %services, now it is a ref to that same hash structure;
 
 for my $spec_file (@spec_files)
 {
@@ -124,7 +125,6 @@ for my $spec_file (@spec_files)
     my $abs_filecontainer = File::Spec->rel2abs(dirname($spec_file));
     print "looking at $filename located in '$abs_filecontainer'\n";
     
-    my $parsed_data = {};
     my $resolved_includes = {}; #a hash of abs path of included files, init to empty
     my $return_data = 1; #indicate that we want the parsed data
     ($parsed_data,$errors_found,$error_msg)
@@ -135,6 +135,17 @@ if($errors_found) {
     print STDERR $error_msg;
     exit(1);
 }
+
+my $need_auth = check_for_authentication($parsed_data);
+my $available_type_table = $parser->YYData->{cached_type_tables};
+while (my($service, $modules) = each %{$parsed_data})
+{
+    if(has_funcdefs($modules)) {
+        write_service_stubs($service, $modules, $output_dir, $need_auth->{$service},$available_type_table);
+    }
+}
+
+
 exit(1);
 
 
@@ -266,7 +277,20 @@ sub parse_spec {
         
             # if the call requested that the parsed data be returned, then assemble it
             if($return_data) {
-                $parsed_data = {myData=>'yeppers'}
+                $parsed_data = {};
+                my $available_type_table = $parser->YYData->{cached_type_tables};
+                my $type_info = assemble_types($parser);  #type_info is now a hash with module names as keys, and lists as before
+                
+                for my $mod (@$modules)
+                {
+                    my $mod_name = $mod->module_name;
+                    my $serv_name = $mod->service_name;
+                    print STDERR "$filename: module $mod_name service $serv_name\n";
+                    #push(@{$services{$serv_name}}, [$mod, $type_info, $parser->YYData->{type_table}]);
+                    push(@{$parsed_data->{$serv_name}}, [$mod, $type_info->{$mod_name}, $available_type_table->{$mod_name}]);
+                }
+            
+            
             }
             
         }
