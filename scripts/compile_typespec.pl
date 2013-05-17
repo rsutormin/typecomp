@@ -347,6 +347,8 @@ sub resolve_include_location
     $line =~ s/^#include //; #drop the #include directive token
     $line =~ s/\s+$//; #trim trailing whitespace
     
+    $line =~ s/;$//; #drop trailing semicolon if it was added
+    
     # C style includes??  is this what we want??
     # split on '<' should produce exactly two tokens, first of which we can throw away
     my $include_name = ''; my $include_version = '';
