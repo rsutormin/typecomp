@@ -125,7 +125,8 @@ for my $spec_file (@spec_files)
     my $abs_filecontainer = File::Spec->rel2abs(dirname($spec_file));
     print "\nreading $filename located in '$abs_filecontainer'\n";
     
-    my $resolved_includes = {}; #a hash of abs path of included files, init to empty
+    #a hash of abs path of included files, init to include this spec file only
+    my $resolved_includes = {File::Spec->rel2abs($spec_file)=>'1'}; 
     my $return_data = 1; #indicate that we want the parsed data
     ($parsed_data,$errors_found,$error_msg)
         = parse_spec($filename,$abs_filecontainer,$parser,$include_paths,$resolved_includes,$return_data);
@@ -145,8 +146,8 @@ while (my($service, $modules) = each %{$parsed_data})
     }
 }
 
-
-exit(1);
+# all done.
+exit(0);
 
 
 #my %services;
