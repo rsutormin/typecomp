@@ -123,7 +123,7 @@ for my $spec_file (@spec_files)
     # extract the file name and absolute path to the enclosing folder
     my $filename = basename($spec_file);
     my $abs_filecontainer = File::Spec->rel2abs(dirname($spec_file));
-    print "looking at $filename located in '$abs_filecontainer'\n";
+    print "\nreading $filename located in '$abs_filecontainer'\n";
     
     my $resolved_includes = {}; #a hash of abs path of included files, init to empty
     my $return_data = 1; #indicate that we want the parsed data
@@ -281,6 +281,7 @@ sub parse_spec {
                 my $available_type_table = $parser->YYData->{cached_type_tables};
                 my $type_info = assemble_types($parser);  #type_info is now a hash with module names as keys, and lists as before
                 
+                print STDERR "\n";
                 for my $mod (@$modules)
                 {
                     my $mod_name = $mod->module_name;
@@ -367,7 +368,7 @@ sub resolve_include_location
     # handle cases where 1) path is absolute, 2) path is relative, 3) path is relative to an included base path
     if ( File::Spec->file_name_is_absolute( $include_name ) ) {
         # make sure it exists
-        print STDERR "checking absolute path: $include_name\n";
+        #print STDERR "checking absolute path: $include_name\n";
         if (-e $include_name) {
             #check if we've hit it before
             if(!exists($resolved_includes->{$include_name})) {
@@ -392,7 +393,7 @@ sub resolve_include_location
         my $possible_path = File::Spec->catfile( @possible_path_dirs, $filename );
         
         # if the relative path from the current directory exists, use this first
-        print STDERR "checking for: $possible_path\n";
+        #print STDERR "checking for: $possible_path\n";
         if (-e $possible_path) {
             #check if we've hit it before
             if(!exists($resolved_includes->{$possible_path})) {
@@ -415,7 +416,7 @@ sub resolve_include_location
                 $possible_path = File::Spec->catfile( @possible_path_dirs, $filename );
 
                 # check if a file exists here
-                print STDERR "checking for: $possible_path\n";
+                #print STDERR "checking for: $possible_path\n";
                 if (-e $possible_path) {
                     if(!exists($resolved_includes->{$possible_path})) {
                         $resolved_includes->{$possible_path}='1';
@@ -840,7 +841,7 @@ sub compute_module_data
         for my $tn (@$typenames)
         {
             my $src_module = $tn->[0]; my $tname = $tn->[1];
-            print 'lookup of '.$src_module.".".$tname."\n";
+            #print 'lookup of '.$src_module.".".$tname."\n";
             if($src_module eq $module->module_name) {
                 my $type = $type_table->{$tname};
                 if (!defined($type))
