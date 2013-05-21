@@ -38,6 +38,8 @@ Arguments:
     --js name		       Use name as the basename for the generated Javascript client module
     --py name		       Use name as the basename for the generated Python client module
     --url URL		       Use URL as the default service URL in the generated clients
+    --path path                Specify path as the search path for includes, mulitple directories
+                               are delimited by ':'
     --dump		       Dump the parsed type specification file to stdout
 
 =head1 AUTHORS
@@ -150,6 +152,7 @@ while (my($service, $modules) = each %{$parsed_data})
 exit(0);
 
 
+##########################  Original loop
 #my %services;
 #my $available_type_table; # this is global over all modules included, and keeps a table of all available types
 #
@@ -205,13 +208,13 @@ exit(0);
 
 #
 #
-#   $resolved_includes
+#   
 #   $return_data = 1 if you want the parsed data returned, 0 if you don't need the parsed data yet.
 #
 sub parse_spec {
     my ($filename, $abs_filecontainer, $parser, $include_paths, $resolved_includes, $return_data) = @_;
     
-    # reconstruct the full path so we can open it
+    # reconstruct the full path so we can open the file and resolve includes
     my @directories = File::Spec->splitdir( $abs_filecontainer );
     my $abs_filepath = File::Spec->catfile( @directories, $filename );
     
@@ -259,7 +262,7 @@ sub parse_spec {
             $content .= "\n";
         } else {
             # remember the content otherwise
-            $content .= $line;
+            $content .= $line."\n";
         }
     }
     

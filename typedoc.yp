@@ -60,7 +60,7 @@ module_component_with_doc:
 module_component:
 		typedef
 	|	funcdef 
-	|	'use' 'module' ident ';'
+	|	'use' 'module' ident ';'  ## what is this rule for? was this a first pass at includes? -mike
 	|	auth_type ';' { $auth_default = $_[1]; 'auth_default' . $_[1] }
 	;
 
@@ -320,6 +320,9 @@ sub Lexer {
 	    elsif (s,^/\*(.*?)\*/,,s)
 	    {
 		my $com = $1;
+                # we pull in the entire comment, so we need to account for newlines in the comment
+                $data->{line_number}++ while($com =~ m/\n/g);
+                
 		if ($com =~ /^\*/)
 		{
 		    #
@@ -327,7 +330,7 @@ sub Lexer {
 		    #
 		    return('DOC_COMMENT', $com);
 		}
-
+                
 		my @lines = split(/\n/, $com);
 		$lines[0] =~ s/^\s*//;
 		my @new = ($lines[0]);
