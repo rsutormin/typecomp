@@ -112,7 +112,6 @@ type:		TYPENAME
 	|	list
 	|	tuple
 	|       IDENT '.' IDENT {
-		    print "type ".$_[3]."-- from module ".$_[1]."\n";
 		    my $type = $_[0]->lookup_type($_[3],$_[1]);
 		    if (!defined($type))
 		    {
@@ -169,13 +168,15 @@ sub define_type
     #
     # Try to name the typedefed type if it is a tuple or struct.
     #
-    if ($old_type->isa('Bio::KBase::KIDL::KBT::Struct') || $old_type->isa('Bio::KBase::KIDL::KBT::Tuple'))
-    {
-	$old_type->name_type($new_type);
-	if ($comment)
-	{
-	    $old_type->comment($comment);
-	}
+    if($old_type) {
+        if ($old_type->isa('Bio::KBase::KIDL::KBT::Struct') || $old_type->isa('Bio::KBase::KIDL::KBT::Tuple'))
+        {
+            $old_type->name_type($new_type);
+            if ($comment)
+            {
+                $old_type->comment($comment);
+            }
+        }
     }
     return $def;
 }
@@ -206,7 +207,6 @@ sub lookup_type
     # if we are trying to lookup a type in an external module, then we have to
     # look in the right place
     if($src_module) {
-	print "looking up a type from an external module\n";
 	return $self->YYData->{cached_type_tables}->{$src_module}->{$name};
     }
     
@@ -224,7 +224,7 @@ sub parse
 
     $self->set_active_file($data, $filename);
     my $res = $self->YYParse(yylex => \&Lexer, yyerror => \&Error);
-    return ($res, $self->YYData->{error_count});;
+    return ($res, $self->YYData->{error_count}, $self->YYData->{error_msg});;
 }
 
 
@@ -243,6 +243,7 @@ sub set_active_file #previously named init_state
     $self->YYData->{line_number} = 1;
     $self->YYData->{filename} = $filename;
     $self->YYData->{error_count} = 0;
+    $self->YYData->{error_msg} = '';
 }
 
 
@@ -272,8 +273,8 @@ sub emit_error {
 	$token = $tval;
     }
     
-
-    print STDERR "$file:$line: $message (next token is '$token')\n";
+    # error messages are now sent up so that errors in the same file are grouped together
+    $data->{error_msg} .= "$file:$line: $message (next token is '$token')\n";
     $data->{error_count}++;
 }
 
@@ -328,6 +329,7 @@ sub Lexer {
 		    #
 		    # It was a /** comment which is a doc-block. Return that as a token.
 		    #
+                    # What is this used for? -mike
 		    return('DOC_COMMENT', $com);
 		}
                 
@@ -388,11 +390,12 @@ sub set_active_module {
     foreach my $m (@{$self->YYData->{module_list}}) {
         if($m eq $module_name) {
             $self->emit_error("Duplicate definition of Module '$module_name' not allowed.");
+            last;
         }
     }
     # remember that we parsed this module and set it to active
     push(@{$self->YYData->{module_list}}, $module_name);
-    print 'setting active module to '.$module_name."\n";
+    print STDERR "\tdebug: setting active module to $module_name\n";
     $self->YYData->{active_module} = $module_name;
 }
 
@@ -403,7 +406,7 @@ sub set_active_module {
 sub clear_symbol_table
 {
     my($self,$module_name) = @_;
-    print "finished parse of '$module_name' clearing symbol table\n";
+    print STDERR "\tdebug: finished parse of '$module_name' clearing symbol table\n";
 
     # cache the objects so we can look them up later    
     $self->YYData->{cached_type_tables}->{$module_name} = $self->YYData->{type_table};
@@ -413,5 +416,14 @@ sub clear_symbol_table
     $self->YYData->{type_table} = { %builtin_types };
     $self->YYData->{type_list} = [];
     $self->YYData->{active_module} = '';
+}
+
+
+sub clear_symbol_table_cache
+{
+    my($self) = @_;
+    
+    undef %{$self->YYData->{cached_type_tables}};
+    undef %{$self->YYData->{cached_type_tables}};
 }
 

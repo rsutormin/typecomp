@@ -1,0 +1,6 @@
+
+cd ../../
+make
+cd test/line_number_reporting
+rm -rf out
+compile_typespec --path "/kb:/kb/dev_container/modules/kbtypedef_common/include" --psgi MyModule.psgi MyModule.spec MyModule2.spec out/.

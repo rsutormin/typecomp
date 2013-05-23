@@ -951,7 +951,6 @@ sub
 sub
 #line 114 "typedoc.yp"
 {
-		    print "type ".$_[3]."-- from module ".$_[1]."\n";
 		    my $type = $_[0]->lookup_type($_[3],$_[1]);
 		    if (!defined($type))
 		    {
@@ -963,7 +962,7 @@ sub
 	[#Rule 41
 		 'type', 1,
 sub
-#line 123 "typedoc.yp"
+#line 122 "typedoc.yp"
 { my $type = $_[0]->lookup_type($_[1]);
 			if (!defined($type))
 			{
@@ -974,74 +973,74 @@ sub
 	[#Rule 42
 		 'mapping', 6,
 sub
-#line 131 "typedoc.yp"
+#line 130 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Mapping->new(key_type => $_[3]->[0], value_type=> $_[5]->[0]); }
 	],
 	[#Rule 43
 		 'structure', 4,
 sub
-#line 134 "typedoc.yp"
+#line 133 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Struct->new(items => $_[3]); }
 	],
 	[#Rule 44
 		 'struct_items', 1,
 sub
-#line 137 "typedoc.yp"
+#line 136 "typedoc.yp"
 { [$_[1]] }
 	],
 	[#Rule 45
 		 'struct_items', 2,
 sub
-#line 138 "typedoc.yp"
+#line 137 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
 	[#Rule 46
 		 'struct_item', 3,
 sub
-#line 141 "typedoc.yp"
+#line 140 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 0); }
 	],
 	[#Rule 47
 		 'struct_item', 4,
 sub
-#line 142 "typedoc.yp"
+#line 141 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 1); }
 	],
 	[#Rule 48
 		 'list', 4,
 sub
-#line 145 "typedoc.yp"
+#line 144 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::List->new(element_type => $_[3]); }
 	],
 	[#Rule 49
 		 'tuple', 4,
 sub
-#line 148 "typedoc.yp"
+#line 147 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Tuple->new(element_types => [ map { $_->[0] } @{$_[3]}],
 							    element_names => [ map { $_->[1] } @{$_[3]}] ); }
 	],
 	[#Rule 50
 		 'tuple_types', 1,
 sub
-#line 152 "typedoc.yp"
+#line 151 "typedoc.yp"
 { [ $_[1] ] }
 	],
 	[#Rule 51
 		 'tuple_types', 3,
 sub
-#line 153 "typedoc.yp"
+#line 152 "typedoc.yp"
 { [ @{$_[1]}, $_[3] ] }
 	],
 	[#Rule 52
 		 'tuple_type', 1,
 sub
-#line 156 "typedoc.yp"
+#line 155 "typedoc.yp"
 { [ $_[1], undef ] }
 	],
 	[#Rule 53
 		 'tuple_type', 2,
 sub
-#line 157 "typedoc.yp"
+#line 156 "typedoc.yp"
 { [ $_[1], $_[2] ] }
 	]
 ],
@@ -1049,7 +1048,7 @@ sub
     bless($self,$class);
 }
 
-#line 160 "typedoc.yp"
+#line 159 "typedoc.yp"
  
 
 sub define_type
@@ -1062,13 +1061,15 @@ sub define_type
     #
     # Try to name the typedefed type if it is a tuple or struct.
     #
-    if ($old_type->isa('Bio::KBase::KIDL::KBT::Struct') || $old_type->isa('Bio::KBase::KIDL::KBT::Tuple'))
-    {
-	$old_type->name_type($new_type);
-	if ($comment)
-	{
-	    $old_type->comment($comment);
-	}
+    if($old_type) {
+        if ($old_type->isa('Bio::KBase::KIDL::KBT::Struct') || $old_type->isa('Bio::KBase::KIDL::KBT::Tuple'))
+        {
+            $old_type->name_type($new_type);
+            if ($comment)
+            {
+                $old_type->comment($comment);
+            }
+        }
     }
     return $def;
 }
@@ -1099,7 +1100,6 @@ sub lookup_type
     # if we are trying to lookup a type in an external module, then we have to
     # look in the right place
     if($src_module) {
-	print "looking up a type from an external module\n";
 	return $self->YYData->{cached_type_tables}->{$src_module}->{$name};
     }
     
@@ -1117,7 +1117,7 @@ sub parse
 
     $self->set_active_file($data, $filename);
     my $res = $self->YYParse(yylex => \&Lexer, yyerror => \&Error);
-    return ($res, $self->YYData->{error_count});;
+    return ($res, $self->YYData->{error_count}, $self->YYData->{error_msg});;
 }
 
 
@@ -1136,6 +1136,7 @@ sub set_active_file #previously named init_state
     $self->YYData->{line_number} = 1;
     $self->YYData->{filename} = $filename;
     $self->YYData->{error_count} = 0;
+    $self->YYData->{error_msg} = '';
 }
 
 
@@ -1165,8 +1166,8 @@ sub emit_error {
 	$token = $tval;
     }
     
-
-    print STDERR "$file:$line: $message (next token is '$token')\n";
+    # error messages are now sent up so that errors in the same file are grouped together
+    $data->{error_msg} .= "$file:$line: $message (next token is '$token')\n";
     $data->{error_count}++;
 }
 
@@ -1213,14 +1214,18 @@ sub Lexer {
 	    elsif (s,^/\*(.*?)\*/,,s)
 	    {
 		my $com = $1;
+                # we pull in the entire comment, so we need to account for newlines in the comment
+                $data->{line_number}++ while($com =~ m/\n/g);
+                
 		if ($com =~ /^\*/)
 		{
 		    #
 		    # It was a /** comment which is a doc-block. Return that as a token.
 		    #
+                    # What is this used for? -mike
 		    return('DOC_COMMENT', $com);
 		}
-
+                
 		my @lines = split(/\n/, $com);
 		$lines[0] =~ s/^\s*//;
 		my @new = ($lines[0]);
@@ -1278,11 +1283,12 @@ sub set_active_module {
     foreach my $m (@{$self->YYData->{module_list}}) {
         if($m eq $module_name) {
             $self->emit_error("Duplicate definition of Module '$module_name' not allowed.");
+            last;
         }
     }
     # remember that we parsed this module and set it to active
     push(@{$self->YYData->{module_list}}, $module_name);
-    print 'setting active module to '.$module_name."\n";
+    print STDERR "\tdebug: setting active module to $module_name\n";
     $self->YYData->{active_module} = $module_name;
 }
 
@@ -1293,7 +1299,7 @@ sub set_active_module {
 sub clear_symbol_table
 {
     my($self,$module_name) = @_;
-    print "finished parse of '$module_name' clearing symbol table\n";
+    print STDERR "\tdebug: finished parse of '$module_name' clearing symbol table\n";
 
     # cache the objects so we can look them up later    
     $self->YYData->{cached_type_tables}->{$module_name} = $self->YYData->{type_table};
@@ -1303,6 +1309,15 @@ sub clear_symbol_table
     $self->YYData->{type_table} = { %builtin_types };
     $self->YYData->{type_list} = [];
     $self->YYData->{active_module} = '';
+}
+
+
+sub clear_symbol_table_cache
+{
+    my($self) = @_;
+    
+    undef %{$self->YYData->{cached_type_tables}};
+    undef %{$self->YYData->{cached_type_tables}};
 }
 
 
