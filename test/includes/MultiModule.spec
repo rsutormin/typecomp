@@ -24,7 +24,7 @@ module MyModule {
     
     typedef B.b1 yourString;
     
-    
+    typedef KB.kb_id anId;
     typedef list<A.a1> myListOfAThings;
     
     

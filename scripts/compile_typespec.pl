@@ -160,7 +160,6 @@ for my $spec_file (@spec_files)
                 my $mod_name = $mod->module_name;
                 my $serv_name = $mod->service_name;
                 print STDERR "$filename: module $mod_name service $serv_name\n";
-                #push(@{$services{$serv_name}}, [$mod, $type_info, $parser->YYData->{type_table}]);
                 push(@{$parsed_data->{$serv_name}}, [$mod, $type_info->{$mod_name}, $available_type_table->{$mod_name}]);
             }
         }
@@ -183,6 +182,7 @@ my $need_auth = check_for_authentication($parsed_data);
 my $available_type_table = $parser->YYData->{cached_type_tables};
 while (my($service, $modules) = each %{$parsed_data})
 {
+    # only create stubs for services that have methods defined
     if(has_funcdefs($modules)) {
         write_service_stubs($service, $modules, $output_dir, $need_auth->{$service},$available_type_table);
     }
@@ -262,7 +262,7 @@ sub parse_spec {
     my $parsed_data = {};
     
     # we can finally parse the file content
-    print STDERR "\n\tdebug: reading file $filename\n";
+    #print STDERR "\n\tdebug: reading file $filename\n";
     my($modules, $errors_found_from_parse, $parse_error_msg) = $parser->parse($content, $filename);
         
     # if there are errors in the parse, add them to our error list
@@ -426,7 +426,7 @@ sub setup_impl_data
 
 
 
-# Given one more more modules that implement a service, write a single
+# Given one or more modules that implement a service, write a single
 # psgi, client and service stub for the service, and one impl stub per module.
 # 
 # The service stubs include a mapping from the function name in a module
@@ -510,6 +510,7 @@ sub write_service_stubs
         psgi_file => $psgi_file,
     };
 #    print Dumper($vars);
+
 
     my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
 
@@ -820,7 +821,7 @@ sub compute_module_data
                     print Dumper($available_type_table)."\n";
                     die "Type $tname is not defined in module " . $src_module . "\n";
                 }
-                push(@english, "$tname is " . $type->alias_type->english(1) . " from Module $src_module");
+                push(@english, "$src_module.$tname is " . $type->alias_type->english(1) );
             }
         }
         

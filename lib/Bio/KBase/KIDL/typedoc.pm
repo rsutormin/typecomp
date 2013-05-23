@@ -1288,7 +1288,7 @@ sub set_active_module {
     }
     # remember that we parsed this module and set it to active
     push(@{$self->YYData->{module_list}}, $module_name);
-    print STDERR "\tdebug: setting active module to $module_name\n";
+    #print STDERR "\tdebug: setting active module to $module_name\n";
     $self->YYData->{active_module} = $module_name;
 }
 
@@ -1299,7 +1299,7 @@ sub set_active_module {
 sub clear_symbol_table
 {
     my($self,$module_name) = @_;
-    print STDERR "\tdebug: finished parse of '$module_name' clearing symbol table\n";
+    #print STDERR "\tdebug: finished parse of '$module_name' clearing symbol table\n";
 
     # cache the objects so we can look them up later    
     $self->YYData->{cached_type_tables}->{$module_name} = $self->YYData->{type_table};

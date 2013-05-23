@@ -32,7 +32,7 @@ sub english
 {
     my($self) = @_;
     
-    return A($self->name);
+    return A( $self->module . '.' . $self->name );
 }
 
 # now returns a list of lists, with typenames and source modules
@@ -41,11 +41,11 @@ sub subtypes
     my($self, $seen) = @_;
     my $out = [];
 
-    if (!$seen->{$self->module."'".$self->name})
+    if (!$seen->{$self->module.".".$self->name})
     {
         
 	push(@$out, [$self->module, $self->name]);
-	$seen->{$self->module."'".$self->name} = 1;
+	$seen->{$self->module.".".$self->name} = 1;
     }
     
     push(@$out, @{$self->alias_type->subtypes($seen)});
