@@ -39,7 +39,9 @@ Arguments:
     --py name		       Use name as the basename for the generated Python client module
     --url URL		       Use URL as the default service URL in the generated clients
     --path path                Specify path as the search path for includes, mulitple directories
-                               are delimited by ':'
+                               are delimited by ':'.  Can also be set with an environment variable
+                               named 'KB_TYPECOMP_PATH', although if given, paths provided as
+                               arguments are searched first.
     --dump		       Dump the parsed type specification file to stdout
 
 =head1 AUTHORS
@@ -104,12 +106,28 @@ if ($scripts_dir && ! -d $scripts_dir)
     die "Script output directory $scripts_dir does not exist\n";
 }
 
+# check the environment for an include path variable, if it is defined append it to the
+# path given as an argument so that paths given as args are searched first.
+my $KB_TYPECOMP_PATH = "KB_TYPECOMP_PATH";
+if(exists($ENV{$KB_TYPECOMP_PATH})) {
+    if($include_path) {
+        $include_path .= ":".$ENV{$KB_TYPECOMP_PATH};
+    } else {
+        $include_path = $ENV{$KB_TYPECOMP_PATH};
+    }
+}
+#parse the include path string into a ref to a list of include paths
+my $include_paths = [];
+if($include_path) {
+    print STDERR "Include path: '".$include_path ."'\n";
+    my @include_path_list = split(/:/,$include_path);
+    $include_paths = \@include_path_list;
+}
+
 # instatiate a YAPP parser with the typedoc grammer
 my $parser = typedoc->new();
 
-# parse the include path string into a ref to a list of include paths
-my @include_path_list = split(/:/,$include_path);
-my $include_paths = \@include_path_list;
+
 
 
 
@@ -256,6 +274,7 @@ sub parse_spec {
         }
     }
     # we could possibly exit here if we detect errors in the included file...
+    # but we don't now so that we generate a complete list of syntax errors
     #if(!$errors_found) { }
     
     # create a new container to stash our parsed data
@@ -307,7 +326,7 @@ sub resolve_include_location
     $line =~ s/^#include //; #drop the #include directive token
     $line =~ s/\s+$//; #trim trailing whitespace
     
-    $line =~ s/;$//; #drop trailing semicolon if it was added
+    $line =~ s/\s*+;$//; #drop trailing semicolon if it was added
     
     # C style includes??  is this what we want??
     # split on '<' should produce exactly two tokens, first of which we can throw away
@@ -331,7 +350,7 @@ sub resolve_include_location
     # handle cases where 1) path is absolute, 2) path is relative, 3) path is relative to an included base path
     if ( File::Spec->file_name_is_absolute( $include_name ) ) {
         # make sure it exists
-        #print STDERR "checking absolute path: $include_name\n";
+        #print STDERR "\tdebug: checking absolute path: $include_name\n";
         if (-e $include_name) {
             #check if we've hit it before
             if(!exists($resolved_includes->{$include_name})) {
@@ -357,7 +376,7 @@ sub resolve_include_location
         my $possible_path = File::Spec->catfile( @possible_path_dirs, $filename );
         
         # if the relative path from the current directory exists, use this first
-        #print STDERR "checking for: $possible_path\n";
+        #print STDERR "\tdebug: checking for: $possible_path\n";
         if (-e $possible_path) {
             #check if we've hit it before
             if(!exists($resolved_includes->{$possible_path})) {
@@ -380,7 +399,7 @@ sub resolve_include_location
                 $possible_path = File::Spec->catfile( @possible_path_dirs, $filename );
 
                 # check if a file exists here
-                #print STDERR "checking for: $possible_path\n";
+                #print STDERR "\tdebug: checking for: $possible_path\n";
                 if (-e $possible_path) {
                     if(!exists($resolved_includes->{$possible_path})) {
                         $resolved_includes->{$possible_path}='1';

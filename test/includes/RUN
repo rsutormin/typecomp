@@ -1,6 +1,7 @@
-
+#!/bin/bash
 cd ../../
 make
 cd test/includes
 rm -rf out
-compile_typespec --path "/kb:/kb/dev_container/modules/kbtypedef_common/include" --psgi MultiModule.psgi MultiModule.spec out/.
+export KB_TYPECOMP_PATH="/kb/dev_container/modules/kbtypedef_common/include" 
+compile_typespec --psgi MultiModule.psgi MultiModule.spec out/.
