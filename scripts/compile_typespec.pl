@@ -61,6 +61,7 @@ my $py_server_module;
 my $py_impl_module;
 my $include_path;
 my $default_service_url;
+my $generate_json_schema;
 my $dump_parsed;
 my $test_script;
 my $help;
@@ -77,6 +78,7 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
                     "pyimpl=s"  => \$py_impl_module,
                     "path=s"    => \$include_path,
                     "url=s"     => \$default_service_url,
+                    "jsonschema"=> \$generate_json_schema,
                     "dump"      => \$dump_parsed,
                     "help|h"	=> \$help,
                     );
@@ -204,6 +206,11 @@ while (my($service, $modules) = each %{$parsed_data})
     if(has_funcdefs($modules)) {
         write_service_stubs($service, $modules, $output_dir, $need_auth->{$service},$available_type_table);
     }
+}
+
+if($generate_json_schema) {
+    my $type_info = assemble_types($parser);
+    to_json_schema($type_info,$output_dir);
 }
 
 
@@ -1064,6 +1071,205 @@ sub has_funcdefs
     }
     return 0;
 }
+
+
+
+
+################################################################################
+
+
+#
+#  creates a json schema for each module
+#
+sub to_json_schema
+{
+    my($type_table,$output_dir) = @_;
+
+    print Dumper($type_table);
+    
+    #create the json output directory (should use File::Spec so we handle all architectures)
+    make_path($output_dir . "/jsonschema");
+    
+    # hacked up json schema dumper....
+    while (my($module_name, $types) = each %{$type_table})
+    {
+        foreach my $type (@{$types}) {
+            make_path($output_dir . "/jsonschema/" . $module_name);
+            my $filepath = $output_dir . "/jsonschema/" . $module_name . "/" . $type->{name} . ".json";
+            my $out;
+            
+            open($out, '>>'.$filepath);
+            
+            # print module name and description
+            print $out "{\n    \"id\":\"$type->{name}\",\n";
+            my $ts = strftime("%Y-%m-%d-%H-%M-%S", localtime);
+            print $out "    \"description\":\"autogen schema by the KBase type compiler on $ts\",\n";
+            print $out "    \"type\":\"" . get_json_schema_type_name($type->{ref}) . "\"\n";
+            print $out "    ".map_type_to_json_schema($type->{ref})."\n";
+            
+            print $out "}\n";
+            
+            close($out);
+        }
+        print Dumper($types)."\n";
+    }
+    
+
+
+    return 1;
+}
+
+sub get_json_schema_type_name {
+    my($type) = @_;
+    if ($type->isa('Bio::KBase::KIDL::KBT::Typedef'))
+    {
+        return "Object"
+    }
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::Scalar'))
+    {
+        return $type->scalar_type;
+    }
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::List'))
+    {
+	return "Array";
+    }
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::Mapping'))
+    {
+	return "Object";
+    }
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::Tuple'))
+    {
+	return "Array";
+    }
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::Struct'))
+    {
+	return "Object"
+    }
+    else
+    {
+	die "ERROR in map_type_to_string:\n".Dumper($type);
+	return "undef";
+    }
+    
+    
+
+}
+
+
+sub json_schema_of_typedef
+{
+    my($type_name,$type_def,$module_name,$indent) = @_;
+    return '' unless $type_def->isa('Bio::KBase::KIDL::KBT::Typedef');
+
+    my $schema = '';
+    
+    $schema .= "\"$type_name\": stuff \n";
+    
+    
+    return $schema;
+}
+
+
+
+
+sub map_type_to_json_schema
+{
+    my($type) = @_;
+
+    if ($type->isa('Bio::KBase::KIDL::KBT::Typedef'))
+    {
+	return $type->name;
+	#return map_type_to_string($type->alias_type, $struct_types);
+    }
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::Scalar'))
+    {
+        return $type->scalar_type;
+    }
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::List'))
+    {
+	my $elt_type = map_type_to_json_schema($type->element_type);
+	return "list<$elt_type>";
+    }
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::Mapping'))
+    {
+	my $kt = map_type_to_json_schema($type->key_type);
+	my $vt = map_type_to_json_schema($type->value_type);
+	return "map<$kt,$vt>";
+    }
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::Tuple'))
+    {
+	# get all the subtypes of the tuple
+	my @subtypes = @{$type->element_types};
+	my $sub_type_str = ""; my $first=0;
+	foreach my $subtype (@subtypes) {
+	    if($first==0) {$first=1}
+	    else { $sub_type_str .= ","}
+	    $sub_type_str .= map_type_to_json_schema($subtype);
+	}
+	return "tuple<".$sub_type_str.">";
+    }
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::Struct'))
+    {
+	my @items = @{$type->items};
+	my @subtypes = map { $_->item_type } @items;
+	my @names = map { $_->name } @items;
+	my $structure_str="structure {\n";
+	for (my $i = 0; $i < @subtypes; $i++)
+	{
+	    $structure_str .= "     ";
+	    my $new_type_str = map_type_to_json_schema($subtypes[$i]);
+	    $structure_str .= $new_type_str;
+	    #note: do we want to descend here and aggregate the internal types?
+	    $structure_str .= " ".$names[$i].";\n";
+	}
+	$structure_str .= "}";
+	return $structure_str;
+    }
+    else
+    {
+	die "ERROR in map_type_to_string:\n".Dumper($type);
+	return "undef";
+    }
+}
+
+
+
+
+#
+#{
+#    "id": "http://some.site.somewhere/entry-schema#",
+#    "$schema": "http://json-schema.org/draft-04/schema#",
+#    "description": "schema for an fstab entry",
+#    "type": "object",
+#    "required": [ "storage" ],
+#    "properties": {
+#        "storage": {
+#            "type": "object",
+#            "oneOf": [
+#                { "$ref": "#/definitions/diskDevice" },
+#                { "$ref": "#/definitions/diskUUID" },
+#                { "$ref": "#/definitions/nfs" },
+#                { "$ref": "#/definitions/tmpfs" }
+#            ]
+#        },
+#        "fstype": {
+#            "enum": [ "ext3", "ext4", "btrfs" ]
+#        },
+#        "options": {
+#            "type": "array",
+#            "minItems": 1,
+#            "items": { "type": "string" },
+#            "uniqueItems": true
+#        },
+#        "readonly": { "type": "boolean" }
+#    },
+#    "definitions": {
+#        "diskDevice": {},
+#        "diskUUID": {},
+#        "nfs": {},
+#        "tmpfs": {}
+#    }
+#}
 
 
 
