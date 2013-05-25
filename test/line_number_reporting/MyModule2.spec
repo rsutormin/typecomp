@@ -9,7 +9,7 @@
 
 
 */
-module MyService:MyModule {
+module MyService:MyModule2 {
 
 /*asdf*/
 

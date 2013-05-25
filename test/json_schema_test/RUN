@@ -1,0 +1,7 @@
+#!/bin/bash
+cd ../../
+make
+cd test/json_schema_test
+rm -rf out
+export KB_TYPECOMP_PATH="/kb/dev_container/modules/kbtypedef_common/include" 
+compile_typespec --jsonschema --psgi MyMod.psgi MyMod.spec out/.

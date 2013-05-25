@@ -1100,12 +1100,14 @@ sub to_json_schema
             
             open($out, '>>'.$filepath);
             
-            # print module name and description
-            print $out "{\n    \"id\":\"$type->{name}\",\n";
-            my $ts = strftime("%Y-%m-%d-%H-%M-%S", localtime);
-            print $out "    \"description\":\"autogen schema by the KBase type compiler on $ts\",\n";
+            # print type name and description
+            my $spacer = "    "; my $ts = strftime("%Y-%m-%d-%H-%M-%S", localtime);
+            print $out "{\n$spacer\"\$schema\":\"http://json-schema.org/draft-04/schema#\"\n";
+            print $out $spacer."\"id\":\"".$type->{name}."\",\n";
+            print $out $spacer."\"description\":\"".$type->{comment}."\",\n";
+            
             print $out "    \"type\":\"" . get_json_schema_type_name($type->{ref}) . "\"\n";
-            print $out "    ".map_type_to_json_schema($type->{ref})."\n";
+            print $out map_type_to_json_schema($type->{ref},$spacer)."\n";
             
             print $out "}\n";
             
@@ -1123,31 +1125,35 @@ sub get_json_schema_type_name {
     my($type) = @_;
     if ($type->isa('Bio::KBase::KIDL::KBT::Typedef'))
     {
-        return "Object"
+        # recurse to get the downstream type
+        return get_json_schema_type_name($type->alias_type);
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Scalar'))
     {
-        return $type->scalar_type;
+        if($type->scalar_type eq 'string') { return 'string'; }
+        if($type->scalar_type eq 'int') { return 'integer'; }
+        if($type->scalar_type eq 'float') { return 'number'; }
+	die "ERROR in get_json_schema_type_name:\n".Dumper($type);
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::List'))
     {
-	return "Array";
+	return "array";
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Mapping'))
     {
-	return "Object";
+	return "object";
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Tuple'))
     {
-	return "Array";
+	return "array";
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Struct'))
     {
-	return "Object"
+	return "object"
     }
     else
     {
-	die "ERROR in map_type_to_string:\n".Dumper($type);
+	die "ERROR in get_json_schema_type_name:\n".Dumper($type);
 	return "undef";
     }
     
@@ -1174,16 +1180,17 @@ sub json_schema_of_typedef
 
 sub map_type_to_json_schema
 {
-    my($type) = @_;
+    my($type,$spacer) = @_;
 
     if ($type->isa('Bio::KBase::KIDL::KBT::Typedef'))
     {
-	return $type->name;
+	return map_type_to_json_schema($type->alias_type,$spacer);
 	#return map_type_to_string($type->alias_type, $struct_types);
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Scalar'))
     {
-        return $type->scalar_type;
+        #scalar primitives do not require further tags
+        return "";
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::List'))
     {
@@ -1192,9 +1199,26 @@ sub map_type_to_json_schema
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Mapping'))
     {
-	my $kt = map_type_to_json_schema($type->key_type);
-	my $vt = map_type_to_json_schema($type->value_type);
-	return "map<$kt,$vt>";
+        my $out = '';
+        
+        $out .= $spacer."\"properties\": {},\n";
+        $out .= $spacer."\"patternProperties\": {\n";
+
+        # what do we do with keys that are not strings!!!!  ignore key types for now...
+        $out .= $spacer."    \"\": {\n";
+        $out .= $spacer."          \"type\":\"" . get_json_schema_type_name($type->value_type) . "\"";
+        my $typeschema = map_type_to_json_schema($type->value_type,$spacer."          ");
+        if($typeschema ne "") {
+            $out .= ",\n".$typeschema;   
+        } else { $out .= "\n"; }
+        $out .= $spacer."        }\n";
+        $out .= $spacer."},\n";
+        $out .= $spacer."\"additionalProperties\":false\n";
+        
+	#my $kt = map_type_to_json_schema($type->key_type);
+	#my $vt = map_type_to_json_schema($type->value_type);
+        
+	return $out;
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Tuple'))
     {
