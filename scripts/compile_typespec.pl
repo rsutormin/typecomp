@@ -1102,11 +1102,11 @@ sub to_json_schema
             
             # print type name and description
             my $spacer = "    "; my $ts = strftime("%Y-%m-%d-%H-%M-%S", localtime);
-            print $out "{\n$spacer\"\$schema\":\"http://json-schema.org/draft-04/schema#\"\n";
+            print $out "{\n$spacer\"\$schema\":\"http://json-schema.org/draft-04/schema#\",\n";
             print $out $spacer."\"id\":\"".$type->{name}."\",\n";
             print $out $spacer."\"description\":\"".$type->{comment}."\",\n";
             
-            print $out "    \"type\":\"" . get_json_schema_type_name($type->{ref}) . "\"\n";
+            print $out "    \"type\":\"" . get_json_schema_type_name($type->{ref}) . "\"";
             print $out map_type_to_json_schema($type->{ref},$spacer)."\n";
             
             print $out "}\n";
@@ -1119,6 +1119,11 @@ sub to_json_schema
 
 
     return 1;
+}
+
+sub is_not_a_typedef {
+    my($type) = @_;
+    return !$type->isa('Bio::KBase::KIDL::KBT::Typedef');
 }
 
 sub get_json_schema_type_name {
@@ -1182,10 +1187,20 @@ sub map_type_to_json_schema
 {
     my($type,$spacer) = @_;
 
+    print Dumper($type)."\n";
+    
     if ($type->isa('Bio::KBase::KIDL::KBT::Typedef'))
     {
-	return map_type_to_json_schema($type->alias_type,$spacer);
-	#return map_type_to_string($type->alias_type, $struct_types);
+        my $out = ''; #note that typedefs do not follow an "type" field, so no comma needs to be added to $out
+        
+        # we don't recurse down typedef references, we simply provide a reference
+        $out .= $spacer."\"\$ref\": ";
+        $out .= "\"#/".$type->module."/".$type->name.".json\"\n";
+        
+          # this is how we would recurse:
+	  #return map_type_to_json_schema($type->alias_type,$spacer);
+          
+	return $out;
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Scalar'))
     {
@@ -1194,29 +1209,41 @@ sub map_type_to_json_schema
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::List'))
     {
-	my $elt_type = map_type_to_json_schema($type->element_type);
-	return "list<$elt_type>";
+        my $out = '';
+        $out .= ",\n";
+    
+        $out .= $spacer."\"items\": {\n";
+        if(is_not_a_typedef($type->element_type)) {
+            $out .= $spacer."      \"type\":\"" . get_json_schema_type_name($type->element_type) . "\"";
+        }
+	my $typeschema = map_type_to_json_schema($type->element_type,$spacer."          ");
+        if($typeschema ne "") {
+            $out .= $typeschema;   
+        } else { $out .= "\n"; }
+        $out .= $spacer."},\n";
+        
+	return $out;
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Mapping'))
     {
         my $out = '';
+        $out .= ",\n";
         
         $out .= $spacer."\"properties\": {},\n";
         $out .= $spacer."\"patternProperties\": {\n";
 
         # what do we do with keys that are not strings!!!!  ignore key types for now...
         $out .= $spacer."    \"\": {\n";
-        $out .= $spacer."          \"type\":\"" . get_json_schema_type_name($type->value_type) . "\"";
+        if(is_not_a_typedef($type->value_type)) {
+            $out .= $spacer."          \"type\":\"" . get_json_schema_type_name($type->value_type) . "\"";
+        }
         my $typeschema = map_type_to_json_schema($type->value_type,$spacer."          ");
         if($typeschema ne "") {
-            $out .= ",\n".$typeschema;   
+            $out .= $typeschema;   
         } else { $out .= "\n"; }
         $out .= $spacer."        }\n";
         $out .= $spacer."},\n";
         $out .= $spacer."\"additionalProperties\":false\n";
-        
-	#my $kt = map_type_to_json_schema($type->key_type);
-	#my $vt = map_type_to_json_schema($type->value_type);
         
 	return $out;
     }
@@ -1234,20 +1261,39 @@ sub map_type_to_json_schema
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Struct'))
     {
+        my $out = '';
+        $out .= ",\n";
+        
+        $out .= $spacer."\"properties\": {\n";
+        
 	my @items = @{$type->items};
 	my @subtypes = map { $_->item_type } @items;
 	my @names = map { $_->name } @items;
-	my $structure_str="structure {\n";
+        
 	for (my $i = 0; $i < @subtypes; $i++)
 	{
-	    $structure_str .= "     ";
-	    my $new_type_str = map_type_to_json_schema($subtypes[$i]);
-	    $structure_str .= $new_type_str;
-	    #note: do we want to descend here and aggregate the internal types?
-	    $structure_str .= " ".$names[$i].";\n";
+            $out .= ",\n" unless ($i==0);
+	    $out .= $spacer."    ";
+            $out .= "\"".$names[$i]."\": {\n";
+            my $type = $subtypes[$i];
+            
+            print $names[$i]."\n";
+            print Dumper($type)."\n";
+            
+            if(is_not_a_typedef($type)) {
+                $out .= $spacer."        \"type\":\"" . get_json_schema_type_name($type) . "\"";
+            }
+            my $typeschema = map_type_to_json_schema($type,$spacer."        ");
+            if($typeschema ne "") {
+                $out .= $typeschema;   
+            } else { $out .= "\n"; }
+            $out .= $spacer."    }";
 	}
-	$structure_str .= "}";
-	return $structure_str;
+        
+	$out .= "\n".$spacer."},\n";
+        $out .= $spacer."\"additionalProperties\":true\n";
+        
+	return $out;
     }
     else
     {

@@ -14,14 +14,17 @@ module MyMod {
         string name;
         string id;
         string sequence;
-        list <fid> features;
+        list <mapping<fid,int>> features;
+        int more_math;
+        mapping <fid,fid> stuff;
     } Genome;
     
     
     
     typedef structure {
         string name;
-        int some_math;
+        myfid some_math;
+        mapping<string,Genome> genomes;
     } Model;
     
     
