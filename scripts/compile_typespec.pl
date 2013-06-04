@@ -1106,7 +1106,10 @@ sub to_json_schema
             print $out $spacer."\"id\":\"".$type->{name}."\",\n";
             print $out $spacer."\"description\":\"".$type->{comment}."\",\n";
             
-            print $out "    \"type\":\"" . get_json_schema_type_name($type->{ref}) . "\"";
+            
+            if(is_not_a_typedef($type->{ref})) {
+                print $out "    \"type\":\"" . get_json_schema_type_name($type->{ref}) . "\"";
+            }
             print $out map_type_to_json_schema($type->{ref},$spacer)."\n";
             
             print $out "}\n";
