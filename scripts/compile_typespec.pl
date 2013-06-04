@@ -163,7 +163,6 @@ sub setup_impl_data
     $ifile =~ s,::,/,g; #convert perl module separators to /
     $ifile =~ s,\.,/,g; #convert py module separators to /
     $ifile .= $ext;
-    make_path(dirname($ifile));
     return $imod, $ifile;
 }
 
@@ -638,13 +637,18 @@ sub write_scripts
             $d{method} = $method;
             my $name = $method->{name};
 
-            my $fh;
-            if (!open($fh, ">", "$scripts_dir/$name.pl"))
-            {
-                die "Cannot write $scripts_dir/$name.pl: $!";
-            }
-        
-            $tmpl->process("$tmpl_dir/api_script.tt", \%d, $fh) || die Template->error;
+	    if (0)
+	    {
+		# don't write the api scripts since they confuse people
+
+		my $fh;
+		if (!open($fh, ">", "$scripts_dir/$name.pl"))
+		{
+		    die "Cannot write $scripts_dir/$name.pl: $!";
+		}
+	    
+		$tmpl->process("$tmpl_dir/api_script.tt", \%d, $fh) || die Template->error;
+	    }
 
             #
             # Determine if the signature of this method allows the creation of a simple script.
@@ -669,13 +673,21 @@ sub write_scripts
             if ($ok)
             {
                 my $fh;
-                if (!open($fh, ">", "$scripts_dir/simple_$name.pl"))
-                {
-                    die "Cannot write $scripts_dir/simple_$name.pl: $!";
-                }
-        
-                $tmpl->process("$tmpl_dir/simple_cmd.tt", \%d, $fh) || die Template->error;
-                close($fh);
+		my $file = "$scripts_dir/simple_$name.pl";
+		if (-f $file)
+		{
+		    warn "Not overwriting existing file $file\n";
+		}
+		else
+		{
+		    if (!open($fh, ">", $file))
+		    {
+			die "Cannot write $file: $!";
+		    }
+	    
+		    $tmpl->process("$tmpl_dir/simple_cmd.tt", \%d, $fh) || die Template->error;
+		    close($fh);
+		}
             }
         }
     }
