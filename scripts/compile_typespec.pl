@@ -1220,7 +1220,7 @@ sub map_type_to_json_schema
         if($typeschema ne "") {
             $out .= $typeschema;   
         } else { $out .= "\n"; }
-        $out .= $spacer."},\n";
+        $out .= $spacer."}\n";
         
 	return $out;
     }
@@ -1249,15 +1249,37 @@ sub map_type_to_json_schema
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Tuple'))
     {
-	# get all the subtypes of the tuple
-	my @subtypes = @{$type->element_types};
-	my $sub_type_str = ""; my $first=0;
+        my $out = '';
+        $out .= ",\n";
+    
+        my @subtypes = @{$type->element_types};
+        
+        $out .= $spacer."\"maxItems\":".scalar(@subtypes).",\n";
+        $out .= $spacer."\"minItems\":".scalar(@subtypes).",\n";
+        $out .= $spacer."\"items\": [\n";
+        
+	my $first=0;
 	foreach my $subtype (@subtypes) {
+        
 	    if($first==0) {$first=1}
-	    else { $sub_type_str .= ","}
-	    $sub_type_str .= map_type_to_json_schema($subtype);
+	    else { $out .= ",\n"}
+            
+	    $out .= $spacer."    {\n";
+            
+            if(is_not_a_typedef($subtype)) {
+                $out .= $spacer."      \"type\":\"" . get_json_schema_type_name($subtype) . "\"";
+            }
+            my $typeschema = map_type_to_json_schema($subtype,$spacer."      ");
+            if($typeschema ne "") {
+                $out .= $typeschema;   
+            } else { $out .= "\n"; }
+	    $out .= $spacer."    }";
+            
 	}
-	return "tuple<".$sub_type_str.">";
+        
+        $out .= "\n".$spacer."]\n";
+        
+	return $out;
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Struct'))
     {

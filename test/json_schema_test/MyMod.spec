@@ -10,6 +10,7 @@ module MyMod {
     typedef fid myfid;
     
     
+    
     typedef structure {
         string name;
         string id;
@@ -27,6 +28,8 @@ module MyMod {
         mapping<string,Genome> genomes;
     } Model;
     
+    
+    typedef tuple <fid,Genome,list<int>,Model> stupid_tuple;
     
     typedef mapping <fid,mapping<fid,fid>> genome2Model;
     
