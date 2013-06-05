@@ -1,16 +1,19 @@
 
 
-
+#include <../MyInclude.types>
 
 
 module MyMod {
 
 
     typedef string fid;
+    
+    
+    /* my version of a fid */
     typedef fid myfid;
     
     
-    
+    /* this is a genome */
     typedef structure {
         string name;
         string id;
@@ -20,8 +23,7 @@ module MyMod {
         mapping <fid,fid> stuff;
     } Genome;
     
-    
-    
+    /* this is a model */
     typedef structure {
         string name;
         myfid some_math;

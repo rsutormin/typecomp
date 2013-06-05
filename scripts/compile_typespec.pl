@@ -209,8 +209,9 @@ while (my($service, $modules) = each %{$parsed_data})
 }
 
 if($generate_json_schema) {
+    my $java_package = "gov.doe.kbase.";
     my $type_info = assemble_types($parser);
-    to_json_schema($type_info,$output_dir);
+    to_json_schema($type_info,$output_dir,$java_package);
 }
 
 
@@ -1078,14 +1079,16 @@ sub has_funcdefs
 ################################################################################
 
 
+
+
 #
 #  creates a json schema for each module
 #
 sub to_json_schema
 {
-    my($type_table,$output_dir) = @_;
+    my($type_table,$output_dir,$java_package) = @_;
 
-    print Dumper($type_table);
+    #print Dumper($type_table);
     
     #create the json output directory (should use File::Spec so we handle all architectures)
     make_path($output_dir . "/jsonschema");
@@ -1106,17 +1109,17 @@ sub to_json_schema
             print $out $spacer."\"id\":\"".$type->{name}."\",\n";
             print $out $spacer."\"description\":\"".$type->{comment}."\",\n";
             
-            
             if(is_not_a_typedef($type->{ref})) {
-                print $out "    \"type\":\"" . get_json_schema_type_name($type->{ref}) . "\"";
+                print $out "    \"type\":\"" . get_json_schema_type_name($type->{ref}) . "\",\n";
+                print $out "    \"javaType\":\"".$java_package.$type->{module}.".".$type->{name}."\"";
             }
-            print $out map_type_to_json_schema($type->{ref},$spacer)."\n";
+            print $out map_type_to_json_schema($type->{ref},$spacer,$java_package)."\n";
             
             print $out "}\n";
             
             close($out);
         }
-        print Dumper($types)."\n";
+        #print Dumper($types)."\n";
     }
     
 
@@ -1164,31 +1167,23 @@ sub get_json_schema_type_name {
 	die "ERROR in get_json_schema_type_name:\n".Dumper($type);
 	return "undef";
     }
-    
-    
-
 }
 
+# sort of a hack to make maps (and possibly other things) appear correctly...  prob should be cleaned up
+sub get_java_class_mapping {
+    my($type) = @_;
 
-sub json_schema_of_typedef
-{
-    my($type_name,$type_def,$module_name,$indent) = @_;
-    return '' unless $type_def->isa('Bio::KBase::KIDL::KBT::Typedef');
-
-    my $schema = '';
-    
-    $schema .= "\"$type_name\": stuff \n";
-    
-    
-    return $schema;
+    if ($type->isa('Bio::KBase::KIDL::KBT::Mapping'))
+    {
+	return "java.util.Map";
+    }
+    return "";
 }
-
-
 
 
 sub map_type_to_json_schema
 {
-    my($type,$spacer) = @_;
+    my($type,$spacer,$java_package) = @_;
 
     print Dumper($type)."\n";
     
@@ -1198,7 +1193,7 @@ sub map_type_to_json_schema
         
         # we don't recurse down typedef references, we simply provide a reference
         $out .= $spacer."\"\$ref\": ";
-        $out .= "\"#/".$type->module."/".$type->name.".json\"\n";
+        $out .= "\"../".$type->module."/".$type->name.".json\"\n";
         
           # this is how we would recurse:
 	  #return map_type_to_json_schema($type->alias_type,$spacer);
@@ -1218,8 +1213,13 @@ sub map_type_to_json_schema
         $out .= $spacer."\"items\": {\n";
         if(is_not_a_typedef($type->element_type)) {
             $out .= $spacer."      \"type\":\"" . get_json_schema_type_name($type->element_type) . "\"";
+            #my $javaclass = get_java_class_mapping($type->element_type);
+            #if($javaclass) {
+            #    $out .= ",\n";
+            #    $out .= $spacer."      \"javaType\":\"".$javaclass."\"";
+            #}
         }
-	my $typeschema = map_type_to_json_schema($type->element_type,$spacer."          ");
+	my $typeschema = map_type_to_json_schema($type->element_type,$spacer."      ",$java_package);
         if($typeschema ne "") {
             $out .= $typeschema;   
         } else { $out .= "\n"; }
@@ -1232,21 +1232,22 @@ sub map_type_to_json_schema
         my $out = '';
         $out .= ",\n";
         
-        $out .= $spacer."\"properties\": {},\n";
-        $out .= $spacer."\"patternProperties\": {\n";
+        $out .= $spacer."\"additionalProperties\": {\n";
 
         # what do we do with keys that are not strings!!!!  ignore key types for now...
-        $out .= $spacer."    \"\": {\n";
         if(is_not_a_typedef($type->value_type)) {
-            $out .= $spacer."          \"type\":\"" . get_json_schema_type_name($type->value_type) . "\"";
+            $out .= $spacer."    \"type\":\"" . get_json_schema_type_name($type->value_type) . "\"";
+            #my $javaclass = get_java_class_mapping($type->value_type);
+            #if($javaclass) {
+            #    $out .= ",\n";
+            #    $out .= $spacer."    \"javaType\":\"".$javaclass."\"";
+            #}
         }
-        my $typeschema = map_type_to_json_schema($type->value_type,$spacer."          ");
+        my $typeschema = map_type_to_json_schema($type->value_type,$spacer."    ",$java_package);
         if($typeschema ne "") {
             $out .= $typeschema;   
         } else { $out .= "\n"; }
-        $out .= $spacer."        }\n";
-        $out .= $spacer."},\n";
-        $out .= $spacer."\"additionalProperties\":false\n";
+        $out .= $spacer."}\n";
         
 	return $out;
     }
@@ -1271,8 +1272,13 @@ sub map_type_to_json_schema
             
             if(is_not_a_typedef($subtype)) {
                 $out .= $spacer."      \"type\":\"" . get_json_schema_type_name($subtype) . "\"";
+                #my $javaclass = get_java_class_mapping($subtype);
+                #if($javaclass) {
+                #    $out .= ",\n";
+                #    $out .= $spacer."      \"javaType\":\"".$javaclass."\"";
+                #}
             }
-            my $typeschema = map_type_to_json_schema($subtype,$spacer."      ");
+            my $typeschema = map_type_to_json_schema($subtype,$spacer."      ",$java_package);
             if($typeschema ne "") {
                 $out .= $typeschema;   
             } else { $out .= "\n"; }
@@ -1307,8 +1313,13 @@ sub map_type_to_json_schema
             
             if(is_not_a_typedef($type)) {
                 $out .= $spacer."        \"type\":\"" . get_json_schema_type_name($type) . "\"";
+                #my $javaclass = get_java_class_mapping($type);
+                #if($javaclass) {
+                #    $out .= ",\n";
+                #    $out .= $spacer."        \"javaType\":\"".$javaclass."\"";
+                #}
             }
-            my $typeschema = map_type_to_json_schema($type,$spacer."        ");
+            my $typeschema = map_type_to_json_schema($type,$spacer."        ",$java_package);
             if($typeschema ne "") {
                 $out .= $typeschema;   
             } else { $out .= "\n"; }
