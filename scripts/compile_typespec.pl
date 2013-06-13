@@ -1113,6 +1113,11 @@ sub to_json_schema
                 print $out "    \"type\":\"" . get_json_schema_type_name($type->{ref}) . "\",\n";
                 print $out "    \"javaType\":\"".$java_package.$type->{module}.".".$type->{name}."\"";
             }
+            #elsif($type->{ref}->isa('Bio::KBase::KIDL::KBT::UndefinedObject')) {
+            #    print $out "    \"type\":\"" . get_json_schema_type_name($type->{ref}) . "\",\n";
+            #    print $out "    \"javaType\":\"java.util.LinkedHashMap\"";
+            #}
+            
             print $out map_type_to_json_schema($type->{ref},$spacer,$java_package)."\n";
             
             print $out "}\n";
@@ -1144,7 +1149,13 @@ sub get_json_schema_type_name {
         if($type->scalar_type eq 'string') { return 'string'; }
         if($type->scalar_type eq 'int') { return 'integer'; }
         if($type->scalar_type eq 'float') { return 'number'; }
+        if($type->scalar_type eq 'bool') { return 'boolean'; }
 	die "ERROR in get_json_schema_type_name:\n".Dumper($type);
+    }
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::UnspecifiedObject'))
+    {
+        #UndefinedObjects do not require further tags
+        return "object";
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::List'))
     {
@@ -1164,7 +1175,7 @@ sub get_json_schema_type_name {
     }
     else
     {
-	die "ERROR in get_json_schema_type_name:\n".Dumper($type);
+	die "ERROR in get_json_schema_type_name, could not identify type:\n".Dumper($type);
 	return "undef";
     }
 }
@@ -1179,6 +1190,7 @@ sub get_java_class_mapping {
     }
     return "";
 }
+
 
 
 sub map_type_to_json_schema
@@ -1205,6 +1217,11 @@ sub map_type_to_json_schema
         #scalar primitives do not require further tags
         return "";
     }
+    elsif ($type->isa('Bio::KBase::KIDL::KBT::UnspecifiedObject'))
+    {
+        #UndefinedObjects do not require further tags
+        return "";
+    }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::List'))
     {
         my $out = '';
@@ -1213,6 +1230,9 @@ sub map_type_to_json_schema
         $out .= $spacer."\"items\": {\n";
         if(is_not_a_typedef($type->element_type)) {
             $out .= $spacer."      \"type\":\"" . get_json_schema_type_name($type->element_type) . "\"";
+            if($type->isa('Bio::KBase::KIDL::KBT::UndefinedObject')) {
+            #        $out .= ",\n".$spacer."      \"javaType\":\"java.util.LinkedHashMap\"";
+            }
             #my $javaclass = get_java_class_mapping($type->element_type);
             #if($javaclass) {
             #    $out .= ",\n";
@@ -1237,6 +1257,9 @@ sub map_type_to_json_schema
         # what do we do with keys that are not strings!!!!  ignore key types for now...
         if(is_not_a_typedef($type->value_type)) {
             $out .= $spacer."    \"type\":\"" . get_json_schema_type_name($type->value_type) . "\"";
+            if($type->isa('Bio::KBase::KIDL::KBT::UndefinedObject')) {
+            #        $out .= ",\n".$spacer."    \"javaType\":\"java.util.LinkedHashMap\"";
+            }
             #my $javaclass = get_java_class_mapping($type->value_type);
             #if($javaclass) {
             #    $out .= ",\n";
@@ -1272,6 +1295,9 @@ sub map_type_to_json_schema
             
             if(is_not_a_typedef($subtype)) {
                 $out .= $spacer."      \"type\":\"" . get_json_schema_type_name($subtype) . "\"";
+                if($type->isa('Bio::KBase::KIDL::KBT::UnspecifiedObject')) {
+                 #   $out .= ",\n".$spacer."      \"javaType\":\"java.util.LinkedHashMap\"";
+                }
                 #my $javaclass = get_java_class_mapping($subtype);
                 #if($javaclass) {
                 #    $out .= ",\n";
@@ -1313,6 +1339,9 @@ sub map_type_to_json_schema
             
             if(is_not_a_typedef($type)) {
                 $out .= $spacer."        \"type\":\"" . get_json_schema_type_name($type) . "\"";
+                if($type->isa('Bio::KBase::KIDL::KBT::UnspecifiedObject')) {
+                #    $out .= ",\n".$spacer."        \"javaType\":\"java.util.LinkedHashMap\"";
+                }
                 #my $javaclass = get_java_class_mapping($type);
                 #if($javaclass) {
                 #    $out .= ",\n";
@@ -1376,6 +1405,58 @@ sub map_type_to_json_schema
 #        "tmpfs": {}
 #    }
 #}
+
+
+
+
+
+
+
+#
+# given a type table
+#
+sub parse_type_annotations
+{
+    my($type_table) = @_;
+
+    # hacked up json schema dumper....
+    while (my($module_name, $types) = each %{$type_table})
+    {
+        foreach my $type (@{$types}) {
+            make_path($output_dir . "/jsonschema/" . $module_name);
+            my $filepath = $output_dir . "/jsonschema/" . $module_name . "/" . $type->{name} . ".json";
+            my $out;
+            
+            open($out, '>>'.$filepath);
+            
+            # print type name and description
+            my $spacer = "    "; my $ts = strftime("%Y-%m-%d-%H-%M-%S", localtime);
+            print $out "{\n$spacer\"\$schema\":\"http://json-schema.org/draft-04/schema#\",\n";
+            print $out $spacer."\"id\":\"".$type->{name}."\",\n";
+            print $out $spacer."\"description\":\"".$type->{comment}."\",\n";
+        }
+    }
+
+
+
+}
+
+
+#sub parse_
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

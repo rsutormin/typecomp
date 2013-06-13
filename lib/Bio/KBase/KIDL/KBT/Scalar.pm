@@ -3,13 +3,14 @@ use Moose;
 use Lingua::EN::Inflect 'A';
 
 use Moose::Util::TypeConstraints;
-enum 'ScalarType' => [qw(int float string)];
+enum 'ScalarType' => [qw(int float string bool)];
 
 has 'scalar_type' => (isa => 'ScalarType', is => 'rw');
 
 our %java_class_type_map = (int => 'Integer.class',
 			    float => 'Float.class',
-			    string => 'String.class');
+			    string => 'String.class',
+                            bool => 'Boolean.class');
 
 sub java_type_expression
 {

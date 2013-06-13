@@ -1,5 +1,6 @@
 package Bio::KBase::KIDL::KBT;
 use Bio::KBase::KIDL::KBT::Funcdef;
+use Bio::KBase::KIDL::KBT::UnspecifiedObject;
 use Bio::KBase::KIDL::KBT::Mapping;
 use Bio::KBase::KIDL::KBT::List;
 use Bio::KBase::KIDL::KBT::Tuple;
