@@ -284,6 +284,13 @@ sub get_json_schema_type_string {
         }
     }
     my $type_string = $spacer."\"type\":\"" . map_type_to_json_schema_typename($type,$options) . "\"";
+    
+    # if they asked for it, bind this type to a java class but only if we can resolve a type name and module name (which all structs and typedefs have)
+    if($options->{specify_java_types}) {
+        if(defined($type->{name}) && defined($type->{module})) {
+            $type_string   .= "\n".$spacer."\"javaType\":\"".$options->{specify_java_types}.$type->{module}.".".$type->{name}."\"";
+        }
+    }
     if($options->{use_kb_annotations}) {
         $type_string   .= "\n".$spacer."\"kb-type\":\"".map_type_to_KIDL_typename($type,$options)."\"";
     }

@@ -13,7 +13,7 @@ module MyMod {
     typedef fid myfid;
     
     
-    /* this is a genome */
+    /* this is a \""genome */
     typedef structure {
         string name;
         string id;

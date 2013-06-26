@@ -1072,6 +1072,11 @@ sub define_type
                 $old_type->comment($comment);
             }
         }
+        # we need to associate a module to this struct for producing json schema that can have java package information
+        if ($old_type->isa('Bio::KBase::KIDL::KBT::Struct'))
+        {
+            $old_type->set_module($active_module);
+        }
     }
     return $def;
 }

@@ -221,6 +221,10 @@ if($generate_json_schema) {
     # set some options, but this should really be passed in as arguments
     my $options = {};
     $options->{jsonschema_version}=3;
+    $options->{specify_java_types}=0; #$java_package;
+    $options->{use_references}=0;
+    $options->{use_kb_annotations}=1;
+    $options->{omit_comments}=0;
     
     my $json_schemas = to_json_schema($type_table,$options);
     write_json_schemas_to_file($json_schemas,$output_dir,$options);
@@ -234,6 +238,11 @@ exit(0);
 ###########################################################################
 #### END OF MAIN SCRIPT, HELPER METHODS ARE BELOW
 ###########################################################################
+
+
+
+
+
 
 
 

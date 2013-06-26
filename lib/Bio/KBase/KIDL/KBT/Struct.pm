@@ -8,6 +8,8 @@ has 'items' => (isa => 'ArrayRef[Bio::KBase::KIDL::KBT::StructItem]',
 
 has 'name' => (is => 'rw', isa => 'Str',
 	       predicate => 'has_name');
+has 'module' => (is => 'rw', isa => 'Str',
+	       predicate => 'has_module');
 has 'comment' => (is => 'rw', isa => 'Str',
 		  predicate => 'has_comment');
 
@@ -17,6 +19,15 @@ sub name_type
     if (!$self->has_name)
     {
 	$self->name($name);
+    }
+}
+
+sub set_module
+{
+    my($self, $module) = @_;
+    if (!$self->has_module)
+    {
+	$self->module($module);
     }
 }
 
