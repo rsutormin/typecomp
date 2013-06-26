@@ -6,22 +6,53 @@ JSONSchema
 
 =head1 DESCRIPTION
 
-Methods for taking a parsed set of KIDL types and returning a JSON schema
-encoding of the types.
+Module that wraps methods which take a parsed set of KIDL types and returns a JSON schema
+encoding of the types with a variety of options.  Two methods are exposed:
 
 
-to_flat_json_schema --
-   for each type, this method creates a fully dereferenced json schema that includes
-   no external references.  These schemas are designed to be used for object validation 
-
-to_referenced_json_schema --
-   creates json schema in which typedefs are fully referenced, and is designed
-   to be compatible with jsonschema2pojo for generating class definitions in java
-   directly from the json schemas, which is required when building java client
-   bindings for KIDL specified services.  Class bindings in other strongly typed
-   languages should use these json schemas.  UML style diagrams can also be
-   generated from these schemas
+my $json_schemas = to_json_schema($type_table,$options)
+   Given a set of types parsed by the KIDL compiler, generate JSON schema documents
+   for each type included in the type table.  The input $type_table is a hash
+   structure generated as output from the method 'assemble_types', which is currently
+   found in the 'compile_typespec' script.  $options is a hash with string valued
+   keys and string values.  The method returns a hash where keys are module names, and
+   values are a hash where keys are type names and values are the JSON schema document
+   string.  (e.g. $json_schemas has this structure: {ModuleName => { TypeName => JsonSchemaString }})
    
+   valid options in the options hash are:
+      "jsonschema_version"=>3|4
+          this indicates whether to use jsonschema v3 or v4 when specifying required fields; by
+          default all fields in a KIDL structure are required unless flagged as optional using
+          KIDL type annotations; default schema version is '3'
+      "use_references"=>1|0
+          if this flag is set to a true value, references are used to other json schemas, which
+          provides a way to identify when typedefs or composition of types in a structure are
+          used; by default, this is off and all references are expanded thus producing a
+          completely self-contained JSON Schema document that is useful for JSON validation
+      "use_kb_annotations"=>1|0
+          if this flag is set to a true value, some KBase specific information is included in
+          the JSON Schema
+      "omit_comments"=>1|0
+          if this flag is set to a true value, comments are not copied to the 'description' field
+          of the JSON Schema document; by default, this is off and all comments associated to
+          types as defined in KIDL are included in the JSON Schema document
+      "specify_java_types"=>[java_package]
+          if this flag is set, the java type information is included in the JSON Schema; the value
+          of this option is interpreted as the fully resolved java package that should be used, and
+          must include the trailing dot; kbase path should be set as: "gov.doe.kbase."  Note that
+          module names are automatically used as part of the path (e.g. classes are:
+          gov.doe.kbase.ModuleName.TypeName)
+          see also jsonschema2pojo (http://code.google.com/p/jsonschema2pojo/wiki/Reference)
+
+
+
+
+write_json_schemas_to_file($json_schemas,$output_dir,$options)
+   Given a set of json schemas produced from 'to_json_schema', output the schemas to file in
+   the specified $output_dir.  The method also accepts an $options hash with string keys and
+   string values, although currently there are no supported options available
+          
+          
 =head1 AUTHORS
 
 Michael Sneddon (LBL, mwsneddon@lbl.gov)
@@ -37,35 +68,26 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(to_json_schema write_json_schemas_to_file);
 
-
-
 #
-# returns {moduleName => { typeName=> string} }
-#
-#   valid options: "jsonschema_version"=>3|4
-#                     this indicates whether to use jsonschema v3 or v4 when specifying required fields
-#                  "use_references"=>1|0
-#                     if this flag is set, references are used to other json schemas as opposed to
-#                     dereferencing all typedefs and structures
+# usage: my $json_schemas = to_json_schema($type_table,$options)
+# see discription of this method at the top of the file
 #
 sub to_json_schema
 {
     my($type_table, $options) = @_;
     
-    # set options here, only for testing!!!!
-    $options->{jsonschema_version} = 3;
-    $options->{use_references} = 0;
-    $options->{use_kb_annotations} = 1;
+    # set default options here if they were not set
+    if(!exists($options->{jsonschema_version})) {
+        $options->{jsonschema_version} = 3;
+    }
+    
     
     my $json_schemas = {};
-    
     while (my($module_name, $types) = each %{$type_table})
     {
         $json_schemas->{$module_name} = {};
         foreach my $type (@{$types})
         {
-            #print "--- ".$module_name.".".$type->{name}."\n";
-            
             my $schema = '';
             my $spacer = "    ";
             
@@ -82,7 +104,6 @@ sub to_json_schema
             $schema .= map_type_to_json_schema($type->{ref},$spacer,$options);
             $schema .= "}\n";
             
-            # print $schema."\n";
             $json_schemas->{$module_name}->{$type->{name}} = $schema;
         }
     }
@@ -92,10 +113,9 @@ sub to_json_schema
 
 
 
-
 #
-#  Given a set of json schemas produced from 'to_json_schema', output the schemas to files
-#    write_schemas_to_file($json_schemas,$output_dir,$options)
+# usage: write_json_schemas_to_file($json_schemas,$output_dir,$options)
+# see discription of this method at the top of the file
 #
 sub write_json_schemas_to_file
 {
@@ -119,10 +139,23 @@ sub write_json_schemas_to_file
 }
 
 
+##############################################################
+##  METHODS BELOW ARE NOT CURRENTLY PUBLICLY ACCESSABLE
+##############################################################
+
 
 
 #
-#  
+# Given a ref to a type, print the JSON schema content of this type given the $options
+# and a spacer which provides the indentation level
+#
+#  $content = map_type_to_json_schema($type,$spacer,$options)
+#     $content is a string that contains the json schema content of the object (not including the 'type' specification)
+#     $type is a ref to a $type parsed from a typespec and processed by the 'assemble_types' method
+#     $spacer is a string containing any characters (generally spaces) to appear before the line
+#          and is mostly used to provide nice formatting
+#     $options is a ref to a hash with string keys and string values used to pass options
+#          to this method; currently no optional parameters are supported
 #
 sub map_type_to_json_schema
 {
@@ -233,8 +266,8 @@ sub map_type_to_json_schema
 
 
 #
-#  $typename = map_type_to_json_schema_typename($type,$options)
-#     $typename is a string that is used to define the type in the json schema (e.g. "type":"object")
+#  $string = get_json_schema_type_string($type,$spacer,$options)
+#     $string is a string that defines the type in the json schema (e.g. "type":"object")
 #          and uses the method map_type_to_json_schema_typename
 #     $type is a ref to a $type parsed from a typespec and saved to
 #     $spacer is a string containing any characters (generally spaces) to appear before the line
@@ -262,7 +295,7 @@ sub get_json_schema_type_string {
 #
 #  $typename = map_type_to_json_schema_typename($type,$options)
 #     $typename is a string that contains the json schema type of the object
-#     $type is a ref to a $type parsed from a typespec and saved to
+#     $type is a ref to a $type parsed from a typespec and processed by the 'assemble_types' method
 #     $options is a ref to a hash with string keys and string values used to pass options
 #          to this method; currently no optional parameters are supported
 #
@@ -299,7 +332,13 @@ sub map_type_to_json_schema_typename {
 }
 
 
-
+#
+#  $typename = map_type_to_KIDL_typename($type,$options)
+#     $typename is a string that contains the KIDL type of the object (e.g. list, mapping, tuple, ...)
+#     $type is a ref to a $type parsed from a typespec and processed by the 'assemble_types' method
+#     $options is a ref to a hash with string keys and string values used to pass options
+#          to this method; currently no optional parameters are supported
+#
 sub map_type_to_KIDL_typename {
     my($type,$options) = @_;
     if ($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
@@ -335,22 +374,44 @@ sub map_type_to_KIDL_typename {
 
 
 
-
+#
+#  $string = extract_comment_from_type($type,$options)
+#     $string is a string that contains constraints that are associated with the type as specified
+#          through KIDL type annotations
+#     $type is a ref to a $type parsed from a typespec and processed by the 'assemble_types' method
+#     $options is a ref to a hash with string keys and string values used to pass options
+#          to this method; currently no optional parameters are supported
+#
 sub map_type_to_json_schema_constraints {
     my($type,$options) = @_;
-
+    return '';
 }
 
 
 
-
-
+#
+#  $comments = extract_comment_from_type($type,$options)
+#     $comments is a string that contains the comments for the type properly escaped so it can
+#          go right into a JSON document
+#     $type is a ref to a $type parsed from a typespec and processed by the 'assemble_types' method
+#     $options is a ref to a hash with string keys and string values used to pass options
+#          to this method; currently no optional parameters are supported
+#
 sub extract_comment_from_type
 {
     my($type,$options) = @_;
+    if($options->{omit_comments}) {
+        return '';
+    }
+    
     my $comment = $type->{comment};
-    #todo: we should make sure all double quotes and backslashes in $comment are escaped
-    #todo: recurse down typedefs to get all the comments...
+    # escape all backslashes so that our json document is valid
+    $comment =~ s/\\/\\\\/g;
+    # escape all double quotes so that our json document is valid
+    $comment =~ s/"/\\"/g;
+    
+    #todo: recurse down typedefs to get all the comments recursively...
+    
     return $comment;
 }
 

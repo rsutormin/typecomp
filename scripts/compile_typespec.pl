@@ -212,21 +212,33 @@ while (my($service, $modules) = each %{$parsed_data})
     }
 }
 
+
+# if the flag was set, output json schema as well to the output directory
 if($generate_json_schema) {
     my $java_package = "gov.doe.kbase.";
-    my $type_info = assemble_types($parser);
-    to_json_schemaOLD($type_info,$output_dir,$java_package);
+    my $type_table = assemble_types($parser);
+    
+    # set some options, but this should really be passed in as arguments
+    my $options = {};
+    $options->{jsonschema_version}=3;
+    
+    my $json_schemas = to_json_schema($type_table,$options);
+    write_json_schemas_to_file($json_schemas,$output_dir,$options);
 }
-
-
 
 # all done, so we exit and dump if requested
 print STDERR Dumper($parsed_data) if $dump_parsed;
 exit(0);
 
 
+###########################################################################
+#### END OF MAIN SCRIPT, HELPER METHODS ARE BELOW
+###########################################################################
 
 
+
+
+#######################################################################################################
 #   usage:
 #   parse_spec($filename, $abs_filecontainer, $parser, $include_paths, $resolved_includes, $return_data)
 #   
@@ -244,7 +256,7 @@ sub parse_spec {
     open($fileHandle, "<", $abs_filepath);
     if(!$fileHandle) {
         print STDERR "FAILURE - cannot open '.$abs_filepath.' \n$!\n";
-        exit(1);  # we should exit more gracefully...
+        exit(1);  # we should probably exit more gracefully...
     }
     
     # read the file to grab the content and resolve includes
@@ -276,7 +288,6 @@ sub parse_spec {
                     $error_message .= "$filename:$line_number: Error(s) found in included file: '$included_filename'\n\tIncluded from: '$abs_included_filecontainer'\n";;
                     $errors_found = 1;
                 }
-            
             }
             # since there was a #include detected and processed at this point, remove it from the content
             $content .= "\n";
@@ -311,7 +322,7 @@ sub parse_spec {
 }
 
 
-
+#######################################################################################################
 # Given a line in a spec file that starts with '#include', resolve the include location and return
 # the filename and absolute path to the folder containing the file, or an error.
 #
@@ -434,7 +445,7 @@ sub resolve_include_location
 
 
 
-
+#######################################################################################################
 sub setup_impl_data
 {
     my($impl_module_base, $module, $ext) = @_;
@@ -456,13 +467,13 @@ sub setup_impl_data
 }
 
 
-
+#######################################################################################################
 # Given one or more modules that implement a service, write a single
 # psgi, client and service stub for the service, and one impl stub per module.
 # 
 # The service stubs include a mapping from the function name in a module
 # to the impl module for that function.
-
+#
 sub write_service_stubs
 {
     my($service, $modules, $output_dir, $need_auth, $available_type_table) = @_;
@@ -1056,6 +1067,8 @@ sub check_for_authentication
 }
 
 
+
+#######################################################################################################
 #  given a reference to a list of module objects as parsed by the type compiler, return 1 if any one of the
 #  modules contains a function definition, 0 otherwise.  This method allows us to check if funcdefs exist
 #  before creating all the stubs.
@@ -1079,19 +1092,6 @@ sub has_funcdefs
 
 
 
-
-################################################################################
-#
-#  creates a json schema for each module
-#
-sub to_json_schemaOLD
-{
-    my($type_table,$output_dir,$java_package) = @_;
-
-    my $json_schemas = to_json_schema($type_table,{});
-    write_json_schemas_to_file($json_schemas,$output_dir,{});
-    return;
-}
 
 
 
@@ -1125,23 +1125,6 @@ sub parse_type_annotations
 
 
 }
-
-
-#sub parse_
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
