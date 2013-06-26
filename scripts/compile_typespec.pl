@@ -11,6 +11,10 @@ use File::Path 'make_path';
 use Bio::KBase::KIDL::KBT;
 use Getopt::Long;
 
+use Bio::KBase::KIDL::JSONSchema qw(to_json_schema write_json_schemas_to_file);
+
+
+
 =head1 NAME
 
 compile_typespec
@@ -211,7 +215,7 @@ while (my($service, $modules) = each %{$parsed_data})
 if($generate_json_schema) {
     my $java_package = "gov.doe.kbase.";
     my $type_info = assemble_types($parser);
-    to_json_schema($type_info,$output_dir,$java_package);
+    to_json_schemaOLD($type_info,$output_dir,$java_package);
 }
 
 
@@ -1084,10 +1088,14 @@ sub has_funcdefs
 #
 #  creates a json schema for each module
 #
-sub to_json_schema
+sub to_json_schemaOLD
 {
     my($type_table,$output_dir,$java_package) = @_;
 
+    my $json_schemas = to_json_schema($type_table,{});
+    write_json_schemas_to_file($json_schemas,$output_dir,{});
+    return;
+    
     #print Dumper($type_table);
     
     #create the json output directory (should use File::Spec so we handle all architectures)

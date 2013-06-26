@@ -20,6 +20,7 @@ module MyMod {
         string sequence;
         list <mapping<fid,int>> features;
         int more_math;
+        UnspecifiedObject someCrazyThings;
         mapping <fid,fid> stuff;
     } Genome;
     
