@@ -225,9 +225,14 @@ sub map_type_to_json_schema
         my $schema = ",\n";
         $schema .= $spacer."\"properties\": {\n";
         
+        # get the info on this type
 	my @items = @{$type->items};
 	my @subtypes = map { $_->item_type } @items;
 	my @names = map { $_->name } @items;
+        my %optional_fields;
+        if(exists($type->{annotations}->{optional})) {
+            %optional_fields = map { $_ => 1 } @{$type->{annotations}->{optional}};
+        }
         
 	for (my $i = 0; $i < @subtypes; $i++) {
             $schema .= ",\n" unless ($i==0);
@@ -235,7 +240,11 @@ sub map_type_to_json_schema
             $schema .= "\"".$names[$i]."\": {\n";
             my $type = $subtypes[$i];
             if($options->{jsonschema_version}==3) {
-                $schema .= $spacer."        \"required\":true,\n";
+                if(exists($optional_fields{$names[$i]})) {
+                    $schema .= $spacer."        \"required\":false,\n";
+                } else {
+                    $schema .= $spacer."        \"required\":true,\n";
+                }
             }
             $schema .= get_json_schema_type_string($type,$spacer."        ",$options);
             my $struct_field_type = map_type_to_json_schema($type,$spacer."        ",$options);
@@ -245,14 +254,21 @@ sub map_type_to_json_schema
         
 	$schema .= "\n".$spacer."},\n";
         $schema .= $spacer."\"additionalProperties\":true";
+        my $required_string = ''; my $n_required = 0; 
         if($options->{jsonschema_version}==4) {
-            $schema .= ",\n".$spacer."\"required\":[";
+            $required_string .= ",\n".$spacer."\"required\":[";
             for (my $i = 0; $i < @subtypes; $i++) {
-                $schema .= "," unless ($i==0);
-                $schema .= "\"".$names[$i]."\"";
+                if(!exists($optional_fields{$names[$i]})) {
+                    $required_string .= "," unless ($n_required==0);
+                    $required_string .= "\"".$names[$i]."\"";
+                    $n_required++;
+                }
             }
-            $schema .= "]";
+            $required_string .= "]";
         }
+        #annoying that the required array must be non-empty!!! so we have to check!
+        if($n_required>0) { $schema .= $required_string; }
+        
         $schema .= "\n";
 	return $schema;
     }
@@ -292,7 +308,7 @@ sub get_json_schema_type_string {
         }
     }
     if($options->{use_kb_annotations}) {
-        $type_string   .= "\n".$spacer."\"kb-type\":\"".map_type_to_KIDL_typename($type,$options)."\"";
+        $type_string   .= ",\n".$spacer."\"kb-type\":\"".map_type_to_KIDL_typename($type,$options)."\"";
     }
     return $type_string;
 }
@@ -411,13 +427,17 @@ sub extract_comment_from_type
         return '';
     }
     
+    #todo: recurse down typedefs to get all the comments recursively...
     my $comment = $type->{comment};
+    
     # escape all backslashes so that our json document is valid
     $comment =~ s/\\/\\\\/g;
     # escape all double quotes so that our json document is valid
     $comment =~ s/"/\\"/g;
     
-    #todo: recurse down typedefs to get all the comments recursively...
+    # we can't have newlines in a JSON document, so replace them with literal slash n
+    $comment =~ s/\n/\\n/g;
+    
     
     return $comment;
 }

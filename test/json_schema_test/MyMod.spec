@@ -13,7 +13,12 @@ module MyMod {
     typedef fid myfid;
     
     
-    /* this is a \""genome */
+    /* this is a genome
+    
+    @optional more_math
+    @optional id features more_math
+    @optional name sequence someCrazyThings stuff
+    */
     typedef structure {
         string name;
         string id;
@@ -23,6 +28,11 @@ module MyMod {
         UnspecifiedObject someCrazyThings;
         mapping <fid,fid> stuff;
     } Genome;
+    
+    /*
+    
+    */
+    typedef Genome MyGenome;
     
     /* this is a model */
     typedef structure {

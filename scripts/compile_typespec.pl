@@ -12,6 +12,7 @@ use Bio::KBase::KIDL::KBT;
 use Getopt::Long;
 
 use Bio::KBase::KIDL::JSONSchema qw(to_json_schema write_json_schemas_to_file);
+use Bio::KBase::KIDL::AnnotationParser qw(parse_all_types_for_annotations);
 
 
 
@@ -213,14 +214,18 @@ while (my($service, $modules) = each %{$parsed_data})
 }
 
 
+
+my $type_table = assemble_types($parser);
+parse_all_types_for_annotations($type_table,{});
+
+
 # if the flag was set, output json schema as well to the output directory
 if($generate_json_schema) {
     my $java_package = "gov.doe.kbase.";
-    my $type_table = assemble_types($parser);
     
     # set some options, but this should really be passed in as arguments
     my $options = {};
-    $options->{jsonschema_version}=3;
+    $options->{jsonschema_version}=4;
     $options->{specify_java_types}=0; #$java_package;
     $options->{use_references}=0;
     $options->{use_kb_annotations}=1;
