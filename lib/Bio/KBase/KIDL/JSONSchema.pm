@@ -309,6 +309,8 @@ sub get_json_schema_type_string {
     }
     if($options->{use_kb_annotations}) {
         $type_string   .= ",\n".$spacer."\"kb-type\":\"".map_type_to_KIDL_typename($type,$options)."\"";
+        
+        #### todo: add id_reference annotation here
     }
     return $type_string;
 }
@@ -409,6 +411,23 @@ sub map_type_to_json_schema_constraints {
     my($type,$options) = @_;
     return '';
 }
+
+
+#
+# check if typedef should be marked as a reference, and if so add the annotation to the json schema document
+#
+sub get_kb_id_ref_tag {
+    my($type,$options) = @_;
+    
+    if ($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
+        
+    
+        return map_type_to_KIDL_typename($type->alias_type,$options);
+    }
+    
+    return '';
+}
+
 
 
 
