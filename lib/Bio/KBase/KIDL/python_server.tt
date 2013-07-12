@@ -34,7 +34,8 @@ config = getConfigs()
 	specToPy.mapping = 'dict';
 	specToPy.int = 'int';
 	specToPy.float = 'float';
-	specToPy.string = 'basestring'; 
+	specToPy.string = 'basestring';
+	specToPy.UnspecifiedObject = 'object';
 -%]
 [% FOREACH module IN modules -%]
 [% SET mn = module.module_name -%]

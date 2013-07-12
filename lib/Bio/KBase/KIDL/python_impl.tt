@@ -10,7 +10,8 @@
 	specToPy.mapping = 'dict';
 	specToPy.int = 'int';
 	specToPy.float = 'float';
-	specToPy.string = 'basestring'; 
+	specToPy.string = 'basestring';
+	specToPy.UnspecifiedObject = 'object';
 -%]
 Module Name:
 [% module.module_name %]
