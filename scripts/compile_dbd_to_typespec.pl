@@ -21,7 +21,7 @@ line scripts for an ERDB database as defined by its XML specification.
 
 =head1 COMMAND-LINE OPTIONS
 
-Usage: compile_dbd_to_typespec service-name module-name DBD-xml-file spec-file impl-file bin-dir
+Usage: compile_dbd_to_typespec [--doc documentation-file] service-name module-name DBD-xml-file spec-file impl-file bin-dir
 
 =head1 AUTHORS
 
@@ -30,7 +30,9 @@ Robert Olson, Argonne National Laboratory, olson@mcs.anl.gov
 =cut
 
 my $help;
-my $rc = GetOptions("h|help" => \$help);    
+my $doc_file;
+my $rc = GetOptions("h|help" => \$help,
+		    "doc=s" => \$doc_file);    
 
 if (!$rc || $help || @ARGV < 6)
 {
@@ -114,15 +116,10 @@ my $template_data = {
     entities_by_name => {},
     relationships => $relationships,
     module => $module,
+    service => $service,
 };
 
-open(OUT, ">", $out_file) or die "cannot write $out_file: $!";
 open(IMPL, ">", $impl_file) or die "cannot write $impl_file: $!";
-print OUT "module $service : $module {\n";
-print OUT "typedef string diamond;\n";
-print OUT "typedef string countVector;\n";
-print OUT "typedef string rectangle;\n";
-print OUT "\n";
 
 for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc->findnodes('//Entities/Entity'))
 {
@@ -150,9 +147,6 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
 
     my $id_ftype = $type_map{$keyType};
 
-    print OUT "typedef structure {\n";
-    print OUT "\t$id_ftype id;\n";
-
     #
     # Relationship linkages.
     #
@@ -169,19 +163,20 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
 
 	$fnn =~ s/-/_/g;
 
-	my $field_ent = { name => $fnn, sapling_name => $fn };
-	push(@$field_map,$field_ent);
-	
 	my $ftype = $type_map{$f->getAttribute("type")};
 
+	my $field_ent = {
+	    name => $fnn,
+	    sapling_name => $fn,
+	    type => $f->getAttribute("type"),
+	    mapped_type => $ftype,
+	};
+	
+	push(@$field_map,$field_ent);
+	
 	if ($field_rel)
 	{
-	    print OUT "\tlist<$ftype> $fnn nullable;\n";
 	    $field_ent->{field_rel} = $field_rel;
-	}
-	else 
-	{
-	    print OUT "\t$ftype $fnn nullable;\n";
 	}
 
 	my @fcnode = $f->getChildrenByTagName("Notes");
@@ -194,16 +189,6 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
 
     $edata->{field_list} = join(", ", map { "'$_->{name}'" } @$field_map);
     $com .= "\n\n=back\n\n";
-    print OUT "} fields_$nn ;\n";
-    print OUT "\n";
-    print OUT "/*\n$com\n*/\n";
-    print OUT "funcdef get_entity_$nn(list<string> ids, list<string> fields)\n";
-    print OUT "\treturns(mapping<string, fields_$nn>);\n";
-    print OUT "funcdef query_entity_$nn(list<tuple<string, string, string>> qry, list<string> fields)\n";
-    print OUT "\treturns(mapping<string, fields_$nn>);\n";
-    print OUT "funcdef all_entities_$nn(int start, int count, list<string> fields)\n";
-    print OUT "\treturns(mapping<string, fields_$nn>);\n";
-    print OUT "\n";
 }
 
 for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc->findnodes('//Relationships/Relationship'))
@@ -221,12 +206,18 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
 
     my $field_map = [];
 
+    my $from_ftype = $type_map{$template_data->{entities_by_name}->{$from}->{key_type}};
+    my $to_ftype = $type_map{$template_data->{entities_by_name}->{$to}->{key_type}};
+
     my $edata = {
 	name 	     => $nn,
 	sapling_name => $n,
 	field_map    => $field_map,
+	from_type    => $from_ftype,
+	to_type      => $to_ftype,
 	relation     => $nn,
 	is_converse  => 0,
+	converse_name => $converse,
 	from 	     => $from,
 	to 	     => $to,
 	comment      => $com,
@@ -239,7 +230,10 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
 	name 	     => $converse,
 	sapling_name => $converse,
 	relation     => $nn,
+	from_type    => $to_ftype,
+	to_type      => $from_ftype,
 	is_converse  => 1,
+	forward_name => $nn,
 	field_map    => $field_map,
 	from 	     => $to,
 	to 	     => $from,
@@ -249,15 +243,7 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
     };
     push(@$relationships, $rev_edata);
 
-    my $from_ftype = $type_map{$template_data->{entities_by_name}->{$from}->{key_type}};
-    my $to_ftype = $type_map{$template_data->{entities_by_name}->{$to}->{key_type}};
-
     my @fields = $e->findnodes('Fields/Field');
-
-    print OUT "typedef structure {\n";
-#    print OUT "\tstring id;\n";
-    print OUT "\t$from_ftype from_link;\n";
-    print OUT "\t$to_ftype to_link;\n";
 
     $com .= "\nIt has the following fields:\n\n=over 4\n\n";
     for my $f (@fields)
@@ -269,51 +255,53 @@ for my $e (sort { $a->getAttribute("name") cmp $b->getAttribute("name") }  $doc-
 	my $field_rel = $f->getAttribute("relation");
 	$fnn =~ s/-/_/g;
 
-	my $field_ent = { name => $fnn, sapling_name => $fn };
-	push(@$field_map,$field_ent);
-
 	my $ftype = $type_map{$f->getAttribute("type")};
+
+	my $field_ent = {
+	    name => $fnn,
+	    sapling_name => $fn,
+	    type => $f->getAttribute("type"),
+	    mapped_type => $ftype,
+	};
+	push(@$field_map,$field_ent);
 
 	
 	if ($field_rel)
 	{
-	    print OUT "\tlist<$ftype> $fnn nullable;\n";
 	    $field_ent->{field_rel} = $field_rel;
-	}
-	else 
-	{
-	    print OUT "\t$ftype $fnn nullable;\n";
 	}
 
 	my @fcnode = $f->getChildrenByTagName("Notes");
 	my $fcom = join("\n", map { my $s = $_->textContent; $s =~ s/^\s*//gm; $s } @fcnode);
 
 	$com .= "\n=item $fnn\n\n$fcom\n\n";
+
+	$field_ent->{notes} = $fcom;
+	$field_ent->{notes} =~ s/\n/ /gs;
     }
 
     $edata->{field_list} = join(", ", map { "'$_->{name}'" } @$field_map);
     $rev_edata->{field_list} = join(", ", map { "'$_->{name}'" } @$field_map);
     $com .= "\n\n=back\n\n";
-    print OUT "} fields_$nn ;\n";
-    print OUT "\n";
-    print OUT "/*\n$com\n*/\n";
-    print OUT "funcdef get_relationship_$nn(list<string> ids, list<string> from_fields, list<string> rel_fields,  list<string> to_fields)\n";
-    print OUT "\treturns(list<tuple<fields_$from, fields_$nn, fields_$to>>);\n";
-
-    print OUT "funcdef get_relationship_$converse(list<string> ids, list<string> from_fields, list<string> rel_fields,  list<string> to_fields)\n";
-    print OUT "\treturns(list<tuple<fields_$to, fields_$nn, fields_$from>>);\n";
-
-    print OUT "\n";
 }
 
-
-print OUT "};\n";
+# print Dumper($template_data);
 
 my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
 
 my $tmpl = Template->new({ OUTPUT_PATH => '.',
 			       ABSOLUTE => 1,
 			   });
+
+open(my $fh, ">", $out_file) or die "Cannot open $out_file for writing: $!";
+$tmpl->process("$tmpl_dir/sapling_spec.tt", $template_data, $fh) || die Template->error;
+close($fh);
+if ($doc_file)
+{
+    open(my $fh, ">", $doc_file) or die "Cannot open $doc_file for writing: $!";
+    $tmpl->process("$tmpl_dir/sapling_doc.tt", $template_data, $fh) || die Template->error;
+    close($fh);
+}
 
 for my $entity (@{$entities})
 {

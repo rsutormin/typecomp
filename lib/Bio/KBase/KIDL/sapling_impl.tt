@@ -605,6 +605,86 @@ sub new
     return $self;
 }
 
+=head2 get_all
+
+  $result_set = $obj->get_all($object_names, $filter_clause, $parameters, $fields, $count)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$object_names is a string
+$filter_clause is a string
+$parameters is a reference to a list where each element is a string
+$fields is a string
+$count is an int
+$result_set is a reference to a list where each element is a reference to a list where each element is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$object_names is a string
+$filter_clause is a string
+$parameters is a reference to a list where each element is a string
+$fields is a string
+$count is an int
+$result_set is a reference to a list where each element is a reference to a list where each element is a string
+
+
+=end text
+
+
+
+=item Description
+
+Wrapper for the GetAll function documented L<here|http://pubseed.theseed.org/sapling/server.cgi?pod=ERDB#GetAll>.
+Note that the object_names and fields arguments must be strings; array references are not allowed.
+
+=back
+
+=cut
+
+sub get_all
+{
+    my $self = shift;
+    my($object_names, $filter_clause, $parameters, $fields, $count) = @_;
+
+    my @_bad_arguments;
+    (!ref($object_names)) or push(@_bad_arguments, "Invalid type for argument \"object_names\" (value was \"$object_names\")");
+    (!ref($filter_clause)) or push(@_bad_arguments, "Invalid type for argument \"filter_clause\" (value was \"$filter_clause\")");
+    (ref($parameters) eq 'ARRAY') or push(@_bad_arguments, "Invalid type for argument \"parameters\" (value was \"$parameters\")");
+    (!ref($fields)) or push(@_bad_arguments, "Invalid type for argument \"fields\" (value was \"$fields\")");
+    (!ref($count)) or push(@_bad_arguments, "Invalid type for argument \"count\" (value was \"$count\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to get_all:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'get_all');
+    }
+
+    my $ctx = $XServer::CallContext;
+    my($result_set);
+    #BEGIN get_all
+
+    $result_set = [$self->{db}->GetAll($object_names, $filter_clause, $parameters, $fields, $count)];
+
+    #END get_all
+    my @_bad_returns;
+    (ref($result_set) eq 'ARRAY') or push(@_bad_returns, "Invalid type for return variable \"result_set\" (value was \"$result_set\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to get_all:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'get_all');
+    }
+    return($result_set);
+}
+
+
 [% FOREACH entity IN entities %]
 
 # sub add_entities_[% entity.name %]
