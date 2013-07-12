@@ -44,12 +44,12 @@ sub parse_comment_for_annotations
     for (split /^/, $raw_comment) {
         my $line = $_;
         chomp($line);
-        print "[]'".$line."'\n";
+        #print "[]'".$line."'\n";
         
         #trim whitespace
         $line =~ s/^\s+//;
         $line =~ s/\s+$//;
-        print "[1]'".$line."'\n";
+        #print "[1]'".$line."'\n";
                 
         #detect if we think this is an annotation (if it start with '@')
         if($line=~/^@/) {
@@ -61,7 +61,7 @@ sub parse_comment_for_annotations
             if($n_tokens>0) {
                 my $flag = shift(@tokens);
                 
-                print "FLAG:'".$flag."\n";
+                #print "FLAG:'".$flag."\n";
                 my ($n_warnings, $warning_mssg) = process_annotation($annotations,$flag,\@tokens,$type,$options);
                 $n_total_warnings+=$n_warnings;
                 $total_warning_mssg .= $warning_mssg;
@@ -70,7 +70,7 @@ sub parse_comment_for_annotations
             }
             
             
-            print Dumper(@tokens)."\n";
+            #print Dumper(@tokens)."\n";
                      
         }
         
@@ -92,8 +92,8 @@ sub parse_all_types_for_annotations
     {
         foreach my $type (@{$types})
         {
-            print "-----".$type->{name}."\n";
-            print $type->{comment}."\n---\n";
+            #print "-----".$type->{name}."\n";
+            #print $type->{comment}."\n---\n";
             
             # parse to retrieve the annotations, taking note of warnings that get passed back up
             my ($annotations,$n_warnings, $warning_mssg) = parse_comment_for_annotations($type->{comment},$type,$options);
@@ -108,10 +108,12 @@ sub parse_all_types_for_annotations
     }
     
     
-    print Dumper($type_table)."\n";
+    #print Dumper($type_table)."\n";
     
-    print "total annotation warnings: ".$n_total_warnings."\n";
-    print $total_warning_mssg."\n";
+    if($n_total_warnings > 0) {
+        print "total annotation warnings: ".$n_total_warnings."\n";
+        print $total_warning_mssg."\n";
+    }
     return;
 }
 
