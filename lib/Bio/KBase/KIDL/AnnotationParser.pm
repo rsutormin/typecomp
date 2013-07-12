@@ -36,7 +36,8 @@ sub parse_comment_for_annotations
 {
     my($raw_comment, $type, $options) = @_;
     
-    my $annotations = {};  
+    my $annotations = {}; #place to save annotations that we recognize
+    $annotations->{unknown_annotations} = {}; #place to save declared annotations which we don't specifically parse
     my $n_total_warnings = 0;
     my $total_warning_mssg = '';
     
@@ -65,16 +66,9 @@ sub parse_comment_for_annotations
                 my ($n_warnings, $warning_mssg) = process_annotation($annotations,$flag,\@tokens,$type,$options);
                 $n_total_warnings+=$n_warnings;
                 $total_warning_mssg .= $warning_mssg;
-                
-             
             }
-            
-            
             #print Dumper(@tokens)."\n";
-                     
         }
-        
-                
     }
     #give back what we hath found
     return ($annotations,$n_total_warnings,$total_warning_mssg);
@@ -131,7 +125,6 @@ sub process_annotation {
     
     my $n_warnings = 0;
     my $warning_mssg = '';
-    
     
     # optional [field_name] [field_name] ...
     #    this flag indicates that the specified field name or names are optional, used primarily to allow
@@ -233,7 +226,120 @@ sub process_annotation {
         }
     }
     
+    # ws_searchable [field] [field] [field] ...
+    # ws_searchable keys_of [mapping_field] [mapping_field] [mapping_field] ...
+    #    this annotation, if set, indicates what fields of a structure should be stored in a searchable way in the workspace service
+    #    for this type of object.  For the time being, only top level fields can be selected.  If a field is selected, then
+    #    the entire contents of the subfield are included.  Optionally, if and only if the field is a map, adding the word 'keys_of'
+    #    allows you to include the keys, but not the values.  In the future we will add support to decend into and select sub-fields
+    #    probably using something like the dot operator.
+    #
+    #    Note that the entire contents of the searchable subset for any instance cannot exceed 16mb.  Such objects will be rejected if
+    #    you attempt to store them to a workspace.  If you expect the searchable subset to often exceed 16mb, you should restructure your
+    #    typed object or mark less fields as searchable
+    #
+    elsif($flag eq 'ws_searchable') {
+        # first make sure we are pointint to a structure, otherwise @optional makes no sense
+        if(!$type->{ref}->isa('Bio::KBase::KIDL::KBT::Struct')) {
+            $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' does nothing for non-structure types.\n";
+            $warning_mssg .= "\@$flag annotation was defined for type '".$type->{module}.".".$type->{name}."', which is not a structure.\n";
+            $warning_mssg .= "Note that $flag fields can ONLY be defined where the structure was originally\n";
+            $warning_mssg .= "  defined, and NOT in a typedef that resolves to a structure.\n";
+            $n_warnings++;
+        } else {
+        
+            # make sure we are making something searchable, otherwise abort
+            if(scalar(@{$values})==0) {
+                $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' does nothing if no fields are specified.\n";
+                $warning_mssg .= "\@$flag annotation was defined for type '".$type->{module}.".".$type->{name}."'.\n";
+                $n_warnings++;
+            } else {
+                # we are sure that we have a structure, so get a list of field names
+                my @items = @{$type->{ref}->items};
+                # construct a lookup table where we can get the field name and its type by field name
+                my %field_lookup_table = map { $_->name => $_->item_type } @items;
+                
+                # create the annotation object if we must, which we divide into searchable fields and searchable keys
+                if(!defined($annotations->{ws_searchable_fields})) { $annotations->{ws_searchable_fields} = []; }
+                if(!defined($annotations->{ws_searchable_keys})) { $annotations->{ws_searchable_keys} = []; }
+                
+                # if the first term is 'keys_of', then remember that
+                my $set_to_keys;
+                if( $values->[0] eq 'keys_of' ) { $set_to_keys=1; }
+                
+                # go through each field that was listed
+                foreach my $field (@{$values}) {
+                    next if($field eq 'keys_of');
+                    # do simple checking to see if the field exists
+                    if(!exists($field_lookup_table{$field})) {
+                        $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' for structure '".$type->{module}.".".$type->{name}."' indicated\n";
+                        $warning_mssg .= "  a field named '$field', but no such field exists in the structure, so this constraint was ignored.\n";
+                        $n_warnings++;
+                        next;
+                    }
+                    
+                    if(defined($set_to_keys)) {
+                        # make sure the field typedefs to a mapping
+                        my $is_typedef_that_maps_to_mapping;
+                        my $subtype = $field_lookup_table{$field};
+                        if($subtype->isa('Bio::KBase::KIDL::KBT::Typedef')) {
+                            my $base_type = $subtype->{alias_type};
+                            while($base_type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
+                                $base_type = $base_type->{alias_type};
+                            }
+                            if($base_type->isa('Bio::KBase::KIDL::KBT::Mapping')) {
+                                    $is_typedef_that_maps_to_mapping = 1;
+                            } 
+                        } elsif($subtype->isa('Bio::KBase::KIDL::KBT::Mapping')) {
+                            $is_typedef_that_maps_to_mapping = 1;
+                        }
+                        if(!$is_typedef_that_maps_to_mapping) {
+                            $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' for structure '".$type->{module}.".".$type->{name}."' indicated\n";
+                            $warning_mssg .= "  that you want to set the keys of a field named '$field' to be searchable, but that field does not resolve\n";
+                            $warning_mssg .= "  to a mapping object.  You can only use the 'keys_of' qualifier for mappings or typedefs of mappings.\n";
+                            $n_warnings++;
+                            next;
+                        }
+                        
+                    
+                        # don't add it twice, and report that we found it already
+                        foreach my $marked_field (@{$annotations->{ws_searchable_keys}}) {
+                            if($marked_field eq $field) {
+                                $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' for structure '".$type->{module}.".".$type->{name}."' has\n";
+                                $warning_mssg .= "  marked the keys of a field named '$field' multiple times.\n";
+                                $n_warnings++;
+                                next;
+                            }
+                        }
+                        # if we got here, we are good. push it to the list
+                        push(@{$annotations->{ws_searchable_keys}},$field);
+                    } else {
+                        # don't add it twice, and report that we found it already
+                        foreach my $marked_field (@{$annotations->{ws_searchable_fields}}) {
+                            if($marked_field eq $field) {
+                                $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' for structure '".$type->{module}.".".$type->{name}."' has\n";
+                                $warning_mssg .= "  marked the keys of a field named '$field' multiple times.\n";
+                                $n_warnings++;
+                                next;
+                            }
+                        }
+                        # if we got here, we are good. push it to the list
+                        push(@{$annotations->{ws_searchable_fields}},$field);
+                    }
+                }
+            }
+        }
+    }
     
+    
+    # catch all other annotations and place them on the heap
+    else {
+        # make sure we have a list defined, then push the annotation to the list and let someone else deal with it downstream
+        if(!defined($annotations->{unknown_annotations}->{$flag})) {
+            $annotations->{unknown_annotations}->{$flag} = [];
+        }
+        push(@{$annotations->{unknown_annotations}->{$flag}},join(' ',@{$values}));
+    }
     
     return ($n_warnings, $warning_mssg);
 }
