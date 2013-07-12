@@ -1129,39 +1129,4 @@ sub has_funcdefs
 
 
 
-
-
-
-#
-# given a type table
-#
-sub parse_type_annotations
-{
-    my($type_table) = @_;
-
-    # hacked up json schema dumper....
-    while (my($module_name, $types) = each %{$type_table})
-    {
-        foreach my $type (@{$types}) {
-            make_path($output_dir . "/jsonschema/" . $module_name);
-            my $filepath = $output_dir . "/jsonschema/" . $module_name . "/" . $type->{name} . ".json";
-            my $out;
-            
-            open($out, '>>'.$filepath);
-            
-            # print type name and description
-            my $spacer = "    "; my $ts = strftime("%Y-%m-%d-%H-%M-%S", localtime);
-            print $out "{\n$spacer\"\$schema\":\"http://json-schema.org/draft-04/schema#\",\n";
-            print $out $spacer."\"id\":\"".$type->{name}."\",\n";
-            print $out $spacer."\"description\":\"".$type->{comment}."\",\n";
-        }
-    }
-
-
-
-}
-
-
-
-
 __DATA__
