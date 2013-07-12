@@ -42,6 +42,8 @@ Arguments:
     --client name	       Use name as the classname for the generated client module
     --js name		       Use name as the basename for the generated Javascript client module
     --py name		       Use name as the basename for the generated Python client module
+    --pyserver name            Use name as the classname for the generated Python service module
+    --pyimpl name              Use name as the classname for the generated Python implementation module
     --url URL		       Use URL as the default service URL in the generated clients
     --path path                Specify path as the search path for includes, mulitple directories
                                are delimited by ':'.  Can also be set with an environment variable
@@ -165,7 +167,7 @@ for my $spec_file (@spec_files)
     my $full_file_path = File::Spec->rel2abs($spec_file);
     
     # only continue if the file exists
-    if(-e $full_file_path) {
+    if(-f $full_file_path) {
         
         # clear the cached type information (so that types included by one spec file are not available to other spec files)
         #$parser->clear_symbol_table_cache();
@@ -197,7 +199,7 @@ for my $spec_file (@spec_files)
         }
         
     } else {
-        $error_msg .= "Cannot read file '$filename'\n";
+        $error_msg .= "Cannot read spec file: '$filename'\n";
         $errors_found ++;
     }
 }
