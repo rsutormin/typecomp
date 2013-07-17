@@ -102,7 +102,7 @@ sub parse_all_types_for_annotations
     }
     
     
-    #print Dumper($type_table)."\n";
+    print Dumper($type_table)."\n";
     
     if($n_total_warnings > 0) {
         print "total annotation warnings: ".$n_total_warnings."\n";
@@ -191,6 +191,10 @@ sub process_annotation {
                     $is_typedef_that_maps_to_string = 1;
                 }
             } 
+        } elsif ($type->{ref}->isa('Bio::KBase::KIDL::KBT::Scalar')) {
+            if($type->{ref}->{'scalar_type'} eq 'string') {
+                $is_typedef_that_maps_to_string = 1;
+            }
         }
         
         #second, we ensure that an id hasn't been set already
@@ -352,7 +356,5 @@ sub resolve_typedef {
     }
     return $type;
 }
-
-
 
 

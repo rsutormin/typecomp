@@ -100,7 +100,8 @@ sub to_json_schema
             $schema .= $spacer."\"id\":\"".$type->{name}."\",\n";
             my $comment = extract_comment_from_type($type,$options);
             $schema .= $spacer."\"description\":\"".$comment."\",\n";
-            $schema .= get_json_schema_type_string($type->{ref},$spacer,$options);
+            my $is_top_level = 1;
+            $schema .= get_json_schema_type_string($type->{ref},$spacer,$options,$is_top_level);
             $schema .= map_type_to_json_schema($type->{ref},$spacer,$options);
             $schema .= "}\n";
             
@@ -183,7 +184,7 @@ sub map_type_to_json_schema
     elsif ($type->isa('Bio::KBase::KIDL::KBT::List')) {
         my $schema = ",\n";
         $schema .= $spacer."\"items\": {\n";
-        $schema .= get_json_schema_type_string($type->element_type,$spacer."    ",$options);
+        $schema .= get_json_schema_type_string($type->element_type,$spacer."    ",$options,0);
 	my $list_element_schema = map_type_to_json_schema($type->element_type,$spacer."    ",$options);
         if($list_element_schema ne "") { $schema .= $list_element_schema; } else { $schema .= "\n"; }
         $schema .= $spacer."}\n";
@@ -192,7 +193,7 @@ sub map_type_to_json_schema
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Mapping')) {
         my $schema = ",\n";
         $schema .= $spacer."\"additionalProperties\": {\n";
-        $schema .= get_json_schema_type_string($type->value_type,$spacer."    ",$options);
+        $schema .= get_json_schema_type_string($type->value_type,$spacer."    ",$options,0);
         
         #NOTE: key types are ignored because they are always strings in JSON.  We assume that the typecompiler
         #will catch cases where a non-string type is used
@@ -213,7 +214,7 @@ sub map_type_to_json_schema
 	foreach my $subtype (@subtypes) {
 	    if($first==0) {$first=1} else { $schema .= ",\n"}
 	    $schema .= $spacer."    {\n";
-            $schema .= get_json_schema_type_string($subtype,$spacer."        ",$options);
+            $schema .= get_json_schema_type_string($subtype,$spacer."        ",$options,0);
             my $tuple_element_schema = map_type_to_json_schema($subtype,$spacer."        ",$options);
             if($tuple_element_schema ne "") { $schema .= $tuple_element_schema; } else { $schema .= "\n"; }
             $schema .= $spacer."    }";
@@ -246,7 +247,7 @@ sub map_type_to_json_schema
                     $schema .= $spacer."        \"required\":true,\n";
                 }
             }
-            $schema .= get_json_schema_type_string($type,$spacer."        ",$options);
+            $schema .= get_json_schema_type_string($type,$spacer."        ",$options,0);
             my $struct_field_type = map_type_to_json_schema($type,$spacer."        ",$options);
             if($struct_field_type ne "") { $schema .= $struct_field_type; } else { $schema .= "\n"; }
             $schema .= $spacer."    }";
@@ -282,7 +283,7 @@ sub map_type_to_json_schema
 
 
 #
-#  $string = get_json_schema_type_string($type,$spacer,$options)
+#  $string = get_json_schema_type_string($type,$spacer,$options,$is_top_level)
 #     $string is a string that defines the type in the json schema (e.g. "type":"object")
 #          and uses the method map_type_to_json_schema_typename
 #     $type is a ref to a $type parsed from a typespec and saved to
@@ -290,9 +291,12 @@ sub map_type_to_json_schema
 #          and is mostly used to provide nice formatting
 #     $options is a ref to a hash with string keys and string values used to pass options
 #          to this method; currently no optional parameters are supported
+#     $is_top_level is set to 1 if it is the top level of the JSON schema document, or set to zero
+#          otherwise.  This is needed because some kb annotations are only added the the json
+#          schema document if the typed object is a top-level type
 #
 sub get_json_schema_type_string {
-    my($type,$spacer,$options) = @_;
+    my($type,$spacer,$options,$is_top_level) = @_;
     # if we use references, then typedefs should not print a type, but will only have a reference
     if($options->{use_references}) {
         if ($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
@@ -307,10 +311,41 @@ sub get_json_schema_type_string {
             $type_string   .= "\n".$spacer."\"javaType\":\"".$options->{specify_java_types}.$type->{module}.".".$type->{name}."\"";
         }
     }
+    # if they asked for it, output valid kb_annotations associated to the object
     if($options->{use_kb_annotations}) {
-        $type_string   .= ",\n".$spacer."\"kb-type\":\"".map_type_to_KIDL_typename($type,$options)."\"";
-        
-        #### todo: add id_reference annotation here
+        # specify what kind of kbase type it is (helpful for distinguishing between objects and mappings) 
+        $type_string .= ",\n".$spacer."\"kb-type\":\"".map_type_to_KIDL_typename($type,$options)."\"";
+        # tag things that are marked as id references
+        my $idrefs = get_kb_id_ref_tag($type,$options);
+        if($idrefs) {
+            $type_string .= ",\n".$spacer."\"kb-id-reference\":[";
+            for (my $i = 0; $i < scalar(@{$idrefs}); $i++) {
+                $type_string .= "," unless ($i==0);
+                $type_string .= "\"".$idrefs->[$i]."\"";
+            }
+            $type_string .= "]";
+        }
+        # only top level objects get assigned workspace searchable tags
+        if($is_top_level == 1) {
+            my $ws_searchable_fields = get_kb_ws_searchable_tag($type,$options,'ws_searchable_fields');
+            my $ws_searchable_keys   = get_kb_ws_searchable_tag($type,$options,'ws_searchable_keys');
+            if($ws_searchable_fields) {
+                $type_string .= ",\n".$spacer."\"kb-ws-searchable-fields\":[";
+                    for (my $i = 0; $i < scalar(@{$ws_searchable_fields}); $i++) {
+                        $type_string .= "," unless ($i==0);
+                        $type_string .= "\"".$ws_searchable_fields->[$i]."\"";
+                    }
+                $type_string .= "]";
+            }
+            if($ws_searchable_keys) {
+                $type_string .= ",\n".$spacer."\"kb-ws-searchable-keys\":[";
+                    for (my $i = 0; $i < scalar(@{$ws_searchable_keys}); $i++) {
+                        $type_string .= "," unless ($i==0);
+                        $type_string .= "\"".$ws_searchable_keys->[$i]."\"";
+                    }
+                $type_string .= "]";
+            }
+        }
     }
     return $type_string;
 }
@@ -414,19 +449,56 @@ sub map_type_to_json_schema_constraints {
 
 
 #
-# check if typedef should be marked as a reference, and if so add the annotation to the json schema document
+# function to check if typedef of a string or key of a mapping should be marked as a reference
+# my $id_refs = get_kb_id_ref_tag($type,$options)
+#
+#   $id_refs is undef if no id_reference annotation was set for the base string or key of the mapping
+#   $id_refs is [] if id_reference was set, but no specific typed objects were specified
+#   $id_refs is [Mod1.Type1 .... ] if id_reference was set to a list of typed objects
 #
 sub get_kb_id_ref_tag {
     my($type,$options) = @_;
-    
-    if ($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
-        
-    
-        return map_type_to_KIDL_typename($type->alias_type,$options);
+    if($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
+        # at the first point where id_reference is defined, we pass back up the annotation;  this ensures that
+        # the annotation always overrides previous definitions.
+        if(defined($type->{annotations}->{id_reference})) {
+            return $type->{annotations}->{id_reference};
+        }
+        return get_kb_id_ref_tag($type->{alias_type},$options);
+    } elsif($type->isa('Bio::KBase::KIDL::KBT::Scalar')) {
+        if($type->{scalar_type} eq 'string') {
+            if(defined($type->{annotations}->{id_reference})) {
+                return $type->{annotations}->{id_reference};
+            }
+        }
+    } elsif($type->isa('Bio::KBase::KIDL::KBT::Mapping')) {
+        return get_kb_id_ref_tag($type->{key_type},$options);
     }
-    
-    return '';
+    return;
 }
+
+#
+# function to check if typedef of a structure should be marked as workspace searchable
+# my $ws_searchable = get_kb_ws_searchable_tag($type,$options, $keyword)
+#
+#   $ws_searchable is undef if no elements were set to be workspace searchable
+#   $ws_searchable is [field1 .... ] if id_reference was set to a list of workspace searchable fields
+#   $keyword is set to ws_searchable_fields or ws_searchable_keys, depending on what you want
+#
+sub get_kb_ws_searchable_tag {
+    my($type,$options,$keyword) = @_;
+    if($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
+        # Currently, we cannot redefine ws_searchable fields in typedefs, so we always recurse fully
+        return get_kb_ws_searchable_tag($type->{alias_type},$options);
+    } elsif($type->isa('Bio::KBase::KIDL::KBT::Struct')) {
+        if(defined($type->{annotations}->{$keyword})) {
+            return $type->{annotations}->{$keyword};
+        }
+    }
+    return;
+}
+
+
 
 
 
@@ -460,7 +532,6 @@ sub extract_comment_from_type
     
     return $comment;
 }
-
 
 
 
