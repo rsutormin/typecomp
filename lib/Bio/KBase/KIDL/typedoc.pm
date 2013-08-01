@@ -27,10 +27,103 @@ our %valid_authentication_value = map { $_ => 1 } @valid_authentication_values;
 our %builtin_types = ('int' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'int'),
 		      'string' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'string'),
 		      'float' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'float'),
+		      'bool' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'bool'),
     );
 
 our $auth_default = 'none';
 
+our @kidl_keywords = qw(funcdef
+    		        typedef
+			module
+			list
+			mapping
+			structure
+			nullable
+			returns
+			authentication
+			none
+			required
+			optional
+			tuple
+			async);
+our %kidl_keywords = map { $_ => 1 } @kidl_keywords;
+
+our @kidl_reserved = qw(abstract
+			and
+			as
+			assert
+			break
+			byte
+			case
+			catch
+			char
+			class
+			const
+			continue
+			debugger
+			def
+			default
+			del
+			delete
+			do
+			double
+			elif
+			else
+			enum
+			except
+			exec
+			extends
+			final
+			finally
+			float
+			for
+			from
+			function
+			global
+			goto
+			if
+			implements
+			import
+			in
+			instanceof
+			int
+			interface
+			is
+			lambda
+			let
+			long
+			native
+			new
+			not
+			or
+			package
+			pass
+			print
+			private
+			protected
+			public
+			raise
+			return
+			short
+			static
+			strictfp
+			super
+			switch
+			synchronized
+			this
+			throw
+			throws
+			transient
+			try
+			typeof
+			var
+			void
+			volatile
+			while
+			with
+			yield
+			);
+our %kidl_reserved = map { $_ => 1 } @kidl_reserved;
 
 
 sub new {
@@ -126,7 +219,7 @@ sub new {
 			'DOC_COMMENT' => 18,
 			'TYPEDEF' => 24
 		},
-		DEFAULT => -27,
+		DEFAULT => -30,
 		GOTOS => {
 			'async_flag' => 21,
 			'module_component' => 17,
@@ -138,12 +231,17 @@ sub new {
 	},
 	{#State 15
 		ACTIONS => {
-			'IDENT' => 27
+			'REQUIRED' => 27,
+			'NONE' => 28,
+			'OPTIONAL' => 30
+		},
+		GOTOS => {
+			'auth_kind' => 29
 		}
 	},
 	{#State 16
 		ACTIONS => {
-			";" => 28
+			";" => 31
 		}
 	},
 	{#State 17
@@ -156,10 +254,10 @@ sub new {
 			"use" => 23,
 			'TYPEDEF' => 24
 		},
-		DEFAULT => -27,
+		DEFAULT => -30,
 		GOTOS => {
 			'async_flag' => 21,
-			'module_component' => 29,
+			'module_component' => 32,
 			'funcdef' => 20,
 			'auth_type' => 19,
 			'typedef' => 25
@@ -167,7 +265,7 @@ sub new {
 	},
 	{#State 19
 		ACTIONS => {
-			";" => 30
+			";" => 33
 		}
 	},
 	{#State 20
@@ -175,32 +273,32 @@ sub new {
 	},
 	{#State 21
 		ACTIONS => {
-			'FUNCDEF' => 31
+			'FUNCDEF' => 34
 		}
 	},
 	{#State 22
-		DEFAULT => -28
+		DEFAULT => -31
 	},
 	{#State 23
 		ACTIONS => {
-			"module" => 32
+			"module" => 35
 		}
 	},
 	{#State 24
 		ACTIONS => {
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'LIST' => 39,
-			'IDENT' => 36,
-			'MAPPING' => 37,
-			'STRUCTURE' => 42
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'LIST' => 42,
+			'IDENT' => 39,
+			'MAPPING' => 40,
+			'STRUCTURE' => 45
 		},
 		GOTOS => {
-			'mapping' => 34,
-			'structure' => 38,
-			'type' => 41,
-			'tuple' => 40,
-			'list' => 43
+			'mapping' => 37,
+			'structure' => 41,
+			'type' => 44,
+			'tuple' => 43,
+			'list' => 46
 		}
 	},
 	{#State 25
@@ -210,497 +308,506 @@ sub new {
 		DEFAULT => -11
 	},
 	{#State 27
-		DEFAULT => -18
+		DEFAULT => -20
 	},
 	{#State 28
-		DEFAULT => -5
+		DEFAULT => -19
 	},
 	{#State 29
-		DEFAULT => -13
+		DEFAULT => -18
 	},
 	{#State 30
-		DEFAULT => -17
+		DEFAULT => -21
 	},
 	{#State 31
-		ACTIONS => {
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'LIST' => 39,
-			'IDENT' => 44,
-			'MAPPING' => 37,
-			'STRUCTURE' => 42
-		},
-		GOTOS => {
-			'mapping' => 34,
-			'structure' => 38,
-			'type' => 45,
-			'tuple' => 40,
-			'list' => 43
-		}
+		DEFAULT => -5
 	},
 	{#State 32
-		ACTIONS => {
-			'ident' => 46
-		}
+		DEFAULT => -13
 	},
 	{#State 33
-		DEFAULT => -34
+		DEFAULT => -17
 	},
 	{#State 34
-		DEFAULT => -35
+		ACTIONS => {
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'LIST' => 42,
+			'IDENT' => 47,
+			'MAPPING' => 40,
+			'STRUCTURE' => 45
+		},
+		GOTOS => {
+			'mapping' => 37,
+			'structure' => 41,
+			'type' => 48,
+			'tuple' => 43,
+			'list' => 46
+		}
 	},
 	{#State 35
 		ACTIONS => {
-			"<" => 47
+			'ident' => 49
 		}
 	},
 	{#State 36
-		DEFAULT => -39
+		DEFAULT => -37
 	},
 	{#State 37
-		ACTIONS => {
-			"<" => 48
-		}
-	},
-	{#State 38
-		DEFAULT => -36
-	},
-	{#State 39
-		ACTIONS => {
-			"<" => 49
-		}
-	},
-	{#State 40
 		DEFAULT => -38
 	},
-	{#State 41
+	{#State 38
 		ACTIONS => {
-			'IDENT' => 50
+			"<" => 50
 		}
+	},
+	{#State 39
+		DEFAULT => -42
+	},
+	{#State 40
+		ACTIONS => {
+			"<" => 51
+		}
+	},
+	{#State 41
+		DEFAULT => -39
 	},
 	{#State 42
 		ACTIONS => {
-			"{" => 51
+			"<" => 52
 		}
 	},
 	{#State 43
-		DEFAULT => -37
+		DEFAULT => -41
 	},
 	{#State 44
-		ACTIONS => {
-			'IDENT' => -39
-		},
-		DEFAULT => -21,
-		GOTOS => {
-			'@3-3' => 52
-		}
-	},
-	{#State 45
 		ACTIONS => {
 			'IDENT' => 53
 		}
 	},
-	{#State 46
+	{#State 45
 		ACTIONS => {
-			";" => 54
+			"{" => 54
 		}
+	},
+	{#State 46
+		DEFAULT => -40
 	},
 	{#State 47
 		ACTIONS => {
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'LIST' => 39,
-			'IDENT' => 36,
-			'MAPPING' => 37,
-			'STRUCTURE' => 42
+			'IDENT' => -42
 		},
+		DEFAULT => -24,
 		GOTOS => {
-			'mapping' => 34,
-			'tuple_types' => 55,
-			'structure' => 38,
-			'tuple_type' => 56,
-			'tuple' => 40,
-			'type' => 57,
-			'list' => 43
+			'@3-3' => 55
 		}
 	},
 	{#State 48
 		ACTIONS => {
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'LIST' => 39,
-			'IDENT' => 36,
-			'MAPPING' => 37,
-			'STRUCTURE' => 42
-		},
-		GOTOS => {
-			'mapping' => 34,
-			'tuple_type' => 58,
-			'structure' => 38,
-			'tuple' => 40,
-			'type' => 57,
-			'list' => 43
+			'IDENT' => 56
 		}
 	},
 	{#State 49
 		ACTIONS => {
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'LIST' => 39,
-			'IDENT' => 36,
-			'MAPPING' => 37,
-			'STRUCTURE' => 42
-		},
-		GOTOS => {
-			'mapping' => 34,
-			'structure' => 38,
-			'type' => 59,
-			'tuple' => 40,
-			'list' => 43
+			";" => 57
 		}
 	},
 	{#State 50
-		DEFAULT => -19,
+		ACTIONS => {
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'LIST' => 42,
+			'IDENT' => 39,
+			'MAPPING' => 40,
+			'STRUCTURE' => 45
+		},
 		GOTOS => {
-			'@2-3' => 60
+			'mapping' => 37,
+			'tuple_types' => 58,
+			'structure' => 41,
+			'tuple_type' => 59,
+			'tuple' => 43,
+			'type' => 60,
+			'list' => 46
 		}
 	},
 	{#State 51
 		ACTIONS => {
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'LIST' => 39,
-			'IDENT' => 36,
-			'MAPPING' => 37,
-			'STRUCTURE' => 42
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'LIST' => 42,
+			'IDENT' => 39,
+			'MAPPING' => 40,
+			'STRUCTURE' => 45
 		},
 		GOTOS => {
-			'mapping' => 34,
-			'structure' => 38,
-			'tuple' => 40,
-			'type' => 63,
-			'struct_items' => 62,
-			'struct_item' => 61,
-			'list' => 43
+			'mapping' => 37,
+			'tuple_type' => 61,
+			'structure' => 41,
+			'tuple' => 43,
+			'type' => 60,
+			'list' => 46
 		}
 	},
 	{#State 52
 		ACTIONS => {
-			"(" => 64
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'LIST' => 42,
+			'IDENT' => 39,
+			'MAPPING' => 40,
+			'STRUCTURE' => 45
+		},
+		GOTOS => {
+			'mapping' => 37,
+			'structure' => 41,
+			'type' => 62,
+			'tuple' => 43,
+			'list' => 46
 		}
 	},
 	{#State 53
-		DEFAULT => -23,
+		DEFAULT => -22,
 		GOTOS => {
-			'@4-4' => 65
+			'@2-3' => 63
 		}
 	},
 	{#State 54
-		DEFAULT => -16
+		ACTIONS => {
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'LIST' => 42,
+			'IDENT' => 39,
+			'MAPPING' => 40,
+			'STRUCTURE' => 45
+		},
+		GOTOS => {
+			'mapping' => 37,
+			'structure' => 41,
+			'tuple' => 43,
+			'type' => 66,
+			'struct_items' => 65,
+			'struct_item' => 64,
+			'list' => 46
+		}
 	},
 	{#State 55
 		ACTIONS => {
-			"," => 66,
-			">" => 67
+			"(" => 67
 		}
 	},
 	{#State 56
-		DEFAULT => -48
+		DEFAULT => -26,
+		GOTOS => {
+			'@4-4' => 68
+		}
 	},
 	{#State 57
-		ACTIONS => {
-			'IDENT' => 68
-		},
-		DEFAULT => -50
+		DEFAULT => -16
 	},
 	{#State 58
 		ACTIONS => {
-			"," => 69
-		}
-	},
-	{#State 59
-		ACTIONS => {
+			"," => 69,
 			">" => 70
 		}
 	},
+	{#State 59
+		DEFAULT => -51
+	},
 	{#State 60
 		ACTIONS => {
-			";" => 71
-		}
+			'IDENT' => 71
+		},
+		DEFAULT => -53
 	},
 	{#State 61
-		DEFAULT => -42
+		ACTIONS => {
+			"," => 72
+		}
 	},
 	{#State 62
 		ACTIONS => {
-			"}" => 72,
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'LIST' => 39,
-			'IDENT' => 36,
-			'MAPPING' => 37,
-			'STRUCTURE' => 42
-		},
-		GOTOS => {
-			'mapping' => 34,
-			'structure' => 38,
-			'tuple' => 40,
-			'type' => 63,
-			'struct_item' => 73,
-			'list' => 43
+			">" => 73
 		}
 	},
 	{#State 63
 		ACTIONS => {
-			'IDENT' => 74
+			";" => 74
 		}
 	},
 	{#State 64
-		ACTIONS => {
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'IDENT' => 36,
-			'MAPPING' => 37,
-			'LIST' => 39,
-			'STRUCTURE' => 42
-		},
-		DEFAULT => -29,
-		GOTOS => {
-			'funcdef_param' => 76,
-			'mapping' => 34,
-			'structure' => 38,
-			'funcdef_params' => 75,
-			'type' => 77,
-			'tuple' => 40,
-			'list' => 43
-		}
+		DEFAULT => -45
 	},
 	{#State 65
 		ACTIONS => {
-			"(" => 78
+			"}" => 75,
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'LIST' => 42,
+			'IDENT' => 39,
+			'MAPPING' => 40,
+			'STRUCTURE' => 45
+		},
+		GOTOS => {
+			'mapping' => 37,
+			'structure' => 41,
+			'tuple' => 43,
+			'type' => 66,
+			'struct_item' => 76,
+			'list' => 46
 		}
 	},
 	{#State 66
 		ACTIONS => {
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'LIST' => 39,
-			'IDENT' => 36,
-			'MAPPING' => 37,
-			'STRUCTURE' => 42
-		},
-		GOTOS => {
-			'mapping' => 34,
-			'tuple_type' => 79,
-			'structure' => 38,
-			'tuple' => 40,
-			'type' => 57,
-			'list' => 43
+			'IDENT' => 77
 		}
 	},
 	{#State 67
-		DEFAULT => -47
+		ACTIONS => {
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'IDENT' => 39,
+			'MAPPING' => 40,
+			'LIST' => 42,
+			'STRUCTURE' => 45
+		},
+		DEFAULT => -32,
+		GOTOS => {
+			'funcdef_param' => 79,
+			'mapping' => 37,
+			'structure' => 41,
+			'funcdef_params' => 78,
+			'type' => 80,
+			'tuple' => 43,
+			'list' => 46
+		}
 	},
 	{#State 68
-		DEFAULT => -51
+		ACTIONS => {
+			"(" => 81
+		}
 	},
 	{#State 69
 		ACTIONS => {
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'LIST' => 39,
-			'IDENT' => 36,
-			'MAPPING' => 37,
-			'STRUCTURE' => 42
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'LIST' => 42,
+			'IDENT' => 39,
+			'MAPPING' => 40,
+			'STRUCTURE' => 45
 		},
 		GOTOS => {
-			'mapping' => 34,
-			'tuple_type' => 80,
-			'structure' => 38,
-			'tuple' => 40,
-			'type' => 57,
-			'list' => 43
+			'mapping' => 37,
+			'tuple_type' => 82,
+			'structure' => 41,
+			'tuple' => 43,
+			'type' => 60,
+			'list' => 46
 		}
 	},
 	{#State 70
-		DEFAULT => -46
+		DEFAULT => -50
 	},
 	{#State 71
-		DEFAULT => -20
+		DEFAULT => -54
 	},
 	{#State 72
-		DEFAULT => -41
+		ACTIONS => {
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'LIST' => 42,
+			'IDENT' => 39,
+			'MAPPING' => 40,
+			'STRUCTURE' => 45
+		},
+		GOTOS => {
+			'mapping' => 37,
+			'tuple_type' => 83,
+			'structure' => 41,
+			'tuple' => 43,
+			'type' => 60,
+			'list' => 46
+		}
 	},
 	{#State 73
-		DEFAULT => -43
+		DEFAULT => -49
 	},
 	{#State 74
-		ACTIONS => {
-			'NULLABLE' => 82,
-			";" => 81
-		}
+		DEFAULT => -23
 	},
 	{#State 75
-		ACTIONS => {
-			"," => 83,
-			")" => 84
-		}
+		DEFAULT => -44
 	},
 	{#State 76
-		DEFAULT => -30
+		DEFAULT => -46
 	},
 	{#State 77
 		ACTIONS => {
-			'IDENT' => 85
-		},
-		DEFAULT => -33
+			'NULLABLE' => 85,
+			";" => 84
+		}
 	},
 	{#State 78
 		ACTIONS => {
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'IDENT' => 36,
-			'MAPPING' => 37,
-			'LIST' => 39,
-			'STRUCTURE' => 42
-		},
-		DEFAULT => -29,
-		GOTOS => {
-			'funcdef_param' => 76,
-			'mapping' => 34,
-			'structure' => 38,
-			'funcdef_params' => 86,
-			'type' => 77,
-			'tuple' => 40,
-			'list' => 43
+			"," => 86,
+			")" => 87
 		}
 	},
 	{#State 79
-		DEFAULT => -49
+		DEFAULT => -33
 	},
 	{#State 80
 		ACTIONS => {
-			">" => 87
-		}
+			'IDENT' => 88
+		},
+		DEFAULT => -36
 	},
 	{#State 81
-		DEFAULT => -44
+		ACTIONS => {
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'IDENT' => 39,
+			'MAPPING' => 40,
+			'LIST' => 42,
+			'STRUCTURE' => 45
+		},
+		DEFAULT => -32,
+		GOTOS => {
+			'funcdef_param' => 79,
+			'mapping' => 37,
+			'structure' => 41,
+			'funcdef_params' => 89,
+			'type' => 80,
+			'tuple' => 43,
+			'list' => 46
+		}
 	},
 	{#State 82
-		ACTIONS => {
-			";" => 88
-		}
+		DEFAULT => -52
 	},
 	{#State 83
 		ACTIONS => {
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'LIST' => 39,
-			'IDENT' => 36,
-			'MAPPING' => 37,
-			'STRUCTURE' => 42
-		},
-		GOTOS => {
-			'funcdef_param' => 89,
-			'mapping' => 34,
-			'structure' => 38,
-			'type' => 77,
-			'tuple' => 40,
-			'list' => 43
+			">" => 90
 		}
 	},
 	{#State 84
-		ACTIONS => {
-			'RETURNS' => 90
-		}
+		DEFAULT => -47
 	},
 	{#State 85
-		DEFAULT => -32
+		ACTIONS => {
+			";" => 91
+		}
 	},
 	{#State 86
 		ACTIONS => {
-			"," => 83,
-			")" => 91
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'LIST' => 42,
+			'IDENT' => 39,
+			'MAPPING' => 40,
+			'STRUCTURE' => 45
+		},
+		GOTOS => {
+			'funcdef_param' => 92,
+			'mapping' => 37,
+			'structure' => 41,
+			'type' => 80,
+			'tuple' => 43,
+			'list' => 46
 		}
 	},
 	{#State 87
-		DEFAULT => -40
+		ACTIONS => {
+			'RETURNS' => 93
+		}
 	},
 	{#State 88
-		DEFAULT => -45
+		DEFAULT => -35
 	},
 	{#State 89
-		DEFAULT => -31
+		ACTIONS => {
+			"," => 86,
+			")" => 94
+		}
 	},
 	{#State 90
-		ACTIONS => {
-			"(" => 92
-		}
+		DEFAULT => -43
 	},
 	{#State 91
-		ACTIONS => {
-			'AUTHENTICATION' => 15
-		},
-		DEFAULT => -25,
-		GOTOS => {
-			'auth_param' => 94,
-			'auth_type' => 93
-		}
+		DEFAULT => -48
 	},
 	{#State 92
-		ACTIONS => {
-			'TYPENAME' => 33,
-			'TUPLE' => 35,
-			'IDENT' => 36,
-			'MAPPING' => 37,
-			'LIST' => 39,
-			'STRUCTURE' => 42
-		},
-		DEFAULT => -29,
-		GOTOS => {
-			'funcdef_param' => 76,
-			'mapping' => 34,
-			'structure' => 38,
-			'funcdef_params' => 95,
-			'type' => 77,
-			'tuple' => 40,
-			'list' => 43
-		}
+		DEFAULT => -34
 	},
 	{#State 93
-		DEFAULT => -26
+		ACTIONS => {
+			"(" => 95
+		}
 	},
 	{#State 94
 		ACTIONS => {
-			";" => 96
+			'AUTHENTICATION' => 15
+		},
+		DEFAULT => -28,
+		GOTOS => {
+			'auth_param' => 97,
+			'auth_type' => 96
 		}
 	},
 	{#State 95
 		ACTIONS => {
-			"," => 83,
-			")" => 97
+			'TYPENAME' => 36,
+			'TUPLE' => 38,
+			'IDENT' => 39,
+			'MAPPING' => 40,
+			'LIST' => 42,
+			'STRUCTURE' => 45
+		},
+		DEFAULT => -32,
+		GOTOS => {
+			'funcdef_param' => 79,
+			'mapping' => 37,
+			'structure' => 41,
+			'funcdef_params' => 98,
+			'type' => 80,
+			'tuple' => 43,
+			'list' => 46
 		}
 	},
 	{#State 96
-		DEFAULT => -24
+		DEFAULT => -29
 	},
 	{#State 97
-		ACTIONS => {
-			'AUTHENTICATION' => 15
-		},
-		DEFAULT => -25,
-		GOTOS => {
-			'auth_param' => 98,
-			'auth_type' => 93
-		}
-	},
-	{#State 98
 		ACTIONS => {
 			";" => 99
 		}
 	},
+	{#State 98
+		ACTIONS => {
+			"," => 86,
+			")" => 100
+		}
+	},
 	{#State 99
-		DEFAULT => -22
+		DEFAULT => -27
+	},
+	{#State 100
+		ACTIONS => {
+			'AUTHENTICATION' => 15
+		},
+		DEFAULT => -28,
+		GOTOS => {
+			'auth_param' => 101,
+			'auth_type' => 96
+		}
+	},
+	{#State 101
+		ACTIONS => {
+			";" => 102
+		}
+	},
+	{#State 102
+		DEFAULT => -25
 	}
 ],
                                   yyrules  =>
@@ -714,25 +821,25 @@ sub new {
 	[#Rule 2
 		 'module_list', 0,
 sub
-#line 28 "typedoc.yp"
+#line 121 "typedoc.yp"
 { [] }
 	],
 	[#Rule 3
 		 'module_list', 2,
 sub
-#line 29 "typedoc.yp"
+#line 122 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
 	[#Rule 4
 		 '@1-2', 0,
 sub
-#line 32 "typedoc.yp"
+#line 125 "typedoc.yp"
 { $_[0]->get_comment() }
 	],
 	[#Rule 5
 		 'module', 8,
 sub
-#line 32 "typedoc.yp"
+#line 125 "typedoc.yp"
 {
     Bio::KBase::KIDL::KBT::DefineModule->new(options => $_[1],
 			   @{$_[4]},
@@ -743,37 +850,37 @@ sub
 	[#Rule 6
 		 'mod_name_def', 1,
 sub
-#line 40 "typedoc.yp"
+#line 133 "typedoc.yp"
 { [ module_name => $_[1], service_name => $_[1] ] }
 	],
 	[#Rule 7
 		 'mod_name_def', 3,
 sub
-#line 41 "typedoc.yp"
+#line 134 "typedoc.yp"
 { [ module_name => $_[3], service_name => $_[1] ] }
 	],
 	[#Rule 8
 		 'module_opts', 0,
 sub
-#line 44 "typedoc.yp"
+#line 137 "typedoc.yp"
 { [] }
 	],
 	[#Rule 9
 		 'module_opts', 2,
 sub
-#line 45 "typedoc.yp"
+#line 138 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
 	[#Rule 10
 		 'module_components', 0,
 sub
-#line 48 "typedoc.yp"
+#line 141 "typedoc.yp"
 { [] }
 	],
 	[#Rule 11
 		 'module_components', 2,
 sub
-#line 49 "typedoc.yp"
+#line 142 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
 	[#Rule 12
@@ -782,7 +889,7 @@ sub
 	[#Rule 13
 		 'module_component_with_doc', 2,
 sub
-#line 54 "typedoc.yp"
+#line 147 "typedoc.yp"
 { $_[2]->comment($_[1]); $_[2] }
 	],
 	[#Rule 14
@@ -797,122 +904,112 @@ sub
 	[#Rule 17
 		 'module_component', 2,
 sub
-#line 61 "typedoc.yp"
+#line 154 "typedoc.yp"
 { $auth_default = $_[1]; 'auth_default' . $_[1] }
 	],
 	[#Rule 18
 		 'auth_type', 2,
 sub
-#line 64 "typedoc.yp"
-{ 
-			       if ($valid_authentication_value{$_[2]}) 
-			       {
-				   $_[2];
-			       }
-			       else
-			       {
-				   $_[0]->emit_error("Invalid authentication type '" . $_[2] . "'. Valid types are " . join(" ", map { "'$_'" } @valid_authentication_values));
-				   "none";
-			       }
-			   }
+#line 157 "typedoc.yp"
+{ lc($_[2]); }
 	],
 	[#Rule 19
-		 '@2-3', 0,
-sub
-#line 77 "typedoc.yp"
-{ $_[0]->get_comment() }
+		 'auth_kind', 1, undef
 	],
 	[#Rule 20
-		 'typedef', 5,
-sub
-#line 77 "typedoc.yp"
-{ $_[0]->define_type($_[2], $_[3], $_[4]); }
+		 'auth_kind', 1, undef
 	],
 	[#Rule 21
-		 '@3-3', 0,
-sub
-#line 80 "typedoc.yp"
-{ $_[0]->get_comment() }
+		 'auth_kind', 1, undef
 	],
 	[#Rule 22
+		 '@2-3', 0,
+sub
+#line 165 "typedoc.yp"
+{ $_[0]->get_comment() }
+	],
+	[#Rule 23
+		 'typedef', 5,
+sub
+#line 165 "typedoc.yp"
+{ $_[0]->define_type($_[2], $_[3], $_[4]); }
+	],
+	[#Rule 24
+		 '@3-3', 0,
+sub
+#line 168 "typedoc.yp"
+{ $_[0]->get_comment() }
+	],
+	[#Rule 25
 		 'funcdef', 13,
 sub
-#line 81 "typedoc.yp"
+#line 169 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Funcdef->new(return_type => $_[10], name => $_[3], parameters => $_[6],
 			      comment => $_[4], async => $_[1], authentication => $_[12] ); }
 	],
-	[#Rule 23
+	[#Rule 26
 		 '@4-4', 0,
 sub
-#line 83 "typedoc.yp"
+#line 171 "typedoc.yp"
 { $_[0]->get_comment() }
 	],
-	[#Rule 24
+	[#Rule 27
 		 'funcdef', 10,
 sub
-#line 84 "typedoc.yp"
+#line 172 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Funcdef->new(return_type => [$_[3]], name => $_[4], parameters => $_[7],
 			      comment => $_[5], async => $_[1], authentication => $_[9]); }
 	],
-	[#Rule 25
+	[#Rule 28
 		 'auth_param', 0,
 sub
-#line 88 "typedoc.yp"
+#line 176 "typedoc.yp"
 { $auth_default }
 	],
-	[#Rule 26
+	[#Rule 29
 		 'auth_param', 1, undef
 	],
-	[#Rule 27
+	[#Rule 30
 		 'async_flag', 0,
 sub
-#line 92 "typedoc.yp"
+#line 180 "typedoc.yp"
 { 0 }
 	],
-	[#Rule 28
+	[#Rule 31
 		 'async_flag', 1,
 sub
-#line 93 "typedoc.yp"
+#line 181 "typedoc.yp"
 { 1 }
 	],
-	[#Rule 29
+	[#Rule 32
 		 'funcdef_params', 0,
 sub
-#line 96 "typedoc.yp"
+#line 184 "typedoc.yp"
 { [] }
 	],
-	[#Rule 30
+	[#Rule 33
 		 'funcdef_params', 1,
 sub
-#line 97 "typedoc.yp"
+#line 185 "typedoc.yp"
 { [ $_[1] ] }
 	],
-	[#Rule 31
+	[#Rule 34
 		 'funcdef_params', 3,
 sub
-#line 98 "typedoc.yp"
+#line 186 "typedoc.yp"
 { [ @{$_[1]}, $_[3] ] }
 	],
-	[#Rule 32
+	[#Rule 35
 		 'funcdef_param', 2,
 sub
-#line 101 "typedoc.yp"
+#line 189 "typedoc.yp"
 { { type => $_[1], name => $_[2] } }
 	],
-	[#Rule 33
+	[#Rule 36
 		 'funcdef_param', 1,
 sub
-#line 102 "typedoc.yp"
+#line 190 "typedoc.yp"
 { { type => $_[1] } }
-	],
-	[#Rule 34
-		 'type', 1, undef
-	],
-	[#Rule 35
-		 'type', 1, undef
-	],
-	[#Rule 36
-		 'type', 1, undef
 	],
 	[#Rule 37
 		 'type', 1, undef
@@ -921,9 +1018,18 @@ sub
 		 'type', 1, undef
 	],
 	[#Rule 39
+		 'type', 1, undef
+	],
+	[#Rule 40
+		 'type', 1, undef
+	],
+	[#Rule 41
+		 'type', 1, undef
+	],
+	[#Rule 42
 		 'type', 1,
 sub
-#line 111 "typedoc.yp"
+#line 199 "typedoc.yp"
 { my $type = $_[0]->lookup_type($_[1]);
 			if (!defined($type))
 			{
@@ -931,77 +1037,77 @@ sub
 			}
 			$type }
 	],
-	[#Rule 40
+	[#Rule 43
 		 'mapping', 6,
 sub
-#line 119 "typedoc.yp"
+#line 207 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Mapping->new(key_type => $_[3]->[0], value_type=> $_[5]->[0]); }
 	],
-	[#Rule 41
+	[#Rule 44
 		 'structure', 4,
 sub
-#line 122 "typedoc.yp"
+#line 210 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Struct->new(items => $_[3]); }
 	],
-	[#Rule 42
+	[#Rule 45
 		 'struct_items', 1,
 sub
-#line 125 "typedoc.yp"
+#line 213 "typedoc.yp"
 { [$_[1]] }
 	],
-	[#Rule 43
+	[#Rule 46
 		 'struct_items', 2,
 sub
-#line 126 "typedoc.yp"
+#line 214 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
-	[#Rule 44
+	[#Rule 47
 		 'struct_item', 3,
 sub
-#line 129 "typedoc.yp"
+#line 217 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 0); }
 	],
-	[#Rule 45
+	[#Rule 48
 		 'struct_item', 4,
 sub
-#line 130 "typedoc.yp"
+#line 218 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 1); }
 	],
-	[#Rule 46
+	[#Rule 49
 		 'list', 4,
 sub
-#line 133 "typedoc.yp"
+#line 221 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::List->new(element_type => $_[3]); }
 	],
-	[#Rule 47
+	[#Rule 50
 		 'tuple', 4,
 sub
-#line 136 "typedoc.yp"
+#line 224 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Tuple->new(element_types => [ map { $_->[0] } @{$_[3]}],
 							    element_names => [ map { $_->[1] } @{$_[3]}] ); }
 	],
-	[#Rule 48
+	[#Rule 51
 		 'tuple_types', 1,
 sub
-#line 140 "typedoc.yp"
+#line 228 "typedoc.yp"
 { [ $_[1] ] }
 	],
-	[#Rule 49
+	[#Rule 52
 		 'tuple_types', 3,
 sub
-#line 141 "typedoc.yp"
+#line 229 "typedoc.yp"
 { [ @{$_[1]}, $_[3] ] }
 	],
-	[#Rule 50
+	[#Rule 53
 		 'tuple_type', 1,
 sub
-#line 144 "typedoc.yp"
+#line 232 "typedoc.yp"
 { [ $_[1], undef ] }
 	],
-	[#Rule 51
+	[#Rule 54
 		 'tuple_type', 2,
 sub
-#line 145 "typedoc.yp"
+#line 233 "typedoc.yp"
 { [ $_[1], $_[2] ] }
 	]
 ],
@@ -1009,7 +1115,7 @@ sub
     bless($self,$class);
 }
 
-#line 148 "typedoc.yp"
+#line 236 "typedoc.yp"
  
 
 sub define_type
@@ -1101,6 +1207,26 @@ sub emit_error {
     $data->{error_count}++;
 }
 
+sub emit_warning {
+    my($parser, $message) = @_;
+    
+    my $data = $parser->YYData;
+
+    my $line = $data->{line_number};
+    my $file = $data->{filename};
+
+    my $token = $parser->YYCurtok;
+    my $tval = $parser->YYCurval;
+
+    if ($token eq 'IDENT')
+    {
+	$token = $tval;
+    }
+    my $twarn = $token ? " next token is '$token'" : "";
+
+    warn "Warning: $file:$line: $message$twarn\n";
+}
+
 
 sub Lexer {
     my($parser)=shift;
@@ -1124,10 +1250,6 @@ sub Lexer {
 	    {
 		return ('', undef);
 	    }
-	    elsif (s/^(funcdef|typedef|module|list|mapping|structure|nullable|returns|authentication|tuple|async)\b//)
-	    {
-		return (uc($1), $1);
-	    }
 	    elsif (s/^([A-Za-z][A-Za-z0-9_]*)//)
 	    {
 		my $str = $1;
@@ -1135,6 +1257,15 @@ sub Lexer {
 		{
 		    my $type = $data->{type_table}->{$str};
 		    return('TYPENAME', $type);
+		}
+		elsif ($kidl_keywords{$str})
+		{
+		    return(uc($str), $str);
+		}
+		elsif ($kidl_reserved{$str})
+		{
+		    $parser->emit_warning("Use of reserved word '$str'");
+		    return('IDENT', $str);
 		}
 		else
 		{

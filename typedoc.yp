@@ -13,10 +13,103 @@ our %valid_authentication_value = map { $_ => 1 } @valid_authentication_values;
 our %builtin_types = ('int' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'int'),
 		      'string' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'string'),
 		      'float' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'float'),
+		      'bool' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'bool'),
     );
 
 our $auth_default = 'none';
 
+our @kidl_keywords = qw(funcdef
+    		        typedef
+			module
+			list
+			mapping
+			structure
+			nullable
+			returns
+			authentication
+			none
+			required
+			optional
+			tuple
+			async);
+our %kidl_keywords = map { $_ => 1 } @kidl_keywords;
+
+our @kidl_reserved = qw(abstract
+			and
+			as
+			assert
+			break
+			byte
+			case
+			catch
+			char
+			class
+			const
+			continue
+			debugger
+			def
+			default
+			del
+			delete
+			do
+			double
+			elif
+			else
+			enum
+			except
+			exec
+			extends
+			final
+			finally
+			float
+			for
+			from
+			function
+			global
+			goto
+			if
+			implements
+			import
+			in
+			instanceof
+			int
+			interface
+			is
+			lambda
+			let
+			long
+			native
+			new
+			not
+			or
+			package
+			pass
+			print
+			private
+			protected
+			public
+			raise
+			return
+			short
+			static
+			strictfp
+			super
+			switch
+			synchronized
+			this
+			throw
+			throws
+			transient
+			try
+			typeof
+			var
+			void
+			volatile
+			while
+			with
+			yield
+			);
+our %kidl_reserved = map { $_ => 1 } @kidl_reserved;
 %}
 
 %%
@@ -61,17 +154,12 @@ module_component:
 	|	auth_type ';' { $auth_default = $_[1]; 'auth_default' . $_[1] }
 	;
 
-auth_type: 	AUTHENTICATION IDENT { 
-			       if ($valid_authentication_value{$_[2]}) 
-			       {
-				   $_[2];
-			       }
-			       else
-			       {
-				   $_[0]->emit_error("Invalid authentication type '" . $_[2] . "'. Valid types are " . join(" ", map { "'$_'" } @valid_authentication_values));
-				   "none";
-			       }
-			   }
+auth_type: 	AUTHENTICATION auth_kind { lc($_[2]); }
+
+	;
+auth_kind:	NONE
+    	|	REQUIRED
+	|	OPTIONAL
 	;
 
 typedef:	TYPEDEF type IDENT { $_[0]->get_comment() }  ';' { $_[0]->define_type($_[2], $_[3], $_[4]); }
@@ -236,6 +324,26 @@ sub emit_error {
     $data->{error_count}++;
 }
 
+sub emit_warning {
+    my($parser, $message) = @_;
+    
+    my $data = $parser->YYData;
+
+    my $line = $data->{line_number};
+    my $file = $data->{filename};
+
+    my $token = $parser->YYCurtok;
+    my $tval = $parser->YYCurval;
+
+    if ($token eq 'IDENT')
+    {
+	$token = $tval;
+    }
+    my $twarn = $token ? " next token is '$token'" : "";
+
+    warn "Warning: $file:$line: $message$twarn\n";
+}
+
 
 sub Lexer {
     my($parser)=shift;
@@ -259,10 +367,6 @@ sub Lexer {
 	    {
 		return ('', undef);
 	    }
-	    elsif (s/^(funcdef|typedef|module|list|mapping|structure|nullable|returns|authentication|tuple|async)\b//)
-	    {
-		return (uc($1), $1);
-	    }
 	    elsif (s/^([A-Za-z][A-Za-z0-9_]*)//)
 	    {
 		my $str = $1;
@@ -270,6 +374,15 @@ sub Lexer {
 		{
 		    my $type = $data->{type_table}->{$str};
 		    return('TYPENAME', $type);
+		}
+		elsif ($kidl_keywords{$str})
+		{
+		    return(uc($str), $str);
+		}
+		elsif ($kidl_reserved{$str})
+		{
+		    $parser->emit_warning("Use of reserved word '$str'");
+		    return('IDENT', $str);
 		}
 		else
 		{
