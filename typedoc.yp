@@ -27,9 +27,6 @@ our @kidl_keywords = qw(funcdef
 			nullable
 			returns
 			authentication
-			none
-			required
-			optional
 			tuple
 			async);
 our %kidl_keywords = map { $_ => 1 } @kidl_keywords;
@@ -108,6 +105,9 @@ our @kidl_reserved = qw(abstract
 			while
 			with
 			yield
+			none
+			required
+			optional
 			);
 our %kidl_reserved = map { $_ => 1 } @kidl_reserved;
 %}
@@ -154,13 +154,26 @@ module_component:
 	|	auth_type ';' { $auth_default = $_[1]; 'auth_default' . $_[1] }
 	;
 
-auth_type: 	AUTHENTICATION auth_kind { lc($_[2]); }
+auth_type: 	AUTHENTICATION IDENT { 
+			       if ($valid_authentication_value{$_[2]}) 
+			       {
+				   $_[2];
+			       }
+			       else
+			       {
+				   $_[0]->emit_error("Invalid authentication type '" . $_[2] . "'. Valid types are " . join(" ", map { "'$_'" } @valid_authentication_values));
+				   "none";
+			       }
+			   }
+	;
 
-	;
-auth_kind:	NONE
-    	|	REQUIRED
-	|	OPTIONAL
-	;
+#auth_type: 	AUTHENTICATION auth_kind { lc($_[2]); }
+#	;
+
+# auth_kind:	NONE
+#     	|	REQUIRED
+# 	|	OPTIONAL
+# 	;
 
 typedef:	TYPEDEF type IDENT { $_[0]->get_comment() }  ';' { $_[0]->define_type($_[2], $_[3], $_[4]); }
 	;
