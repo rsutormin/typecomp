@@ -13,7 +13,7 @@ our %valid_authentication_value = map { $_ => 1 } @valid_authentication_values;
 our %builtin_types = ('int' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'int'),
 		      'string' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'string'),
 		      'float' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'float'),
-		      'bool' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'bool'),
+#		      'bool' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'bool'),
     );
 
 our $auth_default = 'none';
@@ -35,6 +35,7 @@ our @kidl_reserved = qw(abstract
 			and
 			as
 			assert
+			bool
 			break
 			byte
 			case
