@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from wsgiref.simple_server import make_server
-import sys, json, traceback
+import sys
+import json
+import traceback
 from multiprocessing import Process
 from getopt import getopt, GetoptError
 from jsonrpcbase import JSONRPCService, InvalidParamsError, KeywordError,\
@@ -17,6 +19,7 @@ SERVICE = 'KB_SERVICE_NAME'
 
 # Note that the error fields do not match the 2.0 JSONRPC spec
 
+
 def getConfigs():
     if DEPLOY not in environ or SERVICE not in environ:
         return None
@@ -26,9 +29,9 @@ def getConfigs():
     for nameval in config.items(environ[SERVICE]):
         retconfig[nameval[0]] = nameval[1]
     return retconfig
-    
+
 config = getConfigs()
-    
+
 [% 	specToPy.list = 'list';
 	specToPy.tuple = 'list';
 	specToPy.struct = 'dict';
@@ -43,8 +46,9 @@ from [% module_info.$mn.pymodule %] import [% mn %]
 impl_[% mn %] = [% mn %](config)
 [% END -%]
 
+
 class JSONObjectEncoder(json.JSONEncoder):
-  
+
     def default(self, obj):
         if isinstance(obj, set):
             return list(obj)
@@ -54,21 +58,23 @@ class JSONObjectEncoder(json.JSONEncoder):
             return obj.toJSONable()
         return json.JSONEncoder.default(self, obj)
 
+
 class JSONRPCServiceCustom(JSONRPCService):
-  
+
     def call(self, jsondata):
         """
-        Calls jsonrpc service's method and returns its return value in a JSON string or None if there is none.
+        Calls jsonrpc service's method and returns its return value in a JSON
+        string or None if there is none.
 
         Arguments:
         jsondata -- remote method call in jsonrpc format
         """
         result = self.call_py(jsondata)
         if result != None:
-            return json.dumps(result, cls = JSONObjectEncoder)
+            return json.dumps(result, cls=JSONObjectEncoder)
 
         return None
-  
+
     def _call_method(self, request):
         """Calls given method with given params and returns it value."""
         method = self.method_data[request['method']]['method']
@@ -80,17 +86,19 @@ class JSONRPCServiceCustom(JSONRPCService):
                 if len(params) < self._man_args(method):
                     raise InvalidParamsError('not enough arguments')
                 # Does it have too many arguments?
-                if not self._vargs(method) and len(params) > self._max_args(method):
+                if(not self._vargs(method) and len(params) >
+                    self._max_args(method)):
                     raise InvalidParamsError('too many arguments')
 
                 result = method(*params)
             elif isinstance(params, dict):
-                # Do not accept keyword arguments if the jsonrpc version is not >=1.1.
+                # Do not accept keyword arguments if the jsonrpc version is
+                # not >=1.1.
                 if request['jsonrpc'] < 11:
                     raise KeywordError
 
                 result = method(**params)
-            else: # No params
+            else:  # No params
                 result = method()
         except JSONRPCError:
             raise
@@ -101,13 +109,15 @@ class JSONRPCServiceCustom(JSONRPCService):
             newerr.data = traceback.format_exc()
             raise newerr
         return result
-      
+
     def call_py(self, jsondata):
         """
-        Calls jsonrpc service's method and returns its return value in python object format or None if there is none.
+        Calls jsonrpc service's method and returns its return value in python
+        object format or None if there is none.
 
-        This method is same as call() except the return value is a python object instead of JSON string. This method
-        is mainly only useful for debugging purposes.
+        This method is same as call() except the return value is a python
+        object instead of JSON string. This method is mainly only useful for
+        debugging purposes.
         """
         try:
             rdata = json.loads(jsondata)
@@ -175,37 +185,39 @@ class Application(object):
 [%		    type = specToPy.$spectype; -%]
 [%     		typelist.push(type); -%]
 [%   		END -%]
-        self.rpc_service.add(impl_[% module.module_name %].[% method.name %], name = '[% module.module_name %].[% method.name %]',
-                             types = [[% typelist.join(", ") %]])
+        self.rpc_service.add(impl_[% module.module_name %].[% method.name %],
+                             name='[% module.module_name %].[% method.name %]',
+                             types=[[% typelist.join(", ") %]])
 [%     IF authenticated -%]
-        self.method_authentication[ '[% module.module_name %].[% method.name %]' ] = '[% method.authentication %]'
+        self.method_authentication['[% module.module_name %].[% method.name %]'] = '[% method.authentication %]'
 [%     END -%]
 [%   END -%]
 [% END -%]
 [% IF authenticated -%]
-        self.auth_client = nexus.Client( config = { 'server' : 'nexus.api.globusonline.org',
-                                                    'verify_ssl' : False,
-                                                    'client' : None,
-                                                    'client_secret': None})
+        self.auth_client = nexus.Client(
+            config={'server': 'nexus.api.globusonline.org',
+                    'verify_ssl': False,
+                    'client': None,
+                    'client_secret': None})
 [% END -%]
 
-
-    def __call__( self, environ, start_response):
+    def __call__(self, environ, start_response):
         # Context object, equivalent to the perl impl CallContext
-        ctx = { 'client_ip' : environ.get('REMOTE_ADDR'),
-                'user_id' : None,
-                'authenticated' : None,
-                'token' : None,
-                'method': None
-                }
+        ctx = {'client_ip': environ.get('REMOTE_ADDR'),
+               'user_id': None,
+               'authenticated': None,
+               'token': None,
+               'method': None
+               }
 
         status = '500 Internal Server Error'
 
         try:
-            body_size = int( environ.get('CONTENT_LENGTH',0))
+            body_size = int(environ.get('CONTENT_LENGTH', 0))
         except (ValueError):
             body_size = 0
-        if environ['REQUEST_METHOD'] == 'OPTIONS': # we basically do nothing and just return headers
+        if environ['REQUEST_METHOD'] == 'OPTIONS':
+            # we basically do nothing and just return headers
             status = '200 OK'
             rpc_result = ""
         else:
@@ -223,36 +235,43 @@ class Application(object):
                 ctx['method'] = req['method'].split('.')[1]
                 try:
 [% IF authenticated -%]
-                    token = environ.get( 'HTTP_AUTHORIZATION')
+                    token = environ.get('HTTP_AUTHORIZATION')
                     # parse out the method being requested and check if it
                     # has an authentication requirement
-                    auth_req = self.method_authentication.get(req['method'], "none")
+                    auth_req = self.method_authentication.get(req['method'],
+                                                              "none")
                     if auth_req != "none":
                         if token is None and auth_req == 'required':
                             err = ServerError()
-                            err.data = "Authentication required for [% module.module_name %] but no authentication header was passed"
+                            err.data = "Authentication required for " + \
+                                "[% module.module_name %] but no authentication header was passed"
                             raise err
                         elif token is None and auth_req == 'optional':
                             pass
                         else:
                             try:
-                                user, clientid, nexus_host = self.auth_client.validate_token(token)
+                                user, _, _ = \
+                                    self.auth_client.validate_token(token)
                                 ctx['user_id'] = user
                                 ctx['authenticated'] = 1
                                 ctx['token'] = token
                             except Exception, e:
                                 if auth_req == 'required':
                                     err = ServerError()
-                                    err.data = "Token validation failed: %s" % e
+                                    err.data = \
+                                        "Token validation failed: %s" % e
                                     raise err
 [% END -%]
-                    # push the context object into the implementation instance's namespace
+                    # push the context object into the implementation
+                    # instance's namespace
 [% FOREACH module IN modules -%]
                     impl_[% module.module_name %].ctx = ctx
 [% END -%]
-                    self.log.logit(mlog.INFO, 'start method, id: ' + req['id'], ctx['user_id'], ctx['method'])
-                    rpc_result = self.rpc_service.call( request_body)
-                    self.log.logit(mlog.INFO, 'end method, id: ' + req['id'], ctx['user_id'], ctx['method'])
+                    self.log.logit(mlog.INFO, 'start method, id: ' + req['id'],
+                                   ctx['user_id'], ctx['method'])
+                    rpc_result = self.rpc_service.call(request_body)
+                    self.log.logit(mlog.INFO, 'end method, id: ' + req['id'],
+                                   ctx['user_id'], ctx['method'])
                 except JSONRPCError as jre:
                     err = {'error': {'code': jre.code,
                                      'name': jre.message,
@@ -261,7 +280,8 @@ class Application(object):
                            }
                     self.complete_err(err, req)
                     rpc_result = json.dumps(err)
-                    self.log.logit(mlog.ERR, rpc_result, ctx['user_id'], ctx['method'])
+                    self.log.logit(mlog.ERR, rpc_result, ctx['user_id'],
+                                   ctx['method'])
                 except Exception, e:
                     err = {'error': {'code': 0,
                                      'name': 'Unexpected Server Error',
@@ -270,25 +290,28 @@ class Application(object):
                            }
                     self.complete_err(err, req)
                     rpc_result = json.dumps(err)
-                    self.log.logit(mlog.ERR, rpc_result, ctx['user_id'], ctx['method'])
+                    self.log.logit(mlog.ERR, rpc_result, ctx['user_id'],
+                                   ctx['method'])
                 else:
                     status = '200 OK'
 
         #print 'The request method was %s\n' % environ['REQUEST_METHOD']
-        #print 'The environment dictionary is:\n%s\n' % pprint.pformat( environ )
+        #print 'The environment dictionary is:\n%s\n' % pprint.pformat(environ)
         #print 'The request body was: %s' % request_body
-        #print 'The result from the method call is:\n%s\n' % pprint.pformat(rpc_result)
+        #print 'The result from the method call is:\n%s\n' % \
+        #    pprint.pformat(rpc_result)
 
         if rpc_result:
             response_body = rpc_result
         else:
             response_body = ''
 
-        response_headers = [('Access-Control-Allow-Origin', '*'),
-                             ('Access-Control-Allow-Headers', environ.get('HTTP_ACCESS_CONTROL_REQUEST_HEADERS',
-                                                                          'authorization')),
-                             ('content-type', 'application/json'),
-                             ('content-length', str(len(response_body)))]
+        response_headers = [
+            ('Access-Control-Allow-Origin', '*'),
+            ('Access-Control-Allow-Headers', environ.get(
+                 'HTTP_ACCESS_CONTROL_REQUEST_HEADERS', 'authorization')),
+            ('content-type', 'application/json'),
+            ('content-length', str(len(response_body)))]
         start_response(status, response_headers)
         return [response_body]
 
@@ -311,7 +334,7 @@ application = Application()
 # This uwsgi module "magically" appears when running the app within
 # uwsgi and is not available otherwise, so wrap an exception handler
 # around it
-# 
+#
 # To run this server in uwsgi with 4 workers listening on port 9999 use:
 # uwsgi -M -p 4 --http :9999 --wsgi-file _this_file_
 # To run a using the single threaded python BaseHTTP service
@@ -326,39 +349,41 @@ try:
 # uwsgi with the --gevent option
     if config is not None and config.get('gevent_monkeypatch_all', False):
         print "Monkeypatching std libraries for async"
-        from gevent import monkey;
+        from gevent import monkey
         monkey.patch_all()
     uwsgi.applications = {
-        '' : application
+        '': application
         }
 except ImportError:
     # Not available outside of wsgi, ignore
     pass
 
 _proc = None
-  
-def start_server(host = 'localhost', port = 0, newprocess = False):
+
+
+def start_server(host='localhost', port=0, newprocess=False):
     '''
     By default, will start the server on localhost on a system assigned port
-    in the main thread. Excecution of the main thread will stay in the server 
-    main loop until interrupted. To run the server in a separate thread, and 
-    thus allow the stop_server method to be called, set thread = True. This
+    in the main thread. Excecution of the main thread will stay in the server
+    main loop until interrupted. To run the server in a separate process, and
+    thus allow the stop_server method to be called, set newprocess = True. This
     will also allow returning of the port number.'''
-    
+
     global _proc
     if _proc:
-      raise RuntimeError("server is already running")
+        raise RuntimeError('server is already running')
     httpd = make_server(host, port, application)
     port = httpd.server_address[1]
     print "Listening on port %s" % port
     if newprocess:
-      _proc = Process(target = httpd.serve_forever)
-      _proc.daemon = True
-      _proc.start()
+        _proc = Process(target=httpd.serve_forever)
+        _proc.daemon = True
+        _proc.start()
     else:
-      httpd.serve_forever()
+        httpd.serve_forever()
     return port
-  
+
+
 def stop_server():
     global _proc
     _proc.terminate()
@@ -366,11 +391,11 @@ def stop_server():
 
 if __name__ == "__main__":
     try:
-        opts, args = getopt(sys.argv[1:], "", ["port=","host="])
+        opts, args = getopt(sys.argv[1:], "", ["port=", "host="])
     except GetoptError as err:
         # print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        sys.exit(2)      
+        print str(err)  # will print something like "option -a not recognized"
+        sys.exit(2)
     port = 9999
     host = 'localhost'
     for o, a in opts:
@@ -381,8 +406,8 @@ if __name__ == "__main__":
             print "Host set to %s" % host
         else:
             assert False, "unhandled option"
-    
-    start_server(host = host, port = port)
+
+    start_server(host=host, port=port)
 #    print "Listening on port %s" % port
 #    httpd = make_server( host, port, application)
 #
