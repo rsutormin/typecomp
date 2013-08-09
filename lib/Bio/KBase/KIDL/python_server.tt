@@ -162,7 +162,7 @@ class Application(object):
     def __init__(self):
         self.log = mlog.mlog('[% module.module_name %]', authuser=True, method=True)
         if config and mlog.MLOG_LOG_FILE in config:
-            self.log.set_log_file(config(mlog.MLOG_LOG_FILE))
+            self.log.set_log_file(config[mlog.MLOG_LOG_FILE])
         self.rpc_service = JSONRPCServiceCustom()
 [% IF authenticated -%]
         self.method_authentication = dict()
