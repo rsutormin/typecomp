@@ -7,6 +7,7 @@ from jsonrpcbase import JSONRPCService, InvalidParamsError, KeywordError,\
   JSONRPCError, log, ServerError, ParseError, InvalidRequestError
 from os import environ
 from ConfigParser import ConfigParser
+from biokbase import mlog
 [% IF authenticated -%]
 import nexus
 [% END -%]
@@ -159,6 +160,9 @@ class Application(object):
     # and over
 
     def __init__(self):
+        self.log = mlog.mlog('[% module.module_name %]', authuser=True, method=True)
+        if config and mlog.MLOG_LOG_FILE in config:
+            self.log.set_log_file(config(mlog.MLOG_LOG_FILE))
         self.rpc_service = JSONRPCServiceCustom()
 [% IF authenticated -%]
         self.method_authentication = dict()
@@ -191,7 +195,9 @@ class Application(object):
         ctx = { 'client_ip' : environ.get('REMOTE_ADDR'),
                 'user_id' : None,
                 'authenticated' : None,
-                'token' : None }
+                'token' : None,
+                'method': None
+                }
 
         status = '500 Internal Server Error'
 
@@ -214,6 +220,7 @@ class Application(object):
                        }
                 rpc_result = json.dumps(err)
             else:
+                ctx['method'] = req['method'].split('.')[1]
                 try:
 [% IF authenticated -%]
                     token = environ.get( 'HTTP_AUTHORIZATION')
@@ -243,7 +250,9 @@ class Application(object):
 [% FOREACH module IN modules -%]
                     impl_[% module.module_name %].ctx = ctx
 [% END -%]
+                    self.log.logit(mlog.INFO, 'start method, id: ' + req['id'], ctx['user_id'], ctx['method'])
                     rpc_result = self.rpc_service.call( request_body)
+                    self.log.logit(mlog.INFO, 'end method, id: ' + req['id'], ctx['user_id'], ctx['method'])
                 except JSONRPCError as jre:
                     err = {'error': {'code': jre.code,
                                      'name': jre.message,
@@ -252,6 +261,7 @@ class Application(object):
                            }
                     self.complete_err(err, req)
                     rpc_result = json.dumps(err)
+                    self.log.logit(mlog.ERR, rpc_result, ctx['user_id'], ctx['method'])
                 except Exception, e:
                     err = {'error': {'code': 0,
                                      'name': 'Unexpected Server Error',
@@ -260,7 +270,7 @@ class Application(object):
                            }
                     self.complete_err(err, req)
                     rpc_result = json.dumps(err)
-
+                    self.log.logit(mlog.ERR, rpc_result, ctx['user_id'], ctx['method'])
                 else:
                     status = '200 OK'
 
