@@ -20,13 +20,21 @@ SERVICE = 'KB_SERVICE_NAME'
 # Note that the error fields do not match the 2.0 JSONRPC spec
 
 
+def getConfigFile():
+    return environ.get(DEPLOY, None)
+
+
+def getServiceName():
+    return environ.get(SERVICE, None)
+
+
 def getConfigs():
-    if DEPLOY not in environ or SERVICE not in environ:
+    if not getConfigFile() or not getServiceName():
         return None
     retconfig = {}
     config = ConfigParser()
-    config.read(environ[DEPLOY])
-    for nameval in config.items(environ[SERVICE]):
+    config.read(getConfigFile())
+    for nameval in config.items(getServiceName()):
         retconfig[nameval[0]] = nameval[1]
     return retconfig
 
@@ -164,15 +172,69 @@ class JSONRPCServiceCustom(JSONRPCService):
             raise InvalidRequestError
 
 
+class MethodContext(dict):
+
+    def __init__(self, logger):
+        self['client_ip'] = None
+        self['user_id'] = None
+        self['authenticated'] = None
+        self['token'] = None
+        self['module'] = None
+        self['method'] = None
+        self['call_id'] = None
+        self._logger = logger
+
+    def log_err(self, message):
+        self._log(mlog.ERR, message)
+
+    def log_info(self, message):
+        self._log(mlog.INFO, message)
+
+    def log_debug(self, message, level=2):
+        level = int(level)
+        if level < 2:
+            level = mlog.DEBUG
+        elif level > 2:
+            level = mlog.DEBUG3
+        else:
+            level = mlog.DEBUG2
+        self._log(level, message)
+
+    def set_log_level(self, level):
+        self._logger.set_log_level(level)
+
+    def get_log_level(self):
+        return self._logger.get_log_level()
+
+    def clear_log_level(self):
+        self._logger.clear_user_log_level()
+
+    def _log(self, level, message):
+        self._logger.logit(level, message, self['user_id'], self['module'],
+                           self['method'], self['call_id'])
+
+
 class Application(object):
     # Wrap the wsgi handler in a class definition so that we can
     # do some initialization and avoid regenerating stuff over
     # and over
 
+    def logcallback(self):
+        self.serverlog.set_log_file(self.userlog.get_log_file())
+
+    def log(self, level, context, message):
+        self.serverlog.logit(level, message, context['user_id'],
+                             context['module'], context['method'],
+                             context['call_id'])
+
     def __init__(self):
-        self.log = mlog.mlog('[% module.module_name %]', authuser=True, method=True)
-        if config and mlog.MLOG_LOG_FILE in config:
-            self.log.set_log_file(config[mlog.MLOG_LOG_FILE])
+        submod = getServiceName() or '[% module.module_name %]'
+        self.userlog = mlog.mlog(
+            submod, authuser=True, module=True, method=True, call_id=True,
+            changecallback=self.logcallback, config=getConfigFile())
+        self.serverlog = mlog.mlog(
+            submod, authuser=True, module=True, method=True, call_id=True,
+            logfile=self.userlog.get_log_file())
         self.rpc_service = JSONRPCServiceCustom()
 [% IF authenticated -%]
         self.method_authentication = dict()
@@ -203,12 +265,8 @@ class Application(object):
 
     def __call__(self, environ, start_response):
         # Context object, equivalent to the perl impl CallContext
-        ctx = {'client_ip': environ.get('REMOTE_ADDR'),
-               'user_id': None,
-               'authenticated': None,
-               'token': None,
-               'method': None
-               }
+        ctx = MethodContext(self.userlog)
+        ctx['client_ip'] = environ.get('REMOTE_ADDR')
 
         status = '500 Internal Server Error'
 
@@ -232,7 +290,8 @@ class Application(object):
                        }
                 rpc_result = json.dumps(err)
             else:
-                ctx['method'] = req['method'].split('.')[1]
+                ctx['module'], ctx['method'] = req['method'].split('.')
+                ctx['call_id'] = req['id']
                 try:
 [% IF authenticated -%]
                     token = environ.get('HTTP_AUTHORIZATION')
@@ -267,11 +326,9 @@ class Application(object):
 [% FOREACH module IN modules -%]
                     impl_[% module.module_name %].ctx = ctx
 [% END -%]
-                    self.log.logit(mlog.INFO, 'start method, id: ' + req['id'],
-                                   ctx['user_id'], ctx['method'])
+                    self.log(mlog.INFO, ctx, 'start method')
                     rpc_result = self.rpc_service.call(request_body)
-                    self.log.logit(mlog.INFO, 'end method, id: ' + req['id'],
-                                   ctx['user_id'], ctx['method'])
+                    self.log(mlog.INFO, ctx, 'end method')
                 except JSONRPCError as jre:
                     err = {'error': {'code': jre.code,
                                      'name': jre.message,
@@ -280,8 +337,7 @@ class Application(object):
                            }
                     self.complete_err(err, req)
                     rpc_result = json.dumps(err)
-                    self.log.logit(mlog.ERR, rpc_result, ctx['user_id'],
-                                   ctx['method'])
+                    self.log(mlog.ERR, ctx, rpc_result)
                 except Exception, e:
                     err = {'error': {'code': 0,
                                      'name': 'Unexpected Server Error',
@@ -290,8 +346,7 @@ class Application(object):
                            }
                     self.complete_err(err, req)
                     rpc_result = json.dumps(err)
-                    self.log.logit(mlog.ERR, rpc_result, ctx['user_id'],
-                                   ctx['method'])
+                    self.log(mlog.ERR, ctx, rpc_result)
                 else:
                     status = '200 OK'
 
