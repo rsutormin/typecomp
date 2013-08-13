@@ -20,25 +20,25 @@ SERVICE = 'KB_SERVICE_NAME'
 # Note that the error fields do not match the 2.0 JSONRPC spec
 
 
-def getConfigFile():
+def get_config_file():
     return environ.get(DEPLOY, None)
 
 
-def getServiceName():
+def get_service_name():
     return environ.get(SERVICE, None)
 
 
-def getConfigs():
-    if not getConfigFile() or not getServiceName():
+def get_config():
+    if not get_config_file() or not get_service_name():
         return None
     retconfig = {}
     config = ConfigParser()
-    config.read(getConfigFile())
-    for nameval in config.items(getServiceName()):
+    config.read(get_config_file())
+    for nameval in config.items(get_service_name()):
         retconfig[nameval[0]] = nameval[1]
     return retconfig
 
-config = getConfigs()
+config = get_config()
 
 [% 	specToPy.list = 'list';
 	specToPy.tuple = 'list';
@@ -228,10 +228,10 @@ class Application(object):
                              context['call_id'])
 
     def __init__(self):
-        submod = getServiceName() or '[% service_name %]'
+        submod = get_service_name() or '[% service_name %]'
         self.userlog = mlog.mlog(
             submod, authuser=True, module=True, method=True, call_id=True,
-            changecallback=self.logcallback, config=getConfigFile())
+            changecallback=self.logcallback, config=get_config_file())
         self.serverlog = mlog.mlog(
             submod, authuser=True, module=True, method=True, call_id=True,
             logfile=self.userlog.get_log_file())
