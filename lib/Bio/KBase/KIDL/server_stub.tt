@@ -172,7 +172,9 @@ sub call_method {
 	    my $str = "$err";
 	    $str =~ s/Bio::KBase::CDMI::Service::call_method.*//s;
 	    $str =~ s/^/>\t/mg;
-	    die "The JSONRPC server invocation of the method \"$method\" failed with the following error:\n" . $str;
+	    my $errtxt = "The JSONRPC server invocation of the method \"$method\" failed with the following error:\n" . $str;
+        $self->log($Bio::KBase::mlog::ERR, $ctx, $errtxt);
+        die $errtxt;
 	}
     }
     my $result;
