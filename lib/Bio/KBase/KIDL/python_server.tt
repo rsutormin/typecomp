@@ -228,7 +228,7 @@ class Application(object):
                              context['call_id'])
 
     def __init__(self):
-        submod = getServiceName() or '[% module.module_name %]'
+        submod = getServiceName() or '[% service_name %]'
         self.userlog = mlog.mlog(
             submod, authuser=True, module=True, method=True, call_id=True,
             changecallback=self.logcallback, config=getConfigFile())
