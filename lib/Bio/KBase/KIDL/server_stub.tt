@@ -84,7 +84,7 @@ sub log
     my ($self, $level, $context, $message) = @_;
     my $user = defined($context->user_id()) ? $context->user_id(): undef; 
     $self->loggers()->{serverlog}->logit($level, $message, $user, 
-        $context->module(), $context->method(), $context->call_id())
+        $context->module(), $context->method(), $context->call_id());
 }
 
 sub _build_loggers
@@ -108,7 +108,8 @@ sub call_method {
 
     my ($module, $method, $modname) = @$method_info{qw(module method modname)};
     
-    my $ctx = [% ctx_pkg %]->new(client_ip => $self->_plack_req->address);
+    my $ctx = [% ctx_pkg %]->new($self->{loggers}->{userlog},
+                           client_ip => $self->_plack_req->address);
     $ctx->module($modname);
     $ctx->method($method);
     $ctx->call_id($self->{_last_call}->{id});
@@ -262,12 +263,72 @@ __PACKAGE__->mk_accessors(qw(user_id client_ip authenticated token
 
 sub new
 {
-    my($class, %opts) = @_;
+    my($class, $logger, %opts) = @_;
     
     my $self = {
-	%opts,
+        %opts,
     };
+    $self->{_logger} = $logger;
     return bless $self, $class;
+}
+
+sub _get_user
+{
+    my ($self) = @_;
+    return defined($self->user_id()) ? $self->user_id(): undef; 
+}
+
+sub _log
+{
+    my ($self, $level, $message) = @_;
+    $self->{_logger}->logit($level, $message, $self->_get_user(),
+        $self->module(), $self->method(), $self->call_id());
+}
+
+sub log_err
+{
+    my ($self, $message) = @_;
+    $self->_log($Bio::KBase::mlog::ERR, $message);
+}
+
+sub log_info
+{
+    my ($self, $message) = @_;
+    $self->_log($Bio::KBase::mlog::INFO, $message);
+}
+
+sub log_debug
+{
+    my ($self, $message, $level) = @_;
+    if(!defined($level)) {
+        $level = 2;
+    }
+    if($level < 2) {
+        $level = $Bio::KBase::mlog::DEBUG;
+    } elsif($level > 2) {
+        $level = $Bio::KBase::mlog::DEBUG3;
+    } else {
+        $level = $Bio::KBase::mlog::DEBUG2;
+    }
+    $self->_log($level, $message);
+}
+
+sub set_log_level
+{
+    my ($self, $level) = @_;
+    $self->{_logger}->set_log_level($level);
+}
+
+sub get_log_level
+{
+    my ($self) = @_;
+    return $self->{_logger}->get_log_level();
+}
+
+sub clear_log_level
+{
+    my ($self) = @_;
+    $self->{_logger}->clear_user_log_level();
 }
 
 1;
