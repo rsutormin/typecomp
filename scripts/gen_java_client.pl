@@ -35,11 +35,13 @@ my $help;
 
 our %java_scalar_map = (int => 'Integer',
 			string => 'String',
-			float => 'Float');
+			float => 'Float',
+			bool => 'Boolean');
 
 our %java_topscalar_map = (int => 'int',
-			string => 'String',
-			float => 'float');
+			   string => 'String',
+			   float => 'float',
+			   bool => 'boolean');
 
 my $rc = GetOptions('help|h' => \$help);
 
