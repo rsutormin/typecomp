@@ -128,8 +128,13 @@ sub handle_error {
 sub encode_output_from_exception {
     my ($self, $exception) = @_;
     my %error_params;
+    my $ctx = undef;
     if (ref($exception) eq 'HASH') {
         %error_params = %{$exception};
+        if(defined($error_params{context})) {
+            $ctx = $error_params{context};
+            delete $error_params{context};
+        }
     } else {
         %error_params = (
             message => $exception->message,
@@ -145,7 +150,11 @@ sub encode_output_from_exception {
     else {
         $json_error = $self->_default_error(%error_params);
     }
-    return $self->encode_output_from_object($json_error);
+    my $response = $self->encode_output_from_object($json_error);
+    if(defined($ctx)) {
+        $self->log($Bio::KBase::mlog::ERR, $ctx, $response->content);
+    }
+    return $response
 }
 
 sub call_method {
@@ -215,7 +224,8 @@ sub call_method {
             if(ref($err) eq "Bio::KBase::Exceptions::KBaseException") {
                 $nicerr = {code => -32603, # perl error from RPC::Any::Exception
                            message => $err->error,
-                           data => $err->trace->as_string
+                           data => $err->trace->as_string,
+                           context => $ctx
                            };
             } else {
                 my $str = "$err";
@@ -224,10 +234,10 @@ sub call_method {
                 $msg =~ s/ at [^\s]+.pm line \d+.\n$//;
                 $nicerr =  {code => -32603, # perl error from RPC::Any::Exception
                             message => $msg,
-                            data => $str
+                            data => $str,
+                            context => $ctx
                             };
             }
-            $self->log($Bio::KBase::mlog::ERR, $ctx, encode_json $nicerr);
             die $nicerr;
         }
     }
