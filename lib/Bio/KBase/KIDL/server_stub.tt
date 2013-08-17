@@ -103,6 +103,50 @@ sub _build_loggers
     return $loggers;
 }
 
+#override of RPC::Any::Server
+sub handle_error {
+    my ($self, $error) = @_;
+    
+    unless (ref($error) eq 'HASH' ||
+           (blessed $error and $error->isa('RPC::Any::Exception'))) {
+        $error = RPC::Any::Exception::PerlError->new(message => $error);
+    }
+    my $output;
+    eval {
+        my $encoded_error = $self->encode_output_from_exception($error);
+        $output = $self->produce_output($encoded_error);
+    };
+    
+    return $output if $output;
+    
+    die "$error\n\nAlso, an error was encountered while trying to send"
+        . " this error: $@\n";
+}
+
+#override of RPC::Any::JSONRPC
+sub encode_output_from_exception {
+    my ($self, $exception) = @_;
+    my %error_params;
+    if (ref($exception) eq 'HASH') {
+        %error_params = %{$exception};
+    } else {
+        %error_params = (
+            message => $exception->message,
+            code    => $exception->code,
+        );
+    }
+    my $json_error;
+    if ($self->_last_call) {
+        $json_error = $self->_last_call->return_error(%error_params);
+    }
+    # Default to default_version. This happens when we throw an exception
+    # before inbound parsing is complete.
+    else {
+        $json_error = $self->_default_error(%error_params);
+    }
+    return $self->encode_output_from_object($json_error);
+}
+
 sub call_method {
     my ($self, $data, $method_info) = @_;
 
@@ -157,26 +201,32 @@ sub call_method {
     local $CallContext = $ctx;
     my @result;
     {
-	my $err;
-	eval {
-        $self->log($Bio::KBase::mlog::INFO, $ctx, "start method");
-        @result = $module->$method(@{ $data->{arguments} });
-        $self->log($Bio::KBase::mlog::INFO, $ctx, "end method");
-	};
-	if ($@)
-	{
-	    #
-	    # Reraise the string version of the exception because
-	    # the RPC lib can't handle exception objects (yet).
-	    #
-	    my $err = $@;
-	    my $str = "$err";
-	    $str =~ s/Bio::KBase::CDMI::Service::call_method.*//s;
-	    $str =~ s/^/>\t/mg;
-	    my $errtxt = "The JSONRPC server invocation of the method \"$method\" failed with the following error:\n" . $str;
-        $self->log($Bio::KBase::mlog::ERR, $ctx, $errtxt);
-        die $errtxt;
-	}
+        my $err;
+        eval {
+            $self->log($Bio::KBase::mlog::INFO, $ctx, "start method");
+            @result = $module->$method(@{ $data->{arguments} });
+            $self->log($Bio::KBase::mlog::INFO, $ctx, "end method");
+        };
+        if ($@)
+        {
+            my $err = $@;
+            if(ref($err) eq "Bio::KBase::Exceptions::KBaseException") {
+                die {code => -32603, # perl error from RPC::Any::Exception
+                     message => $err->error,
+                     data => $err->trace->as_string
+                     };
+            }
+            my $str = "$err";
+            $str =~ s/Bio::KBase::CDMI::Service::call_method.*//s; # is this still necessary? not sure
+            my $msg = $str;
+            $msg =~ s/ at [^\s]+.pm line \d+.\n$//;
+            die {code => -32603, # perl error from RPC::Any::Exception
+                 message => $msg,
+                 data => $str
+                 };
+            #TODO log errors
+#            $self->log($Bio::KBase::mlog::ERR, $ctx, $errtxt);
+        }
     }
     my $result;
     if ($return_counts{$method} == 1)
