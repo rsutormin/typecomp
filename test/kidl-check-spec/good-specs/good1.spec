@@ -1,12 +1,13 @@
 
 
 
-module GoodSpec {
+module MyServ:GoodSpec {
 
     /*
     define a bunch of standard types
     */
     typedef string mystring;
+    typedef string my_Blah;
     typedef mystring my_better_string;
     typedef int myint;
     typedef float my_float;
@@ -18,9 +19,10 @@ module GoodSpec {
     define a valid structure
     */
     typedef structure {
-        string name;
+        string nsame;
         int value;
     } MyStructure;
+    
     
     /*
     define some lists that reference that structure
@@ -34,3 +36,4 @@ module GoodSpec {
     typedef mapping <string,MyStructure> mapping_of_MyStructures;
 
 };
+

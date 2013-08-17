@@ -42,6 +42,8 @@ Arguments:
                                are delimited by ':'.  Can also be set with an environment variable
                                named 'KB_TYPECOMP_PATH', although if given, paths provided as
                                arguments are searched first.
+    --xml name                 Use name as the filename of an xml file that dumps the parsed type
+			       specification file data
     --dump		       Dump the parsed type specification file to stdout
 
 =head1 AUTHORS
@@ -61,6 +63,7 @@ my $py_server_module;
 my $py_impl_module;
 my $include_path;
 my $default_service_url;
+my $dump_xml;
 my $dump_parsed;
 my $test_script;
 my $help;
@@ -78,6 +81,7 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
                     "path=s"    => \$include_path,
                     "url=s"     => \$default_service_url,
                     "dump"      => \$dump_parsed,
+                    "xml=s"     => \$dump_xml,
                     "help|h"	=> \$help,
                     );
 
@@ -210,6 +214,30 @@ while (my($service, $modules) = each %{$parsed_data})
 
 # all done, so we exit and dump if requested
 print STDERR Dumper($parsed_data) if $dump_parsed;
+
+
+# we permit output to an XML file if requested
+if ($dump_xml) {
+    use XML::Dumper;
+    my $fileHandle;
+    my $filepath = $output_dir . "/" . $dump_xml;
+    make_path($output_dir);
+    open($fileHandle, ">>".$filepath);
+    if(!$fileHandle) {
+        print STDERR "FAILURE - cannot open '.$output_dir."/".$dump_xml.' for writing XML dump.\n$!\n";
+        exit(1);  # we should probably exit more gracefully...
+    }
+    my $dumper=XML::Dumper->new;
+    my $alldata = {
+		   'parsed_data' => $parsed_data,
+		   'type_table'  => $available_type_table
+		   };
+    print $fileHandle $dumper->pl2xml($alldata);
+    close($fileHandle);
+}
+
+
+
 exit(0);
 
 
