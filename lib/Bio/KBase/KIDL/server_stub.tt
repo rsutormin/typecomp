@@ -2,6 +2,7 @@ package [% server_package_name %];
 [% SET ctx_pkg = "${server_package_name}Context" %]
 use Data::Dumper;
 use Moose;
+use JSON;
 use Bio::KBase::mlog;
 [% IF authenticated -%]
 use Bio::KBase::AuthToken;
@@ -210,22 +211,24 @@ sub call_method {
         if ($@)
         {
             my $err = $@;
+            my $nicerr;
             if(ref($err) eq "Bio::KBase::Exceptions::KBaseException") {
-                die {code => -32603, # perl error from RPC::Any::Exception
-                     message => $err->error,
-                     data => $err->trace->as_string
-                     };
+                $nicerr = {code => -32603, # perl error from RPC::Any::Exception
+                           message => $err->error,
+                           data => $err->trace->as_string
+                           };
+            } else {
+                my $str = "$err";
+                $str =~ s/Bio::KBase::CDMI::Service::call_method.*//s; # is this still necessary? not sure
+                my $msg = $str;
+                $msg =~ s/ at [^\s]+.pm line \d+.\n$//;
+                $nicerr =  {code => -32603, # perl error from RPC::Any::Exception
+                            message => $msg,
+                            data => $str
+                            };
             }
-            my $str = "$err";
-            $str =~ s/Bio::KBase::CDMI::Service::call_method.*//s; # is this still necessary? not sure
-            my $msg = $str;
-            $msg =~ s/ at [^\s]+.pm line \d+.\n$//;
-            die {code => -32603, # perl error from RPC::Any::Exception
-                 message => $msg,
-                 data => $str
-                 };
-            #TODO log errors
-#            $self->log($Bio::KBase::mlog::ERR, $ctx, $errtxt);
+            $self->log($Bio::KBase::mlog::ERR, $ctx, encode_json $nicerr);
+            die $nicerr;
         }
     }
     my $result;
