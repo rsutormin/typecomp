@@ -6,7 +6,7 @@ import traceback
 from multiprocessing import Process
 from getopt import getopt, GetoptError
 from jsonrpcbase import JSONRPCService, InvalidParamsError, KeywordError,\
-  JSONRPCError, log, ServerError, ParseError, InvalidRequestError
+  JSONRPCError, ServerError, ParseError, InvalidRequestError
 from os import environ
 from ConfigParser import ConfigParser
 from biokbase import mlog
@@ -110,11 +110,12 @@ class JSONRPCServiceCustom(JSONRPCService):
                 result = method()
         except JSONRPCError:
             raise
-        except Exception:
-            log.exception('method %s threw an exception' % request['method'])
+        except Exception as e:
+#            log.exception('method %s threw an exception' % request['method'])
             # Exception was raised inside the method.
             newerr = ServerError()
-            newerr.data = traceback.format_exc()
+            newerr.trace = traceback.format_exc()
+            newerr.data = e.message
             raise newerr
         return result
 
@@ -335,16 +336,20 @@ class Application(object):
                                      'message': jre.data
                                      }
                            }
-                    self.complete_err(err, req)
+                    trace = None
+                    if hasattr(jre, 'trace'):
+                        trace = jre.trace
+                    self.complete_err(err, req, trace)
                     rpc_result = json.dumps(err)
                     self.log(mlog.ERR, ctx, rpc_result)
                 except Exception, e:
                     err = {'error': {'code': 0,
                                      'name': 'Unexpected Server Error',
-                                     'message': traceback.format_exc()
+                                     'message': 'An unexpected server error ' +
+                                        'occurred',
                                      }
                            }
-                    self.complete_err(err, req)
+                    self.complete_err(err, req, traceback.format_exc())
                     rpc_result = json.dumps(err)
                     self.log(mlog.ERR, ctx, rpc_result)
                 else:
@@ -370,15 +375,18 @@ class Application(object):
         start_response(status, response_headers)
         return [response_body]
 
-    def complete_err(self, err, req):
+    def complete_err(self, err, req, trace=None):
         if 'id' in req:
             err['id'] = req['id']
         if 'version' in req:
             err['version'] = req['version']
+            err['error']['error'] = trace
         elif 'jsonrpc' in req:
             err['jsonrpc'] = req['jsonrpc']
+            err['error']['data'] = trace
         else:
             err['version'] = '1.0'
+            err['error']['error'] = trace
 
 application = Application()
 
