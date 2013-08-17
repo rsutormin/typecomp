@@ -117,8 +117,8 @@ class JSONObjectEncoder(json.JSONEncoder):
         if isinstance(obj, frozenset):
             return list(obj)
         return json.JSONEncoder.default(self, obj)
-
 [% FOREACH module IN modules %]
+
 class [% module.module_name %](object):
 
     def __init__(self, url=None, timeout=30 * 60, user_id=None,
@@ -155,8 +155,8 @@ class [% module.module_name %](object):
                         authdata['user_id'], authdata['password'])
         if self.timeout < 1:
             raise ValueError('Timeout value must be at least 1 second')
-
 [% FOREACH method IN module.methods -%]
+
     def [% method.name %](self, [% method.args %]):
 
         arg_hash = {'method': '[% module.module_name %].[% method.name %]',
@@ -195,6 +195,5 @@ class [% module.module_name %](object):
 [% END -%]
         else:
             raise ServerError('Unknown', 0, 'An unknown server error occurred')
-
 [% END -%]
 [% END -%]
