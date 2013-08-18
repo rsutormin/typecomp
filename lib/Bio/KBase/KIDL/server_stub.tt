@@ -128,11 +128,13 @@ sub handle_error {
 sub encode_output_from_exception {
     my ($self, $exception) = @_;
     my %error_params;
-    my $ctx = undef;
     if (ref($exception) eq 'HASH') {
         %error_params = %{$exception};
         if(defined($error_params{context})) {
-            $ctx = $error_params{context};
+            my @errlines;
+            $errlines[0] = $error_params{message};
+            push @errlines, split("\n", $error_params{data});
+            $self->log($Bio::KBase::mlog::ERR, $error_params{context}, \@errlines);
             delete $error_params{context};
         }
     } else {
@@ -150,11 +152,7 @@ sub encode_output_from_exception {
     else {
         $json_error = $self->_default_error(%error_params);
     }
-    my $response = $self->encode_output_from_object($json_error);
-    if(defined($ctx)) {
-        $self->log($Bio::KBase::mlog::ERR, $ctx, $response->content);
-    }
-    return $response
+    return $self->encode_output_from_object($json_error);
 }
 
 sub call_method {

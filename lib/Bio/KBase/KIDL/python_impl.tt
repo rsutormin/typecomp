@@ -37,8 +37,8 @@ class [% module.module_name %]:
 [% module.py_module_constructor -%]
         #END_CONSTRUCTOR
         pass
-
 [% FOREACH method IN module.methods -%]
+
 [% SET paramlist = [];
    FOREACH p IN method.params;
        paramlist.push(p.name);

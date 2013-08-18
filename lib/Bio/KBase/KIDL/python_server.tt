@@ -339,9 +339,9 @@ class Application(object):
                     trace = None
                     if hasattr(jre, 'trace'):
                         trace = jre.trace
+                        self.log(mlog.ERR, ctx, trace.split('\n')[0:-1])
                     self.complete_err(err, req, trace)
                     rpc_result = json.dumps(err)
-                    self.log(mlog.ERR, ctx, rpc_result)
                 except Exception, e:
                     err = {'error': {'code': 0,
                                      'name': 'Unexpected Server Error',
@@ -349,9 +349,10 @@ class Application(object):
                                         'occurred',
                                      }
                            }
-                    self.complete_err(err, req, traceback.format_exc())
+                    trace = traceback.format_exc()
+                    self.log(mlog.ERR, ctx, trace.split('\n')[0:-1])
+                    self.complete_err(err, req, trace)
                     rpc_result = json.dumps(err)
-                    self.log(mlog.ERR, ctx, rpc_result)
                 else:
                     status = '200 OK'
 
