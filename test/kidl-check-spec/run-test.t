@@ -23,7 +23,7 @@ foreach my $spec (@goodfiles) {
     next if $spec eq '..';
     next if $spec !~ m/\.spec$/;
     
-    my $check_command = "kidl-check-spec good-specs/$spec 2>&1";
+    my $check_command = "kidl-check-spec -erxml KSaplingDBD.xml good-specs/$spec 2>&1";
     my $check_output = `$check_command`;
     
     # exit code should be zero for all good tests
@@ -45,7 +45,7 @@ foreach my $spec (@badfiles) {
     next if $spec eq '..';
     next if $spec !~ m/\.spec$/;
     
-    my $check_command = "kidl-check-spec bad-specs/$spec 2>&1";
+    my $check_command = "kidl-check-spec  -erxml KSaplingDBD.xml bad-specs/$spec 2>&1";
     my $check_output = `$check_command`;
     
     # exit code should be zero for all good tests

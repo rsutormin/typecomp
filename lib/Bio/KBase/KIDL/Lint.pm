@@ -89,6 +89,7 @@ sub check_for_standards {
             foreach my $c (@$module_components) {
                 my $name = $c->{name};
                 my $type = $c->{ref};
+                my $comment = $c->{comment};
                 while ($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
                     $type = $type->{alias_type};
                 }
@@ -97,18 +98,36 @@ sub check_for_standards {
                     my ($e,$w) = validate_lowercase_with_underscore($name,$valid_names, $type->{scalar_type}."s");
                     push @$err_mssg, "$e" if ($e);
                     push @$warn_mssg, "$w" if ($w);
+                    
+                    #scalars should have comments.  double check that
+                    if(!defined($comment) || $comment eq '') { push @$warn_mssg, "'$name' missing descriptive comment. All ".$type->{scalar_type}."s should have documentation"; }
                 }
                 
                 if ($type->isa('Bio::KBase::KIDL::KBT::List')) {
                     my ($e,$w) = validate_lowercase_with_underscore($name,$valid_names,"lists");
                     push @$err_mssg, "$e" if ($e);
                     push @$warn_mssg, "$w" if ($w);
+                    
+                    #lists should have comments.  double check that
+                    if(!defined($comment) || $comment eq '') { push @$warn_mssg, "'$name' missing descriptive comment. All lists should have documentation"; }
                 }
                 
                 if ($type->isa('Bio::KBase::KIDL::KBT::Mapping')) {
                     my ($e,$w) = validate_lowercase_with_underscore($name,$valid_names,"mappings");
                     push @$err_mssg, "$e" if ($e);
                     push @$warn_mssg, "$w" if ($w);
+                    
+                    #mappings should have comments.  double check that
+                    if(!defined($comment) || $comment eq '') { push @$warn_mssg, "'$name' missing descriptive comment. All mappings should have documentation"; }
+                }
+                
+                if ($type->isa('Bio::KBase::KIDL::KBT::Tuple')) {
+                    my ($e,$w) = validate_lowercase_with_underscore($name,$valid_names,"tuple");
+                    push @$err_mssg, "$e" if ($e);
+                    push @$warn_mssg, "$w" if ($w);
+                    
+                    #mappings should have comments.  double check that
+                    if(!defined($comment) || $comment eq '') { push @$warn_mssg, "'$name' missing descriptive comment. All tuples should have documentation"; }
                 }
                 
                 if ($type->isa('Bio::KBase::KIDL::KBT::Struct')) {
@@ -122,6 +141,9 @@ sub check_for_standards {
                         push @$err_mssg, "$e" if ($e);
                         push @$warn_mssg, "$w" if ($w);
                     }
+                    
+                    #structures (and typedefs of structures) require comments.  double check that
+                    if(!defined($comment) || $comment eq '') { push @$err_mssg, "'$name' missing descriptive comment. All TypedObject definitions require good documentation"; }
                 }
             }
         }
@@ -137,6 +159,7 @@ sub check_for_standards {
             foreach my $func (@$module_components) {
                 if ($func->isa('Bio::KBase::KIDL::KBT::Funcdef')) {
                     my $name = $func->{name};
+                    my $comment = $func->{comment};
                     my ($e,$w) = validate_lowercase_with_underscore($name,$valid_names,"funcdefs");
                     push @$err_mssg, "$e" if ($e);
                     push @$warn_mssg, "$w" if ($w);
@@ -153,6 +176,8 @@ sub check_for_standards {
                         push @$warn_mssg, "$w" if ($w);
                     }
                     
+                    #functions require comments.  double check that
+                    if(!defined($comment) || $comment eq '') { push @$err_mssg, "'$name' missing descriptive comment. All function definitions require good documentation"; }
                 }
                 
             }
@@ -165,8 +190,13 @@ sub check_for_standards {
         my $data = $parsed_data->{$service_name};
         foreach my $module (@$data) {
             my $module_name = $module->[0]->{module_name};
-            my ($e,$w) = validate_CamelCase($module_name,"module names");
+            my $comment     = $module->[0]->{comment};
+            
+            # modules require documentation!!!
+            if(!defined($comment) || $comment eq '') { push @$err_mssg, "'$module_name' missing descriptive comment. All Module definitions require good documentation"; }
+            
             # Module names are always warnings!
+            my ($e,$w) = validate_CamelCase($module_name,"module names");
             push @$warn_mssg, "$e" if ($e);
             push @$warn_mssg, "$w" if ($w);
             
@@ -177,6 +207,7 @@ sub check_for_standards {
             if($module_name =~ m/service$/i) {
                  push @$warn_mssg, "'$module_name' is bad style, module names should not end with the word Service";
             }
+            
         }
     }
     
