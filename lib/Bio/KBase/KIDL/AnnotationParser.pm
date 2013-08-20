@@ -105,8 +105,8 @@ sub parse_all_types_for_annotations
    # print Dumper($type_table)."\n";
     
     if($n_total_warnings > 0) {
-        print "total annotation warnings: ".$n_total_warnings."\n";
-        print $total_warning_mssg."\n";
+        print STDERR "total annotation warnings: ".$n_total_warnings."\n";
+        print STDERR $total_warning_mssg."\n";
     }
     return;
 }
@@ -165,6 +165,23 @@ sub process_annotation {
                 }
                 # if we got here, we are good. push it to the list
                 push(@{$annotations->{$flag}},$field);
+            }
+        }
+    }
+    
+    # deprecated [$replacement_type1] [$replacement_type2] ...
+    #    this flag indicates that the tagged type is deprecated, and optionally allows a list of typed objects
+    #    which should be used instead
+    if($flag eq 'deprecated') {
+        if(!defined($annotations->{$flag})) { $annotations->{$flag} = []; }
+        foreach my $replacement_type (@{$values}) {
+            if(scalar(split(/\./,$replacement_type)) == 2) {
+                push(@{$annotations->{$flag}},$replacement_type);
+            } else {
+                $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' must have a fully qualified type name (ie ModuleName.TypeName)\n";
+                $warning_mssg .= "  in order to be later retrieved.  \@$flag annotation was defined for typedef '".$type->{module}.".".$type->{name}."'\n";
+                $warning_mssg .= "  The invalid replacement type name given was '$replacement_type'.\n";
+                $n_warnings++;
             }
         }
     }

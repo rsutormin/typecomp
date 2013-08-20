@@ -51,9 +51,9 @@ Arguments:
                                arguments are searched first
     --jsonschema               If set, dump JSON Schema documents for each typed object definition
                                in the output directory
-    --jsync name               If set, dump the parsed type spec files in JSYNC format to a file
+    --xmldump name             If set, dump the parsed type spec files in XML format to a file
                                with the given name in the output directory.  NOTE: requires install
-                               of cpan module JSYNC
+                               of cpan module XML::Dumper
     --dump		       Dump the parsed type specification file to stdout
 
 =head1 AUTHORS
@@ -75,6 +75,7 @@ my $include_path;
 my $default_service_url;
 my $generate_json_schema; 
 my $dump_parsed;
+my $dump_xml;
 my $dump_jsync;
 my $test_script;
 my $help;
@@ -92,6 +93,7 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
                     "path=s"    => \$include_path,
                     "url=s"     => \$default_service_url,
                     "jsonschema"=> \$generate_json_schema,
+		    "xmldump=s" => \$dump_xml,
                     "jsync=s"   => \$dump_jsync,
                     "dump"      => \$dump_parsed,
                     "help|h"	=> \$help,
@@ -222,13 +224,14 @@ while (my($service, $modules) = each %{$parsed_data})
     }
 }
 
-
-
+################################
+###### parse and assemble annotations
 my $type_table = assemble_types($parser);
 parse_all_types_for_annotations($type_table,{});
 
 
-# if the flag was set, output json schema as well to the output directory
+################################
+###### generate JSON Schema documents
 if($generate_json_schema) {
     my $java_package = "us.kbase.";
     
@@ -244,7 +247,8 @@ if($generate_json_schema) {
     write_json_schemas_to_file($json_schemas,$output_dir,$options);
 }
 
-# all done, so we exit and dump if requested
+################################
+###### output file to XML / JSYNC format
 if($dump_jsync) {
     use JSYNC;
     my $fileHandle;
@@ -258,8 +262,30 @@ if($dump_jsync) {
     print $fileHandle JSYNC::dump($parsed_data, {pretty => 1});
     close($fileHandle);
 }
+if ($dump_xml) {
+    use XML::Dumper;
+    my $fileHandle;
+    my $filepath = $output_dir . "/" . $dump_xml;
+    make_path($output_dir);
+    open($fileHandle, ">>".$filepath);
+    if(!$fileHandle) {
+        print STDERR "FAILURE - cannot open '.$output_dir."/".$dump_xml.' for writing XML dump.\n$!\n";
+        exit(1);  # we should probably exit more gracefully...
+    }
+    my $dumper=XML::Dumper->new;
+    my $alldata = {
+		   'parsed_data' => $parsed_data,
+		   'type_table'  => $available_type_table
+		   };
+    print $fileHandle $dumper->pl2xml($alldata);
+    close($fileHandle);
+}
 
+
+################################
+###### output file to XML / JSYNC format
 print STDERR Dumper($parsed_data) if $dump_parsed;
+
 exit(0);
 
 
