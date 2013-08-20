@@ -12,7 +12,7 @@ use Bio::KBase::KIDL::KBT;
 use Getopt::Long;
 
 use Bio::KBase::KIDL::JSONSchema qw(to_json_schema write_json_schemas_to_file);
-use Bio::KBase::KIDL::AnnotationParser qw(parse_all_types_for_annotations);
+use Bio::KBase::KIDL::AnnotationParser qw(parse_for_annotations);
 
 
 
@@ -227,7 +227,8 @@ while (my($service, $modules) = each %{$parsed_data})
 ################################
 ###### parse and assemble annotations
 my $type_table = assemble_types($parser);
-parse_all_types_for_annotations($type_table,{});
+my $annotation_options = {};
+parse_for_annotations($type_table, $parsed_data, $annotation_options);
 
 
 ################################
@@ -254,7 +255,7 @@ if($dump_jsync) {
     my $fileHandle;
     my $filepath = $output_dir . "/" . $dump_jsync;
     make_path($output_dir);
-    open($fileHandle, ">>".$filepath); #should fix this so that it works on all platforms...
+    open($fileHandle, ">".$filepath); #should fix this so that it works on all platforms...
     if(!$fileHandle) {
         print STDERR "FAILURE - cannot open '.$output_dir."/".$dump_jsync.' for writing JSYNC dump.\n$!\n";
         exit(1);  # we should probably exit more gracefully...
@@ -267,7 +268,7 @@ if ($dump_xml) {
     my $fileHandle;
     my $filepath = $output_dir . "/" . $dump_xml;
     make_path($output_dir);
-    open($fileHandle, ">>".$filepath);
+    open($fileHandle, ">".$filepath);
     if(!$fileHandle) {
         print STDERR "FAILURE - cannot open '.$output_dir."/".$dump_xml.' for writing XML dump.\n$!\n";
         exit(1);  # we should probably exit more gracefully...

@@ -25,7 +25,68 @@ use Data::Dumper;
 use File::Path 'make_path';
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(parse_comment_for_annotations parse_all_types_for_annotations);
+our @EXPORT_OK = qw(parse_for_annotations parse_comment_for_annotations);
+
+
+
+
+
+sub parse_for_annotations
+{
+    my($type_table, $parsed_data, $options) = @_;
+    
+    my $n_total_warnings = 0;
+    my $total_warning_mssg = '';
+    
+    # first parse types in the type table
+    while (my($module_name, $types) = each %{$type_table})
+    {
+        foreach my $type (@{$types})
+        {
+            # parse to retrieve the annotations, taking note of warnings that get passed back up
+            my $isfuncdef;
+            my ($annotations,$n_warnings, $warning_mssg) = parse_comment_for_annotations($type->{comment},$type,$isfuncdef,$options);
+            $n_total_warnings+=$n_warnings;
+            $total_warning_mssg .= $warning_mssg;
+            
+            # save annotations with the base typed object
+            $type->{ref}->{annotations} = $annotations;
+            # print Dumper($annotations)."\n";
+        }
+    }
+    
+    # then parse funcdefs the same way by navigating the parsed_data structure
+    while (my($service_name, $modules) = each %{$parsed_data})
+    {
+        foreach my $module (@$modules) {
+            my $module_components = $module->[0]->{module_components};
+            foreach my $c (@$module_components) {
+                if( $c->isa('Bio::KBase::KIDL::KBT::Funcdef') ) {
+                    #print "Func Comp: ".$c->{name}."\n";
+                    my $isfuncdef = 1;
+                    my ($annotations,$n_warnings, $warning_mssg) = parse_comment_for_annotations($c->{comment},$c,$isfuncdef,$options);
+                    $n_total_warnings+=$n_warnings;
+                    $total_warning_mssg .= $warning_mssg;
+                    $c->{annotations} = $annotations;
+                    #print Dumper($c)."\n";
+                }
+                
+            }
+        }
+    }
+    #print Dumper($parsed_data)."\n";
+    #exit 1;
+    
+    # print warnings if some were found
+    if($n_total_warnings > 0)
+    {
+        print STDERR "total annotation warnings: ".$n_total_warnings."\n";
+        print STDERR $total_warning_mssg."\n";
+    }
+    return;
+}
+
+
 
 
 
@@ -34,7 +95,7 @@ our @EXPORT_OK = qw(parse_comment_for_annotations parse_all_types_for_annotation
 
 sub parse_comment_for_annotations
 {
-    my($raw_comment, $type, $options) = @_;
+    my($raw_comment, $component, $isfuncdef, $options) = @_;
     
     my $annotations = {}; #place to save annotations that we recognize
     $annotations->{unknown_annotations} = {}; #place to save declared annotations which we don't specifically parse
@@ -62,8 +123,13 @@ sub parse_comment_for_annotations
             if($n_tokens>0) {
                 my $flag = shift(@tokens);
                 
-                #print "FLAG:'".$flag."\n";
-                my ($n_warnings, $warning_mssg) = process_annotation($annotations,$flag,\@tokens,$type,$options);
+                # parse annotations differently based on whether it is a function or type
+                my ($n_warnings, $warning_mssg);
+                if ( $isfuncdef ) {
+                    ($n_warnings, $warning_mssg) = process_function_annotation($annotations,$flag,\@tokens,$component,$options);
+                } else {
+                    ($n_warnings, $warning_mssg) = process_type_annotation($annotations,$flag,\@tokens,$component,$options);
+                }
                 $n_total_warnings+=$n_warnings;
                 $total_warning_mssg .= $warning_mssg;
             }
@@ -76,40 +142,48 @@ sub parse_comment_for_annotations
 
 
 
-sub parse_all_types_for_annotations
-{
-    my($type_table, $options) = @_;
+
+
+sub process_function_annotation {
+    my($annotations, $flag, $values, $function, $options) = @_;
     
-    my $n_total_warnings = 0;
-    my $total_warning_mssg = '';
-    while (my($module_name, $types) = each %{$type_table})
-    {
-        foreach my $type (@{$types})
-        {
-            #print "-----".$type->{name}."\n";
-            #print $type->{comment}."\n---\n";
-            
-            # parse to retrieve the annotations, taking note of warnings that get passed back up
-            my ($annotations,$n_warnings, $warning_mssg) = parse_comment_for_annotations($type->{comment},$type,$options);
-            $n_total_warnings+=$n_warnings;
-            $total_warning_mssg .= $warning_mssg;
-            
-            # save annotations with the base typed object
-            $type->{ref}->{annotations} = $annotations;
-            
-           # print Dumper($annotations)."\n";
+    my $n_warnings = 0;
+    my $warning_mssg = '';
+    
+    print Dumper($function)."\n";
+    
+    # deprecated [$replacement_type1] [$replacement_type2] ...
+    #    this flag indicates that the tagged function is deprecated, and optionally allows a list of replacement functions
+    #    which should be used instead
+    if($flag eq 'deprecated') {
+        if(!defined($annotations->{$flag})) { $annotations->{$flag} = []; }
+        foreach my $replacement_func (@{$values}) {
+            if(scalar(split(/\./,$replacement_func)) == 2) {
+                push(@{$annotations->{$flag}},$replacement_func);
+            } else {
+                $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' must have a fully qualified function name (ie ModuleName.function_name)\n";
+                $warning_mssg .= "  in order to be later retrieved.  \@$flag annotation was defined for funcdef '".$function->{name}."'\n";
+                $warning_mssg .= "  The invalid replacement function name given was '$replacement_func'.\n";
+                $n_warnings++;
+            }
         }
     }
     
-    
-   # print Dumper($type_table)."\n";
-    
-    if($n_total_warnings > 0) {
-        print STDERR "total annotation warnings: ".$n_total_warnings."\n";
-        print STDERR $total_warning_mssg."\n";
+        
+    # catch all other annotations and place them on the heap
+    else {
+        # make sure we have a list defined, then push the annotation to the list and let someone else deal with it downstream
+        if(!defined($annotations->{unknown_annotations}->{$flag})) {
+            $annotations->{unknown_annotations}->{$flag} = [];
+        }
+        push(@{$annotations->{unknown_annotations}->{$flag}},join(' ',@{$values}));
     }
-    return;
+    
+    
+    return ($n_warnings, $warning_mssg);
 }
+
+
 
 
 #
@@ -120,7 +194,7 @@ sub parse_all_types_for_annotations
 #     id_reference [type_name]
 #
 #  returns ($n_warnings, $warning_mssg)
-sub process_annotation {
+sub process_type_annotation {
     my($annotations, $flag, $values, $type, $options) = @_;
     
     my $n_warnings = 0;
@@ -365,7 +439,7 @@ sub process_annotation {
     return ($n_warnings, $warning_mssg);
 }
 
-
+#  recursive loop to get the base type of a typedef
 sub resolve_typedef {
     my($type) = @_;
     while($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {

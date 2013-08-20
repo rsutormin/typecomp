@@ -27,7 +27,7 @@ our %valid_authentication_value = map { $_ => 1 } @valid_authentication_values;
 our %builtin_types = ('int' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'int'),
 		      'string' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'string'),
 		      'float' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'float'),
-		      'bool' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'bool'),
+		      #'bool' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'bool'),
                       'UnspecifiedObject' => Bio::KBase::KIDL::KBT::UnspecifiedObject->new(),
     );
 
@@ -1057,17 +1057,6 @@ sub define_type
 {
     my($self, $old_type, $new_type, $comment) = @_;
     my $active_module = $self->YYData->{active_module};
-    
-    ####
-    ## If the $old_type is a simple scalar type, then we need to create a copy so we can attach annotations to it
-    ## Previously we used references for scalars presumably to save memory, but there doesn't seem to be a reason why this is required
-    ## note that this doesn't change the use of refs to scalar types in the parsed object for lists, tuples and mappings
-    if( $old_type->isa('Bio::KBase::KIDL::KBT::Scalar') ) {
-        my $scalar_type = $old_type->scalar_type;
-        $old_type = Bio::KBase::KIDL::KBT::Scalar->new(scalar_type=>$scalar_type);
-    }
-    ####
-    
     my $def = Bio::KBase::KIDL::KBT::Typedef->new(name => $new_type, module => $active_module, alias_type => $old_type, comment => $comment);
     push(@{$self->YYData->{type_list}}, $def);
     $self->YYData->{type_table}->{$new_type} = $def;
@@ -1083,7 +1072,7 @@ sub define_type
                 $old_type->comment($comment);
             }
         }
-        # we need to associate a module to this struct for producing json schema
+        # we need to associate a module to this struct for producing json schema that can have java package information
         if ($old_type->isa('Bio::KBase::KIDL::KBT::Struct'))
         {
             $old_type->set_module($active_module);
