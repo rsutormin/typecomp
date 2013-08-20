@@ -11,6 +11,8 @@ use File::Path 'make_path';
 use Bio::KBase::KIDL::KBT;
 use Getopt::Long;
 
+use Bio::KBase::KIDL::AnnotationParser qw(parse_for_annotations);
+
 =head1 NAME
 
 compile_typespec
@@ -212,9 +214,11 @@ while (my($service, $modules) = each %{$parsed_data})
 
 
 
-# all done, so we exit and dump if requested
-print STDERR Dumper($parsed_data) if $dump_parsed;
-
+################################
+###### parse and assemble annotations
+my $type_table = assemble_types($parser);
+my $annotation_options = {};
+parse_for_annotations($type_table, $parsed_data, $annotation_options);
 
 # we permit output to an XML file if requested
 if ($dump_xml) {
@@ -236,7 +240,8 @@ if ($dump_xml) {
     close($fileHandle);
 }
 
-
+# all done, so we exit and dump if requested
+print STDERR Dumper($parsed_data) if $dump_parsed;
 
 exit(0);
 
