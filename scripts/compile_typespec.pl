@@ -42,7 +42,7 @@ Arguments:
                                are delimited by ':'.  Can also be set with an environment variable
                                named 'KB_TYPECOMP_PATH', although if given, paths provided as
                                arguments are searched first.
-    --xml name                 Use name as the filename of an xml file that dumps the parsed type
+    --xmldump name             Use name as the filename of an xml file that dumps the parsed type
 			       specification file data
     --dump		       Dump the parsed type specification file to stdout
 
@@ -81,7 +81,7 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
                     "path=s"    => \$include_path,
                     "url=s"     => \$default_service_url,
                     "dump"      => \$dump_parsed,
-                    "xml=s"     => \$dump_xml,
+                    "xmldump=s" => \$dump_xml,
                     "help|h"	=> \$help,
                     );
 

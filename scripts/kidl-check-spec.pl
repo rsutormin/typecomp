@@ -72,7 +72,7 @@ my $outputdir = File::Temp->newdir(".kidl-check-XXXX");
 my $outputdirname = $outputdir->dirname;
 
 # call the typecompiler
-my $system_command = "compile_typespec -xml parsedump.xml '$ARGV[0]' $outputdir 2>&1";
+my $system_command = "compile_typespec -xmldump parsedump.xml '$ARGV[0]' $outputdir 2>&1";
 my $tc_output = `$system_command`;
 my $exit_code = $? >> 8;
 if ( $exit_code != 0 ) {
