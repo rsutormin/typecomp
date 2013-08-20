@@ -7,10 +7,11 @@ enum 'ScalarType' => [qw(int float string bool)];
 
 has 'scalar_type' => (isa => 'ScalarType', is => 'rw');
 
-our %java_class_type_map = (int => 'Integer.class',
-			    float => 'Float.class',
-			    string => 'String.class',
-                            bool => 'Boolean.class');
+
+our %java_class_type_map = (int	   => 'Integer.class',
+			    float  => 'Float.class',
+			    string => 'String.class'
+			    );
 
 sub java_type_expression
 {

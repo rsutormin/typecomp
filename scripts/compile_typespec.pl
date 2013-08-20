@@ -15,7 +15,6 @@ use Bio::KBase::KIDL::JSONSchema qw(to_json_schema write_json_schemas_to_file);
 use Bio::KBase::KIDL::AnnotationParser qw(parse_for_annotations);
 
 
-
 =head1 NAME
 
 compile_typespec
@@ -96,6 +95,7 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
 		    "xmldump=s" => \$dump_xml,
                     "jsync=s"   => \$dump_jsync,
                     "dump"      => \$dump_parsed,
+                    "xmldump=s" => \$dump_xml,
                     "help|h"	=> \$help,
                     );
 
@@ -283,8 +283,7 @@ if ($dump_xml) {
 }
 
 
-################################
-###### output file to XML / JSYNC format
+# all done, so we exit and dump if requested
 print STDERR Dumper($parsed_data) if $dump_parsed;
 
 exit(0);
@@ -538,6 +537,10 @@ sub setup_impl_data
 # The service stubs include a mapping from the function name in a module
 # to the impl module for that function.
 #
+# need_auth is a hash with keys of "required", "optional", "none"
+# with counts of methods with that attribute.
+#
+
 sub write_service_stubs
 {
     my($service, $modules, $output_dir, $need_auth, $available_type_table) = @_;
@@ -602,6 +605,17 @@ sub write_service_stubs
     # don't create psgi if not requested
     # my $psgi_file = $psgi || ($service . ".psgi");
     my $psgi_file = $psgi;
+
+    #
+    # We define two different flags: "authenticated" is true
+    # if any funcdef has authenticated required or optional. This
+    # causes the authentication code to be brought in.
+    #
+    # Flag "authenticated_only" is set if *all* funcdefs
+    # in the module require authentication. In this case we
+    # force authentication to succeed in the client object
+    # constructor.
+    #
     
     my $vars = {
         client_package_name => $client_package_name,
@@ -612,7 +626,9 @@ sub write_service_stubs
         module_info => \%module_info,
         service_options => \%service_options,
         default_service_url => $default_service_url,
-        authenticated => $need_auth,
+        authenticated => (($need_auth->{required} || $need_auth->{optional}) ? 1 : 0),
+        authenticated_only => (($need_auth->{required} &&
+			       (!$need_auth->{optional}) && (!$need_auth->{none})) ? 1 : 0),
         psgi_file => $psgi_file,
     };
 #    print Dumper($vars);
@@ -1112,18 +1128,14 @@ sub check_for_authentication
  SVC:
     while (my($service, $modules) = each %$services)
     {
-        $out->{$service} = 0;
+	$out->{$service}->{$_} = 0 foreach qw(required optional none);;
         for my $module_ent (@$modules)
         {
             my($module, $type_info, $type_table) = @$module_ent;
             for my $comp (@{$module->module_components})
             {
                 next unless $comp->isa('Bio::KBase::KIDL::KBT::Funcdef');
-                if ($comp->authentication eq 'required' || $comp->authentication eq 'optional')
-                {
-                    $out->{$service} = 1;
-                    next SVC;
-                }
+		$out->{$service}->{$comp->authentication}++;
             }
         }
     }

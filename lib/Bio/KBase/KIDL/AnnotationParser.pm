@@ -150,7 +150,7 @@ sub process_function_annotation {
     my $n_warnings = 0;
     my $warning_mssg = '';
     
-    print Dumper($function)."\n";
+    #print Dumper($function)."\n";
     
     # deprecated [$replacement_type1] [$replacement_type2] ...
     #    this flag indicates that the tagged function is deprecated, and optionally allows a list of replacement functions
