@@ -284,12 +284,12 @@ class Application(object):
             try:
                 req = json.loads(request_body)
             except ValueError as ve:
-                err = {'code': -32700,
-                       'name': "Parse error",
-                       'message': str(ve),
-                       'version': '1.1'  # don't know the inc version
+                err = {'error': {'code': -32700,
+                                 'name': "Parse error",
+                                 'message': str(ve),
+                                 }
                        }
-                rpc_result = json.dumps(err)
+                rpc_result = self.process_error(err, ctx, {'version': '1.1'})
             else:
                 ctx['module'], ctx['method'] = req['method'].split('.')
                 ctx['call_id'] = req['id']
@@ -336,12 +336,8 @@ class Application(object):
                                      'message': jre.data
                                      }
                            }
-                    trace = None
-                    if hasattr(jre, 'trace'):
-                        trace = jre.trace
-                        self.log(mlog.ERR, ctx, trace.split('\n')[0:-1])
-                    self.complete_err(err, req, trace)
-                    rpc_result = json.dumps(err)
+                    trace = jre.trace if hasattr(jre, 'trace') else None
+                    rpc_result = self.process_error(err, ctx, req, trace)
                 except Exception, e:
                     err = {'error': {'code': 0,
                                      'name': 'Unexpected Server Error',
@@ -349,10 +345,8 @@ class Application(object):
                                         'occurred',
                                      }
                            }
-                    trace = traceback.format_exc()
-                    self.log(mlog.ERR, ctx, trace.split('\n')[0:-1])
-                    self.complete_err(err, req, trace)
-                    rpc_result = json.dumps(err)
+                    rpc_result = self.process_error(err, ctx, req,
+                                                    traceback.format_exc())
                 else:
                     status = '200 OK'
 
@@ -376,18 +370,21 @@ class Application(object):
         start_response(status, response_headers)
         return [response_body]
 
-    def complete_err(self, err, req, trace=None):
-        if 'id' in req:
-            err['id'] = req['id']
-        if 'version' in req:
-            err['version'] = req['version']
-            err['error']['error'] = trace
-        elif 'jsonrpc' in req:
-            err['jsonrpc'] = req['jsonrpc']
-            err['error']['data'] = trace
+    def process_error(self, error, context, request, trace=None):
+        if trace:
+            self.log(mlog.ERR, context, trace.split('\n')[0:-1])
+        if 'id' in request:
+            error['id'] = request['id']
+        if 'version' in request:
+            error['version'] = request['version']
+            error['error']['error'] = trace
+        elif 'jsonrpc' in request:
+            error['jsonrpc'] = request['jsonrpc']
+            error['error']['data'] = trace
         else:
-            err['version'] = '1.0'
-            err['error']['error'] = trace
+            error['version'] = '1.0'
+            error['error']['error'] = trace
+        return json.dumps(error)
 
 application = Application()
 
