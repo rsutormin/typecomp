@@ -55,7 +55,7 @@ sub check_for_standards {
         $valid_names->{$key."s"} = 1;
     }
     
-    # First, we assemble a list of all typed objects, which requires a traversal over everything
+    # First, we assemble a list of all typed object names, which requires a traversal over everything
     my $valid_typed_object_names = {};
     foreach my $module_name (keys %$all_types_table) {
         #loop over each module
@@ -90,6 +90,11 @@ sub check_for_standards {
                 my $name = $c->{name};
                 my $type = $c->{ref};
                 my $comment = $c->{comment};
+                
+                # skip if it is a deprecated method
+                next if(defined $type->{annotations}->{deprecated});
+                
+                #resolve to the base type
                 while ($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
                     $type = $type->{alias_type};
                 }
@@ -158,8 +163,13 @@ sub check_for_standards {
             my $module_components = $module->[0]->module_components;
             foreach my $func (@$module_components) {
                 if ($func->isa('Bio::KBase::KIDL::KBT::Funcdef')) {
+                    
                     my $name = $func->{name};
                     my $comment = $func->{comment};
+                    
+                    # skip if it is a deprecated method
+                    next if(defined $func->{annotations}->{deprecated});
+                    
                     my ($e,$w) = validate_lowercase_with_underscore($name,$valid_names,"funcdefs");
                     push @$err_mssg, "$e" if ($e);
                     push @$warn_mssg, "$w" if ($w);

@@ -1,0 +1,15 @@
+
+
+This directory contains tests of the kidl-check-spec script (which indirectly tests the type compiler as well).
+
+You can add new tests simply by putting new spec files in the good-specs or bad-specs directory.  As expected,
+good-specs must pass the kidl-check-spec script, whereas bad-specs must fail.
+
+The KSaplingDBD.xml file is used because it is valid to use CamelCase in method names and typedefs that otherwise
+have to be lowercase_with_underscores if the CamelCase term references a typed object, Entity or Relationship name.
+This file is passed as input to tests.
+
+
+To run tests:
+
+    perl run-test.t
