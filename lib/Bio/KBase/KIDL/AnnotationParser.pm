@@ -102,7 +102,7 @@ sub parse_all_types_for_annotations
     }
     
     
-    print Dumper($type_table)."\n";
+   # print Dumper($type_table)."\n";
     
     if($n_total_warnings > 0) {
         print "total annotation warnings: ".$n_total_warnings."\n";

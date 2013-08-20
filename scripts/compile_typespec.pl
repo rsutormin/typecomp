@@ -230,12 +230,12 @@ parse_all_types_for_annotations($type_table,{});
 
 # if the flag was set, output json schema as well to the output directory
 if($generate_json_schema) {
-    my $java_package = "gov.doe.kbase.";
+    my $java_package = "us.kbase.";
     
     # set some options, but this should really be passed in as arguments
     my $options = {};
     $options->{jsonschema_version}=4; #supports 3 or 4
-    $options->{specify_java_types}=0; #set to 0 or to $java_package;
+    $options->{specify_java_types}=0; #set to 0 or to $java_package; this is out of date
     $options->{use_references}=0;
     $options->{use_kb_annotations}=1;
     $options->{omit_comments}=0;
