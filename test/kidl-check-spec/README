@@ -1,6 +1,6 @@
 
 
-This directory contains tests of the kidl-check-spec script (which indirectly tests the type compiler as well).
+This directory contains files needed for testing the kidl-check-spec script (which indirectly tests the type compiler as well).
 
 You can add new tests simply by putting new spec files in the good-specs or bad-specs directory.  As expected,
 good-specs must pass the kidl-check-spec script, whereas bad-specs must fail.
@@ -10,6 +10,10 @@ have to be lowercase_with_underscores if the CamelCase term references a typed o
 This file is passed as input to tests.
 
 
-To run tests:
+To run tests, from the root typecomp directory, either
 
-    perl run-test.t
+1) run all tests, which include this set
+    make test
+
+2) run just this set of tests
+    perl test/02test-kidl-check-spec.t

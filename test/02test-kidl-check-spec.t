@@ -14,7 +14,7 @@ use Test::More;
 my $n_tests;
 
 # perform the good tests, which are spec files that should pass the API check
-opendir my $gooddir, "good-specs" or die "Can't run tests!  Cannot open directory: $!";
+opendir my $gooddir, "test/kidl-check-spec/good-specs" or die "Can't run tests!  Cannot open directory: $!";
 my @goodfiles = readdir $gooddir;
 closedir $gooddir;
 
@@ -23,7 +23,7 @@ foreach my $spec (@goodfiles) {
     next if $spec eq '..';
     next if $spec !~ m/\.spec$/;
     
-    my $check_command = "kidl-check-spec -erxml KSaplingDBD.xml good-specs/$spec 2>&1";
+    my $check_command = "kidl-check-spec -erxml test/kidl-check-spec/KSaplingDBD.xml test/kidl-check-spec/good-specs/$spec 2>&1";
     my $check_output = `$check_command`;
     
     # exit code should be zero for all good tests
@@ -36,7 +36,7 @@ foreach my $spec (@goodfiles) {
 
 
 # perform the bad tests, which are spec files that should fail the API check
-opendir my $baddir, "bad-specs" or die "Can't run tests!  Cannot open directory: $!";
+opendir my $baddir, "test/kidl-check-spec/bad-specs" or die "Can't run tests!  Cannot open directory: $!";
 my @badfiles = readdir $baddir;
 closedir $baddir;
 
@@ -45,7 +45,7 @@ foreach my $spec (@badfiles) {
     next if $spec eq '..';
     next if $spec !~ m/\.spec$/;
     
-    my $check_command = "kidl-check-spec  -erxml KSaplingDBD.xml bad-specs/$spec 2>&1";
+    my $check_command = "kidl-check-spec  -erxml test/kidl-check-spec/KSaplingDBD.xml test/kidl-check-spec/bad-specs/$spec 2>&1";
     my $check_output = `$check_command`;
     
     # exit code should be zero for all good tests
