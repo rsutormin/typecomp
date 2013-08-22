@@ -156,8 +156,11 @@ class [% module.module_name %](object):
         if self.timeout < 1:
             raise ValueError('Timeout value must be at least 1 second')
 [% FOREACH method IN module.methods -%]
-
+[% IF method.arg_count > 0 %]
     def [% method.name %](self, [% method.args %]):
+[% ELSE %]
+    def [% method.name %](self):
+[% END -%]
 
         arg_hash = {'method': '[% module.module_name %].[% method.name %]',
                     'params': [[% method.args %]],
@@ -190,8 +193,10 @@ class [% module.module_name %](object):
         if 'result' in resp:
 [% IF method.ret_count == 1 -%]
             return resp['result'][0]
-[% ELSE -%]
+[% ELSIF method.ret_count > 1 -%]
             return resp['result']
+[% ELSE -%]
+            pass  # nothing to return
 [% END -%]
         else:
             raise ServerError('Unknown', 0, 'An unknown server error occurred')

@@ -50,7 +50,11 @@ class [% module.module_name %]:
        END;
        retlist.push(var.name);
    END -%]
+[%- IF method.arg_count > 0 -%]
     def [% method.name %](self, [% paramlist.join(', ') %]):
+[% ELSE -%]
+    def [% method.name %](self):
+[% END -%]
         # self.ctx is set by the wsgi application class
 [% IF method.ret_count > 0 -%]
         # return variables are: [% retlist.join(", ") %]
@@ -58,8 +62,8 @@ class [% module.module_name %]:
         #BEGIN [% method.name %]
 [% method.py_user_code -%]
         #END [% method.name %]
-
 [% IF method.ret_count > 0 -%]
+
         #At some point might do deeper type checking...
 [% 	FOREACH ret IN method.returns -%]
 [%    	spectype = ret.baretype -%]
