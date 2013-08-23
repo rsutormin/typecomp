@@ -364,7 +364,7 @@ sub log_debug
 {
     my ($self, $message, $level) = @_;
     if(!defined($level)) {
-        $level = 2;
+        $level = 1;
     }
     if($self->{_debug_levels}->{$level}) {
     } else {

@@ -192,7 +192,7 @@ class MethodContext(dict):
     def log_info(self, message):
         self._log(mlog.INFO, message)
 
-    def log_debug(self, message, level=2):
+    def log_debug(self, message, level=1):
         if level in self._debug_levels:
             pass
         else:
