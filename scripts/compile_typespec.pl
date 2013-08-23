@@ -75,7 +75,6 @@ my $default_service_url;
 my $generate_json_schema; 
 my $dump_parsed;
 my $dump_xml;
-my $dump_jsync;
 my $test_script;
 my $help;
 
@@ -93,7 +92,6 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
                     "url=s"     => \$default_service_url,
                     "jsonschema"=> \$generate_json_schema,
 		    "xmldump=s" => \$dump_xml,
-                    "jsync=s"   => \$dump_jsync,
                     "dump"      => \$dump_parsed,
                     "xmldump=s" => \$dump_xml,
                     "help|h"	=> \$help,
@@ -249,20 +247,8 @@ if($generate_json_schema) {
 }
 
 ################################
-###### output file to XML / JSYNC format
-if($dump_jsync) {
-    use JSYNC;
-    my $fileHandle;
-    my $filepath = $output_dir . "/" . $dump_jsync;
-    make_path($output_dir);
-    open($fileHandle, ">".$filepath); #should fix this so that it works on all platforms...
-    if(!$fileHandle) {
-        print STDERR "FAILURE - cannot open '.$output_dir."/".$dump_jsync.' for writing JSYNC dump.\n$!\n";
-        exit(1);  # we should probably exit more gracefully...
-    }
-    print $fileHandle JSYNC::dump($parsed_data, {pretty => 1});
-    close($fileHandle);
-}
+###### dump output file to XML format
+
 if ($dump_xml) {
     use XML::Dumper;
     my $fileHandle;
