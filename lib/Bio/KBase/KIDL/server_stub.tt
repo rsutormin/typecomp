@@ -330,6 +330,8 @@ sub new
         %opts,
     };
     $self->{_logger} = $logger;
+    $self->{_debug_levels} = {7 => 1, 8 => 1, 9 => 1,
+                              'DEBUG' => 1, 'DEBUG2' => 1, 'DEBUG3' => 1};
     return bless $self, $class;
 }
 
@@ -364,12 +366,12 @@ sub log_debug
     if(!defined($level)) {
         $level = 2;
     }
-    if($level < 2) {
-        $level = $Bio::KBase::mlog::DEBUG;
-    } elsif($level > 2) {
-        $level = $Bio::KBase::mlog::DEBUG3;
+    if($self->{_debug_levels}->{$level}) {
     } else {
-        $level = $Bio::KBase::mlog::DEBUG2;
+        if ($level =~ /\D/ || $level < 1 || $level > 3) {
+            die "Invalid log level: $level";
+        }
+        $level += 6;
     }
     $self->_log($level, $message);
 }
