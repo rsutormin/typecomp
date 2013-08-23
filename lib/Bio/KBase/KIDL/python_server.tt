@@ -183,6 +183,7 @@ class MethodContext(dict):
         self['module'] = None
         self['method'] = None
         self['call_id'] = None
+        self._debug_levels = set([7, 8, 9, 'DEBUG', 'DEBUG2', 'DEBUG3'])
         self._logger = logger
 
     def log_err(self, message):
@@ -192,13 +193,13 @@ class MethodContext(dict):
         self._log(mlog.INFO, message)
 
     def log_debug(self, message, level=2):
-        level = int(level)
-        if level < 2:
-            level = mlog.DEBUG
-        elif level > 2:
-            level = mlog.DEBUG3
+        if level in self._debug_levels:
+            pass
         else:
-            level = mlog.DEBUG2
+            level = int(level)
+            if level < 1 or level > 3:
+                raise ValueError("Illegal log level: " + str(level))
+            level = level + 6
         self._log(level, message)
 
     def set_log_level(self, level):
