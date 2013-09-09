@@ -8,7 +8,7 @@ from jsonrpcbase import JSONRPCService, InvalidParamsError, KeywordError,\
 from os import environ
 from ConfigParser import ConfigParser
 [% IF authenticated -%]
-import nexus
+import biokbase.nexus
 [% END -%]
 
 DEPLOY = 'KB_DEPLOYMENT_CONFIG'
@@ -179,7 +179,7 @@ class Application(object):
 [%   END -%]
 [% END -%]
 [% IF authenticated -%]
-        self.auth_client = nexus.Client( config = { 'server' : 'nexus.api.globusonline.org',
+        self.auth_client = biokbase.nexus.Client( config = { 'server' : 'nexus.api.globusonline.org',
                                                     'verify_ssl' : False,
                                                     'client' : None,
                                                     'client_secret': None})
