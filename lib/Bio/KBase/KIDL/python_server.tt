@@ -11,7 +11,7 @@ from os import environ
 from ConfigParser import ConfigParser
 from biokbase import mlog
 [% IF authenticated -%]
-import nexus
+import biokbase.nexus
 [% END -%]
 
 DEPLOY = 'KB_DEPLOYMENT_CONFIG'
@@ -258,7 +258,7 @@ class Application(object):
 [%   END -%]
 [% END -%]
 [% IF authenticated -%]
-        self.auth_client = nexus.Client(
+        self.auth_client = biokbase.nexus.Client(
             config={'server': 'nexus.api.globusonline.org',
                     'verify_ssl': False,
                     'client': None,
