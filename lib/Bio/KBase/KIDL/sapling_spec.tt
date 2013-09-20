@@ -92,7 +92,7 @@ It has the following fields:
 			   fields_[% relationship.to_data.name %]>>);
 		     
 	
-    funcdef get_relationship_[% relationship.converse_name %](list<string> ids, list<string> fields)
+    funcdef get_relationship_[% relationship.converse_name %](list<string> ids, list<string> from_fields, list<string> rel_fields, list<string> to_fields)
         returns(list<tuple<fields_[% relationship.to_data.name %],
 			   fields_[% relationship.name %],
 			   fields_[% relationship.from_data.name %]>>);
