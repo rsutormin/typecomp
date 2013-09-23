@@ -78,7 +78,7 @@ sub to_json_schema
     
     # set default options here if they were not set
     if(!exists($options->{jsonschema_version})) {
-        $options->{jsonschema_version} = 3;
+        $options->{jsonschema_version} = 4;
     }
     
     
@@ -93,9 +93,9 @@ sub to_json_schema
             
             $schema .= "{\n";
             if($options->{jsonschema_version}==3) {
-                $schema .= $spacer."\"\$schema\":\"http://json-schema.org/draft-03/schema#\",\n";
+                #$schema .= $spacer."\"\$schema\":\"http://json-schema.org/draft-03/schema#\",\n";
             } elsif($options->{jsonschema_version}==4) {
-                $schema .= $spacer."\"\$schema\":\"http://json-schema.org/draft-04/schema#\",\n";
+                #$schema .= $spacer."\"\$schema\":\"http://json-schema.org/draft-04/schema#\",\n";
             }
             $schema .= $spacer."\"id\":\"".$type->{name}."\",\n";
             my $comment = extract_comment_from_type($type,$options);
