@@ -84,8 +84,9 @@ sub log
 {
     my ($self, $level, $context, $message) = @_;
     my $user = defined($context->user_id()) ? $context->user_id(): undef; 
-    $self->loggers()->{serverlog}->logit($level, $message, $user, 
-        $context->module(), $context->method(), $context->call_id());
+    $self->loggers()->{serverlog}->log_message($level, $message, $user, 
+        $context->module(), $context->method(), $context->call_id(),
+        $context->client_ip());
 }
 
 sub _build_loggers
@@ -95,11 +96,12 @@ sub _build_loggers
     my $loggers = {};
     my $callback = sub {$self->logcallback();};
     $loggers->{userlog} = Bio::KBase::mlog->new(
-            $submod, {}, {authuser => 1, module => 1, method => 1, call_id => 1,
-            changecallback => $callback,
+            $submod, {}, {ip_address => 1, authuser => 1, module => 1,
+            method => 1, call_id => 1, changecallback => $callback,
             config => $self->get_config_file()});
     $loggers->{serverlog} = Bio::KBase::mlog->new(
-            $submod, {}, {authuser => 1, module => 1, method => 1, call_id => 1,
+            $submod, {}, {ip_address => 1, authuser => 1, module => 1,
+            method => 1, call_id => 1,
             logfile => $loggers->{userlog}->get_log_file()});
     return $loggers;
 }
@@ -344,8 +346,9 @@ sub _get_user
 sub _log
 {
     my ($self, $level, $message) = @_;
-    $self->{_logger}->logit($level, $message, $self->_get_user(),
-        $self->module(), $self->method(), $self->call_id());
+    $self->{_logger}->log_message($level, $message, $self->_get_user(),
+        $self->module(), $self->method(), $self->call_id(),
+        $self->client_ip());
 }
 
 sub log_err

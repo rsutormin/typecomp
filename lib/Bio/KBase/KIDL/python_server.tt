@@ -212,8 +212,9 @@ class MethodContext(dict):
         self._logger.clear_user_log_level()
 
     def _log(self, level, message):
-        self._logger.logit(level, message, self['user_id'], self['module'],
-                           self['method'], self['call_id'])
+        self._logger.log_message(level, message, self['client_ip'],
+                                 self['user_id'], self['module'],
+                                 self['method'], self['call_id'])
 
 
 class Application(object):
@@ -225,18 +226,19 @@ class Application(object):
         self.serverlog.set_log_file(self.userlog.get_log_file())
 
     def log(self, level, context, message):
-        self.serverlog.logit(level, message, context['user_id'],
-                             context['module'], context['method'],
-                             context['call_id'])
+        self.serverlog.log_message(level, message, context['client_ip'],
+                             context['user_id'], context['module'],
+                             context['method'], context['call_id'])
 
     def __init__(self):
         submod = get_service_name() or '[% service_name %]'
         self.userlog = mlog.mlog(
-            submod, authuser=True, module=True, method=True, call_id=True,
-            changecallback=self.logcallback, config=get_config_file())
+            submod, ip_address=True, authuser=True, module=True, method=True,
+            call_id=True, changecallback=self.logcallback,
+            config=get_config_file())
         self.serverlog = mlog.mlog(
-            submod, authuser=True, module=True, method=True, call_id=True,
-            logfile=self.userlog.get_log_file())
+            submod, ip_address=True, authuser=True, module=True, method=True,
+            call_id=True, logfile=self.userlog.get_log_file())
         self.rpc_service = JSONRPCServiceCustom()
 [% IF authenticated -%]
         self.method_authentication = dict()
