@@ -489,7 +489,7 @@ sub get_kb_ws_searchable_tag {
     my($type,$options,$keyword) = @_;
     if($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
         # Currently, we cannot redefine ws_searchable fields in typedefs, so we always recurse fully
-        return get_kb_ws_searchable_tag($type->{alias_type},$options);
+        return get_kb_ws_searchable_tag($type->{alias_type},$options,$keyword);
     } elsif($type->isa('Bio::KBase::KIDL::KBT::Struct')) {
         if(defined($type->{annotations}->{$keyword})) {
             return $type->{annotations}->{$keyword};
