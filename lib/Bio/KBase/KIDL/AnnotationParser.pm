@@ -204,7 +204,7 @@ sub process_type_annotation {
     #    this flag indicates that the specified field name or names are optional, used primarily to allow
     #    optional fields during json schema based validation
     if($flag eq 'optional') {
-        # first make sure we are pointint to a structure, otherwise @optional makes no sense
+        # first make sure we are point to a structure, otherwise @optional makes no sense
         if(!$type->{ref}->isa('Bio::KBase::KIDL::KBT::Struct')) {
             $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' does nothing for non-structure types.\n";
             $warning_mssg .= "\@$flag annotation was defined for type '".$type->{module}.".".$type->{name}."', which is not a structure.\n";
@@ -246,7 +246,7 @@ sub process_type_annotation {
     # deprecated [$replacement_type1] [$replacement_type2] ...
     #    this flag indicates that the tagged type is deprecated, and optionally allows a list of typed objects
     #    which should be used instead
-    if($flag eq 'deprecated') {
+    elsif($flag eq 'deprecated') {
         if(!defined($annotations->{$flag})) { $annotations->{$flag} = []; }
         foreach my $replacement_type (@{$values}) {
             if(scalar(split(/\./,$replacement_type)) == 2) {

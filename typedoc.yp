@@ -428,6 +428,10 @@ sub Lexer {
 	    {
 		return ('', undef);
 	    }
+	    elsif (s/^(funcdef|typedef|module|list|mapping|structure|nullable|returns|authentication|tuple|async)\b//)
+	    {
+		return (uc($1), $1);
+	    }
 	    elsif (s/^([A-Za-z][A-Za-z0-9_]*)//)
 	    {
 		my $str = $1;
@@ -436,15 +440,15 @@ sub Lexer {
 		    my $type = $data->{type_table}->{$str};
 		    return('TYPENAME', $type);
 		}
-		elsif ($kidl_keywords{$str})
-		{
-		    return(uc($str), $str);
-		}
-		elsif ($kidl_reserved{$str})
-		{
-		    $parser->emit_warning("Use of reserved word '$str'");
-		    return('IDENT', $str);
-		}
+		#elsif ($kidl_keywords{$str})
+		#{
+		#    return(uc($str), $str);
+		#}
+		#elsif ($kidl_reserved{$str})
+		#{
+		#    $parser->emit_warning("Use of reserved word '$str'");
+		#    return('IDENT', $str);
+		#}
 		else
 		{
 		    return('IDENT', $str);
