@@ -85,16 +85,11 @@ def _read_inifile(file=os.environ.get(  # @ReservedAssignment
             config = ConfigParser()
             config.read(file)
             # strip down whatever we read to only what is legit
-<<<<<<< HEAD
             authdata = {x: config.get('authentication', x)
                         if config.has_option('authentication', x)
                         else None for x in
                            ('user_id', 'token', 'client_secret',
                             'keyfile', 'keyfile_passphrase', 'password')}
-=======
-            authdata = { x : config.get('authentication',x) if config.has_option('authentication',x) else None for x in
-                         ( 'user_id', 'token','client_secret', 'keyfile','keyfile_passphrase','password') }
->>>>>>> refs/heads/master
         except Exception, e:
             print "Error while reading INI file %s: %s" % (file, e)
     return authdata
@@ -154,15 +149,10 @@ class [% module.module_name %](object):
             if authdata is not None:
                 if authdata.get('token') is not None:
                     self._headers['AUTHORIZATION'] = authdata['token']
-<<<<<<< HEAD
                 elif(authdata.get('user_id') is not None
                      and authdata.get('password') is not None):
                     self._headers['AUTHORIZATION'] = _get_token(
                         authdata['user_id'], authdata['password'])
-=======
-                elif authdata.get('user_id') is not None and authdata.get('password') is not None:
-                    self._headers['AUTHORIZATION'] = _get_token( authdata['user_id'],authdata['password'] )
->>>>>>> refs/heads/master
         if self.timeout < 1:
             raise ValueError('Timeout value must be at least 1 second')
 [% FOREACH method IN module.methods -%]
