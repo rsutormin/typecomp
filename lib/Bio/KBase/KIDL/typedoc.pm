@@ -27,10 +27,104 @@ our %valid_authentication_value = map { $_ => 1 } @valid_authentication_values;
 our %builtin_types = ('int' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'int'),
 		      'string' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'string'),
 		      'float' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'float'),
+#		      'bool' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type => 'bool'),
     );
 
 our $auth_default = 'none';
 
+our @kidl_keywords = qw(funcdef
+    		        typedef
+			module
+			list
+			mapping
+			structure
+			nullable
+			returns
+			authentication
+			tuple
+			async);
+our %kidl_keywords = map { $_ => 1 } @kidl_keywords;
+
+our @kidl_reserved = qw(abstract
+			and
+			as
+			assert
+			bool
+			break
+			byte
+			case
+			catch
+			char
+			class
+			const
+			continue
+			debugger
+			def
+			default
+			del
+			delete
+			do
+			double
+			elif
+			else
+			enum
+			except
+			exec
+			extends
+			final
+			finally
+			float
+			for
+			from
+			function
+			global
+			goto
+			if
+			implements
+			import
+			in
+			instanceof
+			int
+			interface
+			is
+			lambda
+			let
+			long
+			native
+			new
+			not
+			or
+			package
+			pass
+			print
+			private
+			protected
+			public
+			raise
+			return
+			short
+			static
+			strictfp
+			super
+			switch
+			synchronized
+			this
+			throw
+			throws
+			transient
+			try
+			typeof
+			var
+			void
+			volatile
+			while
+			with
+			yield
+			none
+			required
+			optional
+			);
+our %kidl_reserved = map { $_ => 1 } @kidl_reserved;
 
 
 sub new {
@@ -714,25 +808,25 @@ sub new {
 	[#Rule 2
 		 'module_list', 0,
 sub
-#line 28 "typedoc.yp"
+#line 122 "typedoc.yp"
 { [] }
 	],
 	[#Rule 3
 		 'module_list', 2,
 sub
-#line 29 "typedoc.yp"
+#line 123 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
 	[#Rule 4
 		 '@1-2', 0,
 sub
-#line 32 "typedoc.yp"
+#line 126 "typedoc.yp"
 { $_[0]->get_comment() }
 	],
 	[#Rule 5
 		 'module', 8,
 sub
-#line 32 "typedoc.yp"
+#line 126 "typedoc.yp"
 {
     Bio::KBase::KIDL::KBT::DefineModule->new(options => $_[1],
 			   @{$_[4]},
@@ -743,37 +837,37 @@ sub
 	[#Rule 6
 		 'mod_name_def', 1,
 sub
-#line 40 "typedoc.yp"
+#line 134 "typedoc.yp"
 { [ module_name => $_[1], service_name => $_[1] ] }
 	],
 	[#Rule 7
 		 'mod_name_def', 3,
 sub
-#line 41 "typedoc.yp"
+#line 135 "typedoc.yp"
 { [ module_name => $_[3], service_name => $_[1] ] }
 	],
 	[#Rule 8
 		 'module_opts', 0,
 sub
-#line 44 "typedoc.yp"
+#line 138 "typedoc.yp"
 { [] }
 	],
 	[#Rule 9
 		 'module_opts', 2,
 sub
-#line 45 "typedoc.yp"
+#line 139 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
 	[#Rule 10
 		 'module_components', 0,
 sub
-#line 48 "typedoc.yp"
+#line 142 "typedoc.yp"
 { [] }
 	],
 	[#Rule 11
 		 'module_components', 2,
 sub
-#line 49 "typedoc.yp"
+#line 143 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
 	[#Rule 12
@@ -782,7 +876,7 @@ sub
 	[#Rule 13
 		 'module_component_with_doc', 2,
 sub
-#line 54 "typedoc.yp"
+#line 148 "typedoc.yp"
 { $_[2]->comment($_[1]); $_[2] }
 	],
 	[#Rule 14
@@ -797,13 +891,13 @@ sub
 	[#Rule 17
 		 'module_component', 2,
 sub
-#line 61 "typedoc.yp"
+#line 155 "typedoc.yp"
 { $auth_default = $_[1]; 'auth_default' . $_[1] }
 	],
 	[#Rule 18
 		 'auth_type', 2,
 sub
-#line 64 "typedoc.yp"
+#line 158 "typedoc.yp"
 { 
 			       if ($valid_authentication_value{$_[2]}) 
 			       {
@@ -819,45 +913,45 @@ sub
 	[#Rule 19
 		 '@2-3', 0,
 sub
-#line 77 "typedoc.yp"
+#line 179 "typedoc.yp"
 { $_[0]->get_comment() }
 	],
 	[#Rule 20
 		 'typedef', 5,
 sub
-#line 77 "typedoc.yp"
+#line 179 "typedoc.yp"
 { $_[0]->define_type($_[2], $_[3], $_[4]); }
 	],
 	[#Rule 21
 		 '@3-3', 0,
 sub
-#line 80 "typedoc.yp"
+#line 182 "typedoc.yp"
 { $_[0]->get_comment() }
 	],
 	[#Rule 22
 		 'funcdef', 13,
 sub
-#line 81 "typedoc.yp"
+#line 183 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Funcdef->new(return_type => $_[10], name => $_[3], parameters => $_[6],
 			      comment => $_[4], async => $_[1], authentication => $_[12] ); }
 	],
 	[#Rule 23
 		 '@4-4', 0,
 sub
-#line 83 "typedoc.yp"
+#line 185 "typedoc.yp"
 { $_[0]->get_comment() }
 	],
 	[#Rule 24
 		 'funcdef', 10,
 sub
-#line 84 "typedoc.yp"
+#line 186 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Funcdef->new(return_type => [$_[3]], name => $_[4], parameters => $_[7],
 			      comment => $_[5], async => $_[1], authentication => $_[9]); }
 	],
 	[#Rule 25
 		 'auth_param', 0,
 sub
-#line 88 "typedoc.yp"
+#line 190 "typedoc.yp"
 { $auth_default }
 	],
 	[#Rule 26
@@ -866,43 +960,43 @@ sub
 	[#Rule 27
 		 'async_flag', 0,
 sub
-#line 92 "typedoc.yp"
+#line 194 "typedoc.yp"
 { 0 }
 	],
 	[#Rule 28
 		 'async_flag', 1,
 sub
-#line 93 "typedoc.yp"
+#line 195 "typedoc.yp"
 { 1 }
 	],
 	[#Rule 29
 		 'funcdef_params', 0,
 sub
-#line 96 "typedoc.yp"
+#line 198 "typedoc.yp"
 { [] }
 	],
 	[#Rule 30
 		 'funcdef_params', 1,
 sub
-#line 97 "typedoc.yp"
+#line 199 "typedoc.yp"
 { [ $_[1] ] }
 	],
 	[#Rule 31
 		 'funcdef_params', 3,
 sub
-#line 98 "typedoc.yp"
+#line 200 "typedoc.yp"
 { [ @{$_[1]}, $_[3] ] }
 	],
 	[#Rule 32
 		 'funcdef_param', 2,
 sub
-#line 101 "typedoc.yp"
+#line 203 "typedoc.yp"
 { { type => $_[1], name => $_[2] } }
 	],
 	[#Rule 33
 		 'funcdef_param', 1,
 sub
-#line 102 "typedoc.yp"
+#line 204 "typedoc.yp"
 { { type => $_[1] } }
 	],
 	[#Rule 34
@@ -923,7 +1017,7 @@ sub
 	[#Rule 39
 		 'type', 1,
 sub
-#line 111 "typedoc.yp"
+#line 213 "typedoc.yp"
 { my $type = $_[0]->lookup_type($_[1]);
 			if (!defined($type))
 			{
@@ -934,74 +1028,74 @@ sub
 	[#Rule 40
 		 'mapping', 6,
 sub
-#line 119 "typedoc.yp"
+#line 221 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Mapping->new(key_type => $_[3]->[0], value_type=> $_[5]->[0]); }
 	],
 	[#Rule 41
 		 'structure', 4,
 sub
-#line 122 "typedoc.yp"
+#line 224 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Struct->new(items => $_[3]); }
 	],
 	[#Rule 42
 		 'struct_items', 1,
 sub
-#line 125 "typedoc.yp"
+#line 227 "typedoc.yp"
 { [$_[1]] }
 	],
 	[#Rule 43
 		 'struct_items', 2,
 sub
-#line 126 "typedoc.yp"
+#line 228 "typedoc.yp"
 { [ @{$_[1]}, $_[2] ] }
 	],
 	[#Rule 44
 		 'struct_item', 3,
 sub
-#line 129 "typedoc.yp"
+#line 231 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 0); }
 	],
 	[#Rule 45
 		 'struct_item', 4,
 sub
-#line 130 "typedoc.yp"
+#line 232 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::StructItem->new(item_type => $_[1], name => $_[2], nullable => 1); }
 	],
 	[#Rule 46
 		 'list', 4,
 sub
-#line 133 "typedoc.yp"
+#line 235 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::List->new(element_type => $_[3]); }
 	],
 	[#Rule 47
 		 'tuple', 4,
 sub
-#line 136 "typedoc.yp"
+#line 238 "typedoc.yp"
 { Bio::KBase::KIDL::KBT::Tuple->new(element_types => [ map { $_->[0] } @{$_[3]}],
 							    element_names => [ map { $_->[1] } @{$_[3]}] ); }
 	],
 	[#Rule 48
 		 'tuple_types', 1,
 sub
-#line 140 "typedoc.yp"
+#line 242 "typedoc.yp"
 { [ $_[1] ] }
 	],
 	[#Rule 49
 		 'tuple_types', 3,
 sub
-#line 141 "typedoc.yp"
+#line 243 "typedoc.yp"
 { [ @{$_[1]}, $_[3] ] }
 	],
 	[#Rule 50
 		 'tuple_type', 1,
 sub
-#line 144 "typedoc.yp"
+#line 246 "typedoc.yp"
 { [ $_[1], undef ] }
 	],
 	[#Rule 51
 		 'tuple_type', 2,
 sub
-#line 145 "typedoc.yp"
+#line 247 "typedoc.yp"
 { [ $_[1], $_[2] ] }
 	]
 ],
@@ -1009,7 +1103,7 @@ sub
     bless($self,$class);
 }
 
-#line 148 "typedoc.yp"
+#line 250 "typedoc.yp"
  
 
 sub define_type
@@ -1101,6 +1195,26 @@ sub emit_error {
     $data->{error_count}++;
 }
 
+sub emit_warning {
+    my($parser, $message) = @_;
+    
+    my $data = $parser->YYData;
+
+    my $line = $data->{line_number};
+    my $file = $data->{filename};
+
+    my $token = $parser->YYCurtok;
+    my $tval = $parser->YYCurval;
+
+    if ($token eq 'IDENT')
+    {
+	$token = $tval;
+    }
+    my $twarn = $token ? " next token is '$token'" : "";
+
+    warn "Warning: $file:$line: $message$twarn\n";
+}
+
 
 sub Lexer {
     my($parser)=shift;
@@ -1124,10 +1238,6 @@ sub Lexer {
 	    {
 		return ('', undef);
 	    }
-	    elsif (s/^(funcdef|typedef|module|list|mapping|structure|nullable|returns|authentication|tuple|async)\b//)
-	    {
-		return (uc($1), $1);
-	    }
 	    elsif (s/^([A-Za-z][A-Za-z0-9_]*)//)
 	    {
 		my $str = $1;
@@ -1135,6 +1245,15 @@ sub Lexer {
 		{
 		    my $type = $data->{type_table}->{$str};
 		    return('TYPENAME', $type);
+		}
+		elsif ($kidl_keywords{$str})
+		{
+		    return(uc($str), $str);
+		}
+		elsif ($kidl_reserved{$str})
+		{
+		    $parser->emit_warning("Use of reserved word '$str'");
+		    return('IDENT', $str);
 		}
 		else
 		{

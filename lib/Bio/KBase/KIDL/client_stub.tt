@@ -43,6 +43,7 @@ sub new
     };
 
 [% IF authenticated -%]
+    #
     # This module requires authentication.
     #
     # We create an auth token, passing through the arguments that we were (hopefully) given.
@@ -50,12 +51,21 @@ sub new
     {
 	my $token = Bio::KBase::AuthToken->new(@args);
 	
-	if ($token->error_message)
+	if (!$token->error_message)
 	{
+	    $self->{token} = $token->token;
+	    $self->{client}->{token} = $token->token;
+	}
+[% IF authenticated_only -%]
+        else
+        {
+	    #
+	    # All methods in this module require authentication. In this case, if we
+	    # don't have a token, we can't continue.
+	    #
 	    die "Authentication failed: " . $token->error_message;
 	}
-	$self->{token} = $token->token;
-	$self->{client}->{token} = $token->token;
+[% END -%]
     }
 [% END -%]
 
