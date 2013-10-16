@@ -131,7 +131,7 @@ sub write_json_schemas_to_file
         while ( my ($type_name, $schema) = each %{$type_hash} ) {
             my $filepath = $output_dir . "/jsonschema/" . $module_name . "/" . $type_name . ".json";
             my $out;
-            open($out, '>>'.$filepath);
+            open($out, '>'.$filepath);
             print $out $schema;
             close($out);
         }
