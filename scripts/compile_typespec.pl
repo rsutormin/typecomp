@@ -12,7 +12,7 @@ use Bio::KBase::KIDL::KBT;
 use Getopt::Long;
 
 use Bio::KBase::KIDL::JSONSchema qw(to_json_schema write_json_schemas_to_file);
-use Bio::KBase::KIDL::AnnotationParser qw(parse_for_annotations);
+use Bio::KBase::KIDL::AnnotationParser qw(assemble_annotations);
 
 
 =head1 NAME
@@ -135,14 +135,13 @@ if(exists($ENV{$KB_TYPECOMP_PATH})) {
 #parse the include path string into a ref to a list of include paths
 my $include_paths = [];
 if($include_path) {
-    print STDERR "Include path: '".$include_path ."'\n";
+    #print STDERR "Include path: '".$include_path ."'\n";
     my @include_path_list = split(/:/,$include_path);
     $include_paths = \@include_path_list;
 }
 
 # instatiate a YAPP parser with the typedoc grammer
 my $parser = typedoc->new();
-
 
 
 
@@ -156,7 +155,7 @@ my $error_msg = '';
 my $parsed_data = {}; # formally this was a hash named %services, now it is a ref to that same hash structure;
 
 
-# a hash of abs path of included files, initialize to include this spec file location  so we can't include ourself
+# a hash of abs path of included files, to mark the files we include
 my $resolved_includes = { };
 
 for my $spec_file (@spec_files)
@@ -168,9 +167,6 @@ for my $spec_file (@spec_files)
     
     # only continue if the file exists
     if(-f $full_file_path) {
-        
-        # clear the cached type information (so that types included by one spec file are not available to other spec files)
-        #$parser->clear_symbol_table_cache();
         
         $resolved_includes->{File::Spec->rel2abs($spec_file)} = 1;
         
@@ -185,15 +181,15 @@ for my $spec_file (@spec_files)
         } else {
         
             # no errors to report, so save the module info...
-            # we have to assemble the types as before
+            # we have to assemble a list of all the types that are available to this module
             my $available_type_table = $parser->YYData->{cached_type_tables};
             my $type_info = assemble_types($parser);  #type_info is now a hash with module names as keys, and lists as before
-                
+            
             for my $mod (@$modules)
             {
                 my $mod_name = $mod->module_name;
                 my $serv_name = $mod->service_name;
-                print STDERR "$filename: module $mod_name service $serv_name\n";
+                # print STDERR "$filename: module $mod_name service $serv_name\n";
                 push(@{$parsed_data->{$serv_name}}, [$mod, $type_info->{$mod_name}, $available_type_table->{$mod_name}]);
             }
         }
@@ -218,15 +214,20 @@ while (my($service, $modules) = each %{$parsed_data})
 {
     # only create stubs for services that have methods defined
     if(has_funcdefs($modules)) {
-        write_service_stubs($service, $modules, $output_dir, $need_auth->{$service},$available_type_table);
+        write_service_stubs($service, $modules, $output_dir, $need_auth->{$service}, $available_type_table);
     }
 }
 
 ################################
 ###### parse and assemble annotations
-my $type_table = assemble_types($parser);
 my $annotation_options = {};
-parse_for_annotations($type_table, $parsed_data, $annotation_options);
+assemble_annotations($parsed_data, $annotation_options);
+
+my $type_table = assemble_types($parser);
+
+print Dumper($parsed_data)."\n===========\n";
+print Dumper($available_type_table)."\n===========\n";
+print Dumper($type_table)."\n===========\n";
 
 
 ################################
@@ -248,7 +249,6 @@ if($generate_json_schema) {
 
 ################################
 ###### dump output file to XML format
-
 if ($dump_xml) {
     use XML::Dumper;
     my $fileHandle;
@@ -266,11 +266,14 @@ if ($dump_xml) {
 		   };
     print $fileHandle $dumper->pl2xml($alldata);
     close($fileHandle);
+    
 }
 
 
+
 # all done, so we exit and dump if requested
-print STDERR Dumper($parsed_data) if $dump_parsed;
+#print STDERR Dumper($parsed_data) if $dump_parsed;
+print STDERR Dumper($type_table) if $dump_parsed;
 
 exit(0);
 
@@ -324,7 +327,6 @@ sub parse_spec {
                     resolve_include_location($line,$abs_filecontainer,$include_paths,$resolved_includes);
             if($include_error_msg) {
                 $error_message .= "$filename:$line_number: ".$include_error_msg;
-               # $error_message .= "$filename:$line: Cannot resolve include of $filename (located in $abs_filecontainer) \n";
                 $errors_found = 1;
             } elsif ($included_filename) {
                 # if we have a filename and no error message, then recurse down and parse the included file
@@ -348,9 +350,6 @@ sub parse_spec {
     # we could possibly exit here if we detect errors in the included file...
     # but we don't now so that we generate a complete list of syntax errors
     #if(!$errors_found) { }
-    
-    # create a new container to stash our parsed data
-    my $parsed_data = {};
     
     # we can finally parse the file content
     #print STDERR "\n\tdebug: reading file $filename\n";
@@ -449,18 +448,21 @@ sub resolve_include_location
         
         # if the relative path from the current directory exists, use this first
         #print STDERR "\tdebug: checking for: $possible_path\n";
+	my $found_it;
         if (-e $possible_path) {
             #check if we've hit it before
             if(!exists($resolved_includes->{$possible_path})) {
                 $resolved_includes->{$possible_path}='1';
                 $abs_filecontainer = dirname($possible_path);
             } else {
+		# we've already parsed it, so we can safely return without looking anywhere else!
                 $filename = ''; $abs_filecontainer = '';
+		$found_it=1;
             } 
         }
         
         # abs_filecontainer will be undef if we couldn't find the file relative to the current directory
-        if(!$abs_filecontainer) {
+        if(!$abs_filecontainer && !$found_it) {
             # if this file doesn't exist, then look through every location on our path (in order!)
             # note that we assume path_list contains absolute paths
             foreach my $include_path (@{$path_list}) {
@@ -479,13 +481,14 @@ sub resolve_include_location
                         last;
                     } else {
                         $filename = ''; $abs_filecontainer = '';
+			$found_it=1;
                     }
                 }
             }
         }
         
         # if we still could not find the abs_filecontainer, then we must abort
-        if(!$abs_filecontainer) {
+        if(!$abs_filecontainer && !$found_it) {
             $error_msg = "Could not resolve include of file '$include_name'.  Is your include path properly set?\n";
         }
     }
@@ -1077,7 +1080,7 @@ sub write_scripts
         }
     }
 }
-
+ 
 sub assemble_types
 {
     my($parser) = @_;
@@ -1105,6 +1108,11 @@ sub assemble_types
     }
     return $all_types;
 }
+
+
+
+
+
 
 sub check_for_authentication
 {
@@ -1137,9 +1145,6 @@ sub check_for_authentication
 sub has_funcdefs
 {
     my($modules) = @_;
-    #print "------\n";
-    #print Dumper($modules)."\n";
-    #exit(1);
     
     # is there a better way than just looping over everything??
     foreach my $module (@{$modules})
