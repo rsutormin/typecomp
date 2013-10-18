@@ -377,18 +377,21 @@ sub resolve_include_location
         
         # if the relative path from the current directory exists, use this first
         #print STDERR "\tdebug: checking for: $possible_path\n";
+	my $found_it;
         if (-e $possible_path) {
             #check if we've hit it before
             if(!exists($resolved_includes->{$possible_path})) {
                 $resolved_includes->{$possible_path}='1';
                 $abs_filecontainer = dirname($possible_path);
             } else {
+		# we've already parsed it, so we can safely return without looking anywhere else!
                 $filename = ''; $abs_filecontainer = '';
+		$found_it=1;
             } 
         }
         
         # abs_filecontainer will be undef if we couldn't find the file relative to the current directory
-        if(!$abs_filecontainer) {
+        if(!$abs_filecontainer && !$found_it) {
             # if this file doesn't exist, then look through every location on our path (in order!)
             # note that we assume path_list contains absolute paths
             foreach my $include_path (@{$path_list}) {
@@ -407,13 +410,14 @@ sub resolve_include_location
                         last;
                     } else {
                         $filename = ''; $abs_filecontainer = '';
+			$found_it=1;
                     }
                 }
             }
         }
         
         # if we still could not find the abs_filecontainer, then we must abort
-        if(!$abs_filecontainer) {
+        if(!$abs_filecontainer && !$found_it) {
             $error_msg = "Could not resolve include of file '$include_name'.  Is your include path properly set?\n";
         }
     }
