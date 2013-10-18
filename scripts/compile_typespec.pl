@@ -206,10 +206,23 @@ if($errors_found > 0) {
     exit(1);
 }
 
-
-# The files have been parsed, so now we can generate the needed files
-my $need_auth = check_for_authentication($parsed_data);
 my $available_type_table = $parser->YYData->{cached_type_tables};
+
+################################
+# parse and assemble annotations
+my $annotation_options = {};
+assemble_annotations($parsed_data, $available_type_table, $annotation_options);
+
+my $type_table = assemble_types($parser);
+
+#print Dumper($parsed_data)."\n===========\n";
+#print Dumper($available_type_table)."\n===========\n";
+#print Dumper($type_table)."\n===========\n";
+
+
+################################
+# Generate the client/server files
+my $need_auth = check_for_authentication($parsed_data);
 while (my($service, $modules) = each %{$parsed_data})
 {
     # only create stubs for services that have methods defined
@@ -218,16 +231,7 @@ while (my($service, $modules) = each %{$parsed_data})
     }
 }
 
-################################
-###### parse and assemble annotations
-my $annotation_options = {};
-assemble_annotations($parsed_data, $annotation_options);
 
-my $type_table = assemble_types($parser);
-
-print Dumper($parsed_data)."\n===========\n";
-print Dumper($available_type_table)."\n===========\n";
-print Dumper($type_table)."\n===========\n";
 
 
 ################################
