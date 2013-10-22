@@ -490,48 +490,52 @@ sub process_typedef_annotation_searchable {
             return ($n_warnings, $warning_mssg);
         }
         
+        # the context is to define the searchable subset of the typed object when stored in the Workspace
         if ($search_context eq 'ws_subset') {
             
+            # create the annotation if it does not exist
             if(!defined($annotations->{searchable_ws_subset})) { $annotations->{searchable_ws_subset} = {fields=>{},keys=>{}}; }
             
+            # grab handles into the annotation object
             my $parsed_field_tree = $annotations->{searchable_ws_subset}->{fields};
             my $parsed_keys_of_tree = $annotations->{searchable_ws_subset}->{keys};
             
+            # go through each path given and parse it
             foreach my $path (@$parameters) {
                 
+                # check if we want keys or fields
                 my ($isKeysOf, $raw_path) = strip_keys_of_flag($path);
                 
+                # resolve the string into a path tree
                 my $parse_error='';
                 if ($isKeysOf) {
                     $parse_error = resolve_path($raw_path,$parsed_keys_of_tree);
                 } else {
                     $parse_error = resolve_path($raw_path,$parsed_field_tree);
                 }
-                
                 if ($parse_error ne '') {
                     $warning_mssg .= "ANNOTATION WARNING: annotation '\@searchable ws_subset' has indicated a set of fields that could not be parsed.\n";
                     $warning_mssg .= "  field specification was: '$path'\n";
-                    $warning_mssg .= "  $parse_error.\n";
+                    $warning_mssg .= "  $parse_error\n";
                     $warning_mssg .= "  Annotation was defined for type '".$type->{module}.".".$type->{name}."'\n";
                     $n_warnings++;
                 }
                 
                 # validation error occurs if searchable subset specified does not match typedef structure
-                my $validation_error = validate_path($parsed_keys_of_tree, $base_type, $isKeysOf);
-                
+                my $validation_error='';
+                if ($isKeysOf) {
+                    $validation_error = validate_path($parsed_keys_of_tree, $base_type, $isKeysOf);
+                } else {
+                    $validation_error = validate_path($parsed_field_tree, $base_type, $isKeysOf);
+                }
                 if ($validation_error ne '') {
-                    $warning_mssg .= "ANNOTATION WARNING: annotation '\@searchable ws_subset' has indicated a set of fields that could not be parsed.\n";
+                    $warning_mssg .= "ANNOTATION WARNING: annotation '\@searchable ws_subset' had an error in specifying fields.\n";
                     $warning_mssg .= "  field specification was: '$path'\n";
-                    $warning_mssg .= "  $parse_error.\n";
+                    $warning_mssg .= "  $validation_error\n";
                     $warning_mssg .= "  Annotation was defined for type '".$type->{module}.".".$type->{name}."'\n";
                     $n_warnings++;
                 }
-                
             }
-            
-            
-            
-            
             
         } else {
             $warning_mssg .= "ANNOTATION WARNING: annotation '\@searchable' indicated that the search context is '$search_context', but that is\n";
@@ -539,104 +543,7 @@ sub process_typedef_annotation_searchable {
             $warning_mssg .= "  Annotation was defined for type '".$type->{module}.".".$type->{name}."'\n";
             $n_warnings++;
         }
-        
-        
-        
-        
     }
-    #    # first make sure we are pointing to a structure, otherwise @optional makes no sense
-    #    if(!$type->{ref}->isa('Bio::KBase::KIDL::KBT::Struct')) {
-    #        $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' does nothing for non-structure types.\n";
-    #        $warning_mssg .= "\@$flag annotation was defined for type '".$type->{module}.".".$type->{name}."', which is not a structure.\n";
-    #        $warning_mssg .= "Note that $flag fields can ONLY be defined where the structure was originally\n";
-    #        $warning_mssg .= "  defined, and NOT in a typedef that resolves to a structure.\n";
-    #        $n_warnings++;
-    #    } else {
-    #    
-    #        # make sure we are making something searchable, otherwise abort
-    #        if(scalar(@{$values})==0) {
-    #            $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' does nothing if no fields are specified.\n";
-    #            $warning_mssg .= "\@$flag annotation was defined for type '".$type->{module}.".".$type->{name}."'.\n";
-    #            $n_warnings++;
-    #        } else {
-    #            # we are sure that we have a structure, so get a list of field names
-    #            my @items = @{$type->{ref}->items};
-    #            # construct a lookup table where we can get the field name and its type by field name
-    #            my %field_lookup_table = map { $_->name => $_->item_type } @items;
-    #            
-    #            # create the annotation object if we must, which we divide into searchable fields and searchable keys
-    #            if(!defined($annotations->{ws_searchable_fields})) { $annotations->{ws_searchable_fields} = []; }
-    #            if(!defined($annotations->{ws_searchable_keys})) { $annotations->{ws_searchable_keys} = []; }
-    #            
-    #            # if the first term is 'keys_of', then remember that
-    #            my $set_to_keys;
-    #            if( $values->[0] eq 'keys_of' ) { $set_to_keys=1; }
-    #            
-    #            # go through each field that was listed
-    #            foreach my $field (@{$values}) {
-    #                next if($field eq 'keys_of');
-    #                # do simple checking to see if the field exists
-    #                if(!exists($field_lookup_table{$field})) {
-    #                    $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' for structure '".$type->{module}.".".$type->{name}."' indicated\n";
-    #                    $warning_mssg .= "  a field named '$field', but no such field exists in the structure, so this constraint was ignored.\n";
-    #                    $n_warnings++;
-    #                    next;
-    #                }
-    #                
-    #                if(defined($set_to_keys)) {
-    #                    # make sure the field typedefs to a mapping
-    #                    my $is_typedef_that_maps_to_mapping;
-    #                    my $subtype = $field_lookup_table{$field};
-    #                    if($subtype->isa('Bio::KBase::KIDL::KBT::Typedef')) {
-    #                        my $base_type = $subtype->{alias_type};
-    #                        while($base_type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
-    #                            $base_type = $base_type->{alias_type};
-    #                        }
-    #                        if($base_type->isa('Bio::KBase::KIDL::KBT::Mapping')) {
-    #                                $is_typedef_that_maps_to_mapping = 1;
-    #                        } 
-    #                    } elsif($subtype->isa('Bio::KBase::KIDL::KBT::Mapping')) {
-    #                        $is_typedef_that_maps_to_mapping = 1;
-    #                    }
-    #                    if(!$is_typedef_that_maps_to_mapping) {
-    #                        $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' for structure '".$type->{module}.".".$type->{name}."' indicated\n";
-    #                        $warning_mssg .= "  that you want to set the keys of a field named '$field' to be searchable, but that field does not resolve\n";
-    #                        $warning_mssg .= "  to a mapping object.  You can only use the 'keys_of' qualifier for mappings or typedefs of mappings.\n";
-    #                        $n_warnings++;
-    #                        next;
-    #                    }
-    #                    
-    #                
-    #                    # don't add it twice, and report that we found it already
-    #                    foreach my $marked_field (@{$annotations->{ws_searchable_keys}}) {
-    #                        if($marked_field eq $field) {
-    #                            $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' for structure '".$type->{module}.".".$type->{name}."' has\n";
-    #                            $warning_mssg .= "  marked the keys of a field named '$field' multiple times.\n";
-    #                            $n_warnings++;
-    #                            next;
-    #                        }
-    #                    }
-    #                    # if we got here, we are good. push it to the list
-    #                    push(@{$annotations->{ws_searchable_keys}},$field);
-    #                } else {
-    #                    # don't add it twice, and report that we found it already
-    #                    foreach my $marked_field (@{$annotations->{ws_searchable_fields}}) {
-    #                        if($marked_field eq $field) {
-    #                            $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' for structure '".$type->{module}.".".$type->{name}."' has\n";
-    #                            $warning_mssg .= "  marked the keys of a field named '$field' multiple times.\n";
-    #                            $n_warnings++;
-    #                            next;
-    #                        }
-    #                    }
-    #                    # if we got here, we are good. push it to the list
-    #                    push(@{$annotations->{ws_searchable_fields}},$field);
-    #                }
-    #            }
-    #        }
-    #    }
-    
-    
-
     return ($n_warnings, $warning_mssg);
 }
 
@@ -710,12 +617,60 @@ sub assemble_components
 
 
 sub validate_path {
-    my ($parsed_path,$base_structure,$isKeysOf) = @_;
-    my $err_mssg = "";
+    my ($parsed_path,$base_type,$isKeysOf) = @_;
     
+    print " parsed_path ".Dumper($parsed_path)."\n";
+    print " validating ". Dumper($base_type) . "\n";
     
+    # if the hash is empty, then we want the full object.  If isKeysOf is on, then the base_type must be a mapping
+    if(scalar(keys(%$parsed_path)) == 0) {
+        if ($isKeysOf) {
+            if ($base_type->isa("Bio::KBase::KIDL::KBT::Mapping")) { return ""; }
+            else { return "keys_of(..) can only be applied to fields that resolve to a 'mapping'"; }
+        }
+        return "";
+    }
     
-    return $err_mssg;
+    # if it is a struct, we need to validate the StructItems (ie the fields) that were specified
+    if ($base_type->isa("Bio::KBase::KIDL::KBT::Struct")) {
+        my $item_list = $base_type->items;
+        my $item_lookup_table = {};
+        foreach my $item (@$item_list) {
+            my ($base_item_type, $d) = resolve_typedef($item->item_type);
+            $item_lookup_table->{$item->name} = $base_item_type;
+        }
+        foreach my $field_name (keys(%$parsed_path)) {
+            if (!exists($item_lookup_table->{$field_name})) {
+                return "field name given: '$field_name' is not a valid field of '".$base_type->module.".".$base_type->name."'";
+            } else {
+                my $err_mssg = validate_path($parsed_path->{$field_name},$item_lookup_table->{$field_name},$isKeysOf);
+                if ($err_mssg ne "") { return $err_mssg; }
+            }
+        }
+    }
+    
+    # if it is the fields of a List we want, then we validate against the items that can be stored in the list
+    elsif ($base_type->isa("Bio::KBase::KIDL::KBT::List")) {
+        my ($base_element_type, $d) = resolve_typedef($base_type->element_type);
+        my $err_mssg = validate_path($parsed_path,$base_element_type,$isKeysOf);
+        if ($err_mssg ne "") { return $err_mssg; }
+    }
+    
+    # if it is the fields of a Mapping we want, then we validate against the values that can be stored in the list
+    elsif ($base_type->isa("Bio::KBase::KIDL::KBT::Mapping")) {
+        my ($base_value_type, $d) = resolve_typedef($base_type->value_type);
+        my $err_mssg = validate_path($parsed_path,$base_value_type,$isKeysOf);
+        if ($err_mssg ne "") { return $err_mssg; }
+        exit 1;
+    }
+    
+    #if it is an unsupported type and we got here, then we cannot recurse down and we must abort
+    else {
+        return "cannot specify fields (".join(",",keys(%$parsed_path)).") of type '".$base_type->as_string()."'";
+    }
+    
+    #if we get here, then we are good.
+    return "";
 }
 
 
@@ -729,10 +684,11 @@ sub strip_keys_of_flag {
     return (0,$path_str);
 }
 
-# given a string (and possible previously parsed path), this method parses and constructs
+# given a string (and previously parsed path tree hash), this method parses and constructs
 # a path through nested structures/lists/mappings to generate a listing of what was selected
+# NOTE: this method does not validate the parsed path tree, see method 'validate_path'
 # NOTE: if we want the language to become more complex, we should prob break down and write
-# an actual grammer...
+# an actual grammer...  but for now this simple parser works fairly well.
 sub resolve_path {
     my ($path_str,$parsed_path) = @_;
     
