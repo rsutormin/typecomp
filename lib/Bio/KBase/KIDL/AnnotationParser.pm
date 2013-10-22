@@ -215,7 +215,82 @@ sub process_function_annotation {
 }
 
 
+#
+#  supported annotations:
+#
+#  returns ($n_warnings, $warning_mssg)
+sub process_typedef_annotation {
+    my($annotations, $flag, $parameters, $raw_line, $type, $options) = @_;
+    
+    my $n_warnings = 0;
+    my $warning_mssg = '';
+    
+    # @optional [field_name] [field_name] ...
+    #    this flag indicates that the specified field name or names are optional, used primarily to allow
+    #    optional fields during json schema based validation
+    if($flag eq 'optional') {
+        my ($n,$mssg) = process_typedef_annotation_optional($annotations, $parameters, $raw_line, $type, $options);
+        $n_warnings += $n;
+        $warning_mssg .= $mssg;
+    }
+    
+    # @deprecated [$replacement_type1] [$replacement_type2] ...
+    #    this flag indicates that the tagged type is deprecated, and optionally allows a list of typed objects
+    #    which should be used instead.  only used currently by the KIDL LINT
+    elsif($flag eq 'deprecated') {
+        my ($n,$mssg) = process_typedef_annotation_deprecated($annotations, $parameters, $raw_line, $type, $options);
+        $n_warnings += $n;
+        $warning_mssg .= $mssg;
+    }
+    
+    
+    # @id [ID_TYPE] [INFO] ....
+    #    this annotation, if set, indicates that a typedef which resolves to a string is not just any string, but
+    #    an ID that references another typed object or entity.  Valid [ID_TYPES] are ws, kb, shock, external
+    #    see the annotation documentation for more details.
+    elsif($flag eq 'id') {
+        #we generate a warning if the id has been used before
+        if(exists($annotations->{$flag})) {
+            $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' can only be declared once per typedef, only the first declaration is processed.\n";
+            $warning_mssg .= "  typedef '".$type->{module}.".".$type->{name}."' had multiple declarations of \@$flag\n";
+            $n_warnings++;
+        } else {
+            my ($n,$mssg) = process_typedef_annotation_id($annotations, $parameters, $raw_line, $type, $options);
+            $n_warnings += $n;
+            $warning_mssg .= $mssg;
+        }
+    }
+    
+    # @searchable [SEARCH_CONTEXT] [INFO]
+    #    this annotation, if set, indicates that part of this object is searchable within some context.  The only supported context
+    #    is withing the workspace service, indicated as 'ws_subset'
+    #    see the annotation documentation for more details.
+    elsif($flag eq 'searchable') {
+        my ($n,$mssg) = process_typedef_annotation_searchable($annotations, $parameters, $raw_line, $type, $options);
+        $n_warnings += $n;
+        $warning_mssg .= $mssg;
+    }
+    
+    
+    # catch all other annotations and place them on the heap
+    else {
+        # make sure we have a list defined, then push the annotation to the list and let someone else deal with it downstream
+        if(!defined($annotations->{unknown_annotations}->{$flag})) {
+            $annotations->{unknown_annotations}->{$flag} = [];
+        }
+        push(@{$annotations->{unknown_annotations}->{$flag}},$raw_line);
+        $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' was not recognized, so it likely has no effect.\n";
+        $warning_mssg .= "  \@$flag annotation was defined for type '".$type->{module}.".".$type->{name}."'.\n";
+        $n_warnings++;
+    }
+    
+    return ($n_warnings, $warning_mssg);
+}
 
+
+
+# Handler for  "@optional" annotation of structures
+#
 sub process_typedef_annotation_optional {
     my($annotations, $parameters, $raw_line, $type, $options) = @_;
     my $n_warnings = 0; my $warning_mssg = '';
@@ -261,7 +336,8 @@ sub process_typedef_annotation_optional {
 }
 
 
-
+# Handler for  "@id" annotation of structures
+#
 sub process_typedef_annotation_id {
     my($annotations, $parameters, $raw_line, $type, $options) = @_;
     my $n_warnings = 0; my $warning_mssg = '';
@@ -350,6 +426,9 @@ sub process_typedef_annotation_id {
     return ($n_warnings, $warning_mssg);
 }
 
+
+# Handler for  "@deprecated" annotation of typedefs
+#
 sub process_typedef_annotation_deprecated {
     my($annotations, $parameters, $raw_line, $type, $options) = @_;
     my $n_warnings = 0; my $warning_mssg = '';
@@ -384,90 +463,8 @@ sub process_typedef_annotation_deprecated {
 }
 
 
+# Handler for  "@searchable" annotation of structures
 #
-#  supported annotations:
-#
-#  returns ($n_warnings, $warning_mssg)
-sub process_typedef_annotation {
-    my($annotations, $flag, $parameters, $raw_line, $type, $options) = @_;
-    
-    my $n_warnings = 0;
-    my $warning_mssg = '';
-    
-    # optional [field_name] [field_name] ...
-    #    this flag indicates that the specified field name or names are optional, used primarily to allow
-    #    optional fields during json schema based validation
-    if($flag eq 'optional') {
-        my ($n,$mssg) = process_typedef_annotation_optional($annotations, $parameters, $raw_line, $type, $options);
-        $n_warnings += $n;
-        $warning_mssg .= $mssg;
-    }
-    
-    # deprecated [$replacement_type1] [$replacement_type2] ...
-    #    this flag indicates that the tagged type is deprecated, and optionally allows a list of typed objects
-    #    which should be used instead
-    elsif($flag eq 'deprecated') {
-        my ($n,$mssg) = process_typedef_annotation_deprecated($annotations, $parameters, $raw_line, $type, $options);
-        $n_warnings += $n;
-        $warning_mssg .= $mssg;
-    }
-    
-    
-    # id_reference [type_name] [type_name] ....
-    #    this annotation, if set, indicates that a typedef which resolves to a string is not just any string, but
-    #    an ID that references another typed object of the given type.  The type name must be fully resolved, as
-    #    in ModuleName.TypeName.  This feature is used in validation of workspace objects, so generally these ids
-    #    must map to another typed object in a workspace. If multiple type_names are given, then each type is valid
-    #    typenames do NOT include the version of the type definition, which must be checked on the application side.
-    #    If no type names are given, then any type is valid.
-    elsif($flag eq 'id') {
-        #we generate a warning if the id has been used before
-        if(exists($annotations->{$flag})) {
-            $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' can only be declared once per typedef, only the first declaration is processed.\n";
-            $warning_mssg .= "  typedef '".$type->{module}.".".$type->{name}."' had multiple declarations of \@$flag\n";
-            $n_warnings++;
-        } else {
-            my ($n,$mssg) = process_typedef_annotation_id($annotations, $parameters, $raw_line, $type, $options);
-            $n_warnings += $n;
-            $warning_mssg .= $mssg;
-        }
-    }
-    
-    # ws_searchable [field] [field] [field] ...
-    # ws_searchable keys_of [mapping_field] [mapping_field] [mapping_field] ...
-    #    this annotation, if set, indicates what fields of a structure should be stored in a searchable way in the workspace service
-    #    for this type of object.  For the time being, only top level fields can be selected.  If a field is selected, then
-    #    the entire contents of the subfield are included.  Optionally, if and only if the field is a map, adding the word 'keys_of'
-    #    allows you to include the keys, but not the values.  In the future we will add support to decend into and select sub-fields
-    #    probably using something like the dot operator.
-    #
-    #    Note that the entire contents of the searchable subset for any instance cannot exceed 16mb.  Such objects will be rejected if
-    #    you attempt to store them to a workspace.  If you expect the searchable subset to often exceed 16mb, you should restructure your
-    #    typed object or mark less fields as searchable
-    #
-    elsif($flag eq 'searchable') {
-        my ($n,$mssg) = process_typedef_annotation_searchable($annotations, $parameters, $raw_line, $type, $options);
-        $n_warnings += $n;
-        $warning_mssg .= $mssg;
-    }
-    
-    
-    # catch all other annotations and place them on the heap
-    else {
-        # make sure we have a list defined, then push the annotation to the list and let someone else deal with it downstream
-        if(!defined($annotations->{unknown_annotations}->{$flag})) {
-            $annotations->{unknown_annotations}->{$flag} = [];
-        }
-        push(@{$annotations->{unknown_annotations}->{$flag}},$raw_line);
-        $warning_mssg .= "ANNOTATION WARNING: annotation '\@$flag' was not recognized, so it likely has no effect.\n";
-        $warning_mssg .= "  \@$flag annotation was defined for type '".$type->{module}.".".$type->{name}."'.\n";
-        $n_warnings++;
-    }
-    
-    return ($n_warnings, $warning_mssg);
-}
-
-
 sub process_typedef_annotation_searchable {
     my($annotations, $parameters, $raw_line, $type, $options) = @_;
     my $n_warnings = 0; my $warning_mssg = '';
@@ -606,10 +603,6 @@ sub assemble_components
         }
     }
     
-    #print Dumper($type_list);
-    #print Dumper($func_list);
-    #print Dumper($mod_list);
-    
     return ($type_list, $func_list, $mod_list);
 }
 
@@ -618,9 +611,6 @@ sub assemble_components
 
 sub validate_path {
     my ($parsed_path,$base_type,$isKeysOf) = @_;
-    
-    print " parsed_path ".Dumper($parsed_path)."\n";
-    print " validating ". Dumper($base_type) . "\n";
     
     # if the hash is empty, then we want the full object.  If isKeysOf is on, then the base_type must be a mapping
     if(scalar(keys(%$parsed_path)) == 0) {
