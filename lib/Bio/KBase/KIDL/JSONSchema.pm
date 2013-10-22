@@ -314,16 +314,29 @@ sub get_json_schema_type_string {
     # if they asked for it, output valid kb_annotations associated to the object
     if($options->{use_kb_annotations}) {
         # specify what kind of kbase type it is (helpful for distinguishing between objects and mappings) 
-        $type_string .= ",\n".$spacer."\"kb-type\":\"".map_type_to_KIDL_typename($type,$options)."\"";
+        $type_string .= ",\n".$spacer."\"original-type\":\"".map_type_to_KIDL_typename($type,$options)."\"";
+	
         # tag things that are marked as id references
         my $idrefs = get_kb_id_ref_tag($type,$options);
         if($idrefs) {
-            $type_string .= ",\n".$spacer."\"kb-id-reference\":[";
-            for (my $i = 0; $i < scalar(@{$idrefs}); $i++) {
-                $type_string .= "," unless ($i==0);
-                $type_string .= "\"".$idrefs->[$i]."\"";
-            }
-            $type_string .= "]";
+            $type_string .= ",\n".$spacer."\"id-reference\": {";
+	    $type_string .= "\n" .$spacer."   \"id-type\":\"".$idrefs->{type}."\"";
+	    if ($idrefs->{type} eq 'ws') {
+		$type_string .= ",\n" .$spacer."   \"valid-typedef-names\": [";
+		for (my $i = 0; $i < scalar(@{$idrefs->{valid_typedef_names}}); $i++) {
+		    $type_string .= "," unless ($i==0);
+		    $type_string .= "\"".$idrefs->{valid_typedef_names}->[$i]."\"";
+		}
+		$type_string .= "]";
+	    } elsif ($idrefs->{type} eq 'external') {
+		$type_string .= ",\n" .$spacer."   \"sources\": [";
+		for (my $i = 0; $i < scalar(@{$idrefs->{sources}}); $i++) {
+		    $type_string .= "," unless ($i==0);
+		    $type_string .= "\"".$idrefs->{sources}->[$i]."\"";
+		}
+		$type_string .= "]";
+	    }
+            $type_string .= "\n" .$spacer."}";
         }
         # only top level objects get assigned workspace searchable tags
         if($is_top_level == 1) {
@@ -461,14 +474,14 @@ sub get_kb_id_ref_tag {
     if($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
         # at the first point where id_reference is defined, we pass back up the annotation;  this ensures that
         # the annotation always overrides previous definitions.
-        if(defined($type->{annotations}->{id_reference})) {
-            return $type->{annotations}->{id_reference};
+        if(defined($type->{annotations}->{id})) {
+            return $type->{annotations}->{id};
         }
         return get_kb_id_ref_tag($type->{alias_type},$options);
     } elsif($type->isa('Bio::KBase::KIDL::KBT::Scalar')) {
         if($type->{scalar_type} eq 'string') {
-            if(defined($type->{annotations}->{id_reference})) {
-                return $type->{annotations}->{id_reference};
+            if(defined($type->{annotations}->{id})) {
+                return $type->{annotations}->{id};
             }
         }
     } elsif($type->isa('Bio::KBase::KIDL::KBT::Mapping')) {
@@ -488,11 +501,15 @@ sub get_kb_id_ref_tag {
 sub get_kb_ws_searchable_tag {
     my($type,$options,$keyword) = @_;
     if($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
-        # Currently, we cannot redefine ws_searchable fields in typedefs, so we always recurse fully
+        # If we get to a place where we can override, then do it.
+	if(defined($type->{annotations}->{searchable_ws_subset}->{$keyword})) {
+            return $type->{annotations}->{searchable_ws_subset}->{$keyword};
+        }
+	
         return get_kb_ws_searchable_tag($type->{alias_type},$options,$keyword);
     } elsif($type->isa('Bio::KBase::KIDL::KBT::Struct')) {
-        if(defined($type->{annotations}->{$keyword})) {
-            return $type->{annotations}->{$keyword};
+        if(defined($type->{annotations}->{searchable_ws_subset}->{$keyword})) {
+            return $type->{annotations}->{searchable_ws_subset}->{$keyword};
         }
     }
     return;
@@ -528,7 +545,6 @@ sub extract_comment_from_type
     
     # we can't have newlines in a JSON document, so replace them with literal slash n
     $comment =~ s/\n/\\n/g;
-    
     
     return $comment;
 }

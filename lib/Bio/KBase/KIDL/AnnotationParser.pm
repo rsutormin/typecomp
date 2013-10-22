@@ -302,6 +302,9 @@ sub process_typedef_annotation_optional {
         $warning_mssg .= "  annotation was defined for type '".$type->{module}.".".$type->{name}."', which does not resolve to a structure.\n";
         $n_warnings++;
     } else {
+        
+        # should we be able to override optional?
+        
         # we are sure that we have a structure, so get a list of field names
         my @items = @{$base_type->items};
         my @subtypes = map { $_->item_type } @items;
