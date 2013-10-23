@@ -70,7 +70,8 @@ sub assemble_annotations
         $n_total_warnings+=$n_warnings;
         $total_warning_mssg .= $warning_mssg;
         $mod->{annotations} = $annotations;
-        print Dumper($annotations)."\n";
+        #print "module: ".$mod->{module_name}.":\n";
+        #print Dumper($annotations)."\n";
     }
     
     # then process annotations of type definitions
@@ -80,7 +81,8 @@ sub assemble_annotations
         $n_total_warnings+=$n_warnings;
         $total_warning_mssg .= $warning_mssg;
         $type->{annotations} = $annotations;
-        print Dumper($annotations)."\n";
+        #print "type: ".$type->{name}.":\n";
+        #print Dumper($annotations)."\n";
     }
     
     # finally process annotations of function defs
@@ -90,11 +92,12 @@ sub assemble_annotations
         $n_total_warnings+=$n_warnings;
         $total_warning_mssg .= $warning_mssg;
         $func->{annotations} = $annotations;
-        print Dumper($annotations)."\n";
+        #print "funcdef: ".$func->{name}.":\n";
+        #print Dumper($annotations)."\n";
     }
     
     # print warnings if some were found
-    if($n_total_warnings > 0 && !defined($options->{ignore_warnings})) {
+    if($n_total_warnings > 0 && !$options->{ignore_warnings}) {
         print STDERR "total annotation warnings: ".$n_total_warnings."\n";
         print STDERR $total_warning_mssg."\n";
     }
@@ -299,40 +302,46 @@ sub process_typedef_annotation_optional {
     my ($base_type,$depth) = resolve_typedef($type);
     if(!$base_type->isa('Bio::KBase::KIDL::KBT::Struct')) {
         $warning_mssg .= "ANNOTATION WARNING: annotation '\@optional' does nothing for non-structure types.\n";
-        $warning_mssg .= "  annotation was defined for type '".$type->{module}.".".$type->{name}."', which does not resolve to a structure.\n";
+        $warning_mssg .= "  annotation was defined for type '".$type->{module}.".".$type->{name}."', which is not a structure.\n";
         $n_warnings++;
     } else {
         
-        # should we be able to override optional?
-        
-        # we are sure that we have a structure, so get a list of field names
-        my @items = @{$base_type->items};
-        my @subtypes = map { $_->item_type } @items;
-        my @field_names = map { $_->name } @items;
-        my %field_lookup_table = map { $_ => 1 } @field_names;
-        
-        # create the annotation object   
-        if(!defined($annotations->{optional})) { $annotations->{optional} = []; }
-        foreach my $field (@{$parameters}) {
-            # do simple checking to see if the field exists
-            if(!exists($field_lookup_table{$field})) {
-                $warning_mssg .= "ANNOTATION WARNING: annotation '\@optional' for structure '".$type->{module}.".".$type->{name}."' indicated\n";
-                $warning_mssg .= "  a field named '$field', but no such field exists in the structure, so this constraint was ignored.\n";
-                $n_warnings++;
-                next;
-            }
-            # don't add it twice, and report that we found it already
-            foreach my $marked_optional_field (@{$annotations->{optional}}) {
-                if($marked_optional_field eq $field) {
-                    $warning_mssg .= "ANNOTATION WARNING: annotation '\@optional' for structure '".$type->{module}.".".$type->{name}."' has\n";
-                    $warning_mssg .= "  marked a field named '$field' multiple times.\n";
-                    $n_warnings++;
-                    next;
-                }
-            }
-            # if we got here, we are good. push it to the list
-            push(@{$annotations->{optional}},$field);
-        }
+        # for now, we allow each typedef to add additional optional fields...
+        # If we do not want to allow the addition of more optional fields in subsequent typedefs, then do the check on $depth
+        #if ($depth > 1) {
+        #    $warning_mssg .= "ANNOTATION WARNING: annotation '\@optional' can only be declared where a structure is originally defined, not in a subsequent typedef.\n";
+        #    $warning_mssg .= "  \@optional annotation defined for type '".$type->{module}.".".$type->{name}."' does nothing.\n";
+        #    $n_warnings++;
+        #} else {
+            # we are sure that we have a structure, so get a list of field names
+           my @items = @{$base_type->items};
+           my @subtypes = map { $_->item_type } @items;
+           my @field_names = map { $_->name } @items;
+           my %field_lookup_table = map { $_ => 1 } @field_names;
+           
+           # create the annotation object   
+           if(!defined($annotations->{optional})) { $annotations->{optional} = []; }
+           foreach my $field (@{$parameters}) {
+               # do simple checking to see if the field exists
+               if(!exists($field_lookup_table{$field})) {
+                   $warning_mssg .= "ANNOTATION WARNING: annotation '\@optional' for structure '".$type->{module}.".".$type->{name}."' indicated\n";
+                   $warning_mssg .= "  a field named '$field', but no such field exists in the structure, so this constraint was ignored.\n";
+                   $n_warnings++;
+                   next;
+               }
+               # don't add it twice, and report that we found it already
+               foreach my $marked_optional_field (@{$annotations->{optional}}) {
+                   if($marked_optional_field eq $field) {
+                       $warning_mssg .= "ANNOTATION WARNING: annotation '\@optional' for structure '".$type->{module}.".".$type->{name}."' has\n";
+                       $warning_mssg .= "  marked a field named '$field' multiple times.\n";
+                       $n_warnings++;
+                       next;
+                   }
+               }
+               # if we got here, we are good. push it to the list
+               push(@{$annotations->{optional}},$field);
+           }
+        #}
     }
     
     return ($n_warnings, $warning_mssg);
@@ -575,7 +584,7 @@ sub assemble_components
     
     # assemble the list of types (NOTE: we CANNOT do this from the parsed_data hash because the parsed_data
     # hash will only have the relevant info for the modules that we are compiling, not included specs; but
-    # we need to process included specs otherwise annotations )
+    # we need to process included specs otherwise annotations will not be complete if they are inherited )
     while (my($module_name, $types) = each %{$available_type_table}) {
         foreach my $type (values(%{$types})) {
             # we do not parse annotations for built-in scalars or UnspecifiedObjects, so we skip

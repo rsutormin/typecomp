@@ -208,16 +208,11 @@ if($errors_found > 0) {
 
 my $available_type_table = $parser->YYData->{cached_type_tables};
 
+
 ################################
 # parse and assemble annotations
-my $annotation_options = {};
+my $annotation_options = {ignore_warnings=>0};
 assemble_annotations($parsed_data, $available_type_table, $annotation_options);
-
-my $type_table = assemble_types($parser);
-
-#print Dumper($parsed_data)."\n===========\n";
-#print Dumper($available_type_table)."\n===========\n";
-#print Dumper($type_table)."\n===========\n";
 
 
 ################################
@@ -232,8 +227,6 @@ while (my($service, $modules) = each %{$parsed_data})
 }
 
 
-
-
 ################################
 ###### generate JSON Schema documents
 if($generate_json_schema) {
@@ -242,14 +235,14 @@ if($generate_json_schema) {
     # set some options, but this should really be passed in as arguments
     my $options = {};
     $options->{jsonschema_version}=4; #supports 3 or 4
-    $options->{specify_java_types}=0; #set to 0 or to $java_package; this is out of date
     $options->{use_references}=0;
     $options->{use_kb_annotations}=1;
     $options->{omit_comments}=0;
     
-    my $json_schemas = to_json_schema($type_table,$options);
+    my $json_schemas = to_json_schema($available_type_table,$options);
     write_json_schemas_to_file($json_schemas,$output_dir,$options);
 }
+
 
 ################################
 ###### dump output file to XML format
@@ -276,8 +269,7 @@ if ($dump_xml) {
 
 
 # all done, so we exit and dump if requested
-#print STDERR Dumper($parsed_data) if $dump_parsed;
-print STDERR Dumper($type_table) if $dump_parsed;
+print STDERR Dumper($parsed_data) if $dump_parsed;
 
 exit(0);
 

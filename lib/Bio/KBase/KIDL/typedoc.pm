@@ -1196,8 +1196,6 @@ sub lookup_type
 {
     my($self, $name, $src_module) = @_;
     
-    print "Looking up $name\n";
-    
     # if we are trying to lookup a type in an external module, then we have to
     # look in the right place
     if($src_module) {
@@ -1412,7 +1410,8 @@ sub set_active_module {
     # check that this module hasn't been defined already, if it has emit an error
     foreach my $m (@{$self->YYData->{module_list}}) {
         if($m eq $module_name) {
-            $self->emit_error("Duplicate definition of Module '$module_name' not allowed.");
+            $self->emit_error("Duplicate definition of Module '$module_name' not allowed. ".
+			      " If you are compiling multiple spec files, they must be given in the proper dependency order.");
             last;
         }
     }
