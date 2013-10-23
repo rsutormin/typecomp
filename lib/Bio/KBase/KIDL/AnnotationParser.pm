@@ -308,11 +308,11 @@ sub process_typedef_annotation_optional {
         
         # for now, we allow each typedef to add additional optional fields...
         # If we do not want to allow the addition of more optional fields in subsequent typedefs, then do the check on $depth
-        #if ($depth > 1) {
-        #    $warning_mssg .= "ANNOTATION WARNING: annotation '\@optional' can only be declared where a structure is originally defined, not in a subsequent typedef.\n";
-        #    $warning_mssg .= "  \@optional annotation defined for type '".$type->{module}.".".$type->{name}."' does nothing.\n";
-        #    $n_warnings++;
-        #} else {
+        if ($depth > 1) {
+            $warning_mssg .= "ANNOTATION WARNING: annotation '\@optional' can only be declared where a structure is originally defined, not in a subsequent typedef.\n";
+            $warning_mssg .= "  \@optional annotation defined for type '".$type->{module}.".".$type->{name}."' does nothing.\n";
+            $n_warnings++;
+        } else {
             # we are sure that we have a structure, so get a list of field names
            my @items = @{$base_type->items};
            my @subtypes = map { $_->item_type } @items;
@@ -341,7 +341,7 @@ sub process_typedef_annotation_optional {
                # if we got here, we are good. push it to the list
                push(@{$annotations->{optional}},$field);
            }
-        #}
+        }
     }
     
     return ($n_warnings, $warning_mssg);
