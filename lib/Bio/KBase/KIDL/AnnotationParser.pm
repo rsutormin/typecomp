@@ -663,7 +663,6 @@ sub validate_path {
         my ($base_value_type, $d) = resolve_typedef($base_type->value_type);
         my $err_mssg = validate_path($parsed_path,$base_value_type,$isKeysOf);
         if ($err_mssg ne "") { return $err_mssg; }
-        exit 1;
     }
     
     #if it is an unsupported type and we got here, then we cannot recurse down and we must abort

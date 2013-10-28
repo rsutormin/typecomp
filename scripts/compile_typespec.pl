@@ -230,7 +230,6 @@ while (my($service, $modules) = each %{$parsed_data})
 ################################
 ###### generate JSON Schema documents
 if($generate_json_schema) {
-    my $java_package = "us.kbase.";
     
     # set some options, but this should really be passed in as arguments
     my $options = {};
