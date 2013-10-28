@@ -463,26 +463,26 @@ sub map_type_to_KIDL_typename {
         return map_type_to_KIDL_typename($type->alias_type,$options);
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Scalar')) {
-        if($type->scalar_type eq 'string') { return 'string'; }
-        if($type->scalar_type eq 'int') { return 'int'; }
-        if($type->scalar_type eq 'float') { return 'float'; }
-        if($type->scalar_type eq 'bool') { return 'bool'; }
+        if($type->scalar_type eq 'string') { return 'kidl-string'; }
+        if($type->scalar_type eq 'int') { return 'kidl-int'; }
+        if($type->scalar_type eq 'float') { return 'kidl-float'; }
+        if($type->scalar_type eq 'bool') { return 'kidl-bool'; }
 	die "ERROR in get_json_schema_type_name:\n".Dumper($type);
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::UnspecifiedObject')) {
-        return "UnspecifiedObject";
+        return "kidl-UnspecifiedObject";
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::List')) {
-	return "list";
+	return "kidl-list";
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Mapping')) {
-	return "mapping";
+	return "kidl-mapping";
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Tuple')) {
-	return "tuple";
+	return "kidl-tuple";
     }
     elsif ($type->isa('Bio::KBase::KIDL::KBT::Struct')) {
-	return "structure"
+	return "kidl-structure"
     }
     else {
 	die "ERROR in map_type_to_KIDL_typename, could not identify type:\n".Dumper($type);

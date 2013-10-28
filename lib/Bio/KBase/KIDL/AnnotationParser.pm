@@ -647,6 +647,14 @@ sub validate_path {
             } else {
                 my $err_mssg = validate_path($parsed_path->{$field_name},$item_lookup_table->{$field_name},$isKeysOf);
                 if ($err_mssg ne "") { return $err_mssg; }
+                
+                #if it is a mapping, we need to mark it so that during subset extraction we know
+                #to interpret the json object as a mapping and not a usual object
+                if ($item_lookup_table->{$field_name}->isa("Bio::KBase::KIDL::KBT::Mapping")) {
+                    my $temp = $parsed_path->{$field_name};
+                    delete $parsed_path->{$field_name};
+                    $parsed_path->{"mapping.".$field_name}=$temp;
+                }
             }
         }
     }
