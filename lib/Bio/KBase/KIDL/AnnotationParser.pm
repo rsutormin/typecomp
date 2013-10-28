@@ -642,6 +642,11 @@ sub validate_path {
             $item_lookup_table->{$item->name} = $base_item_type;
         }
         foreach my $field_name (keys(%$parsed_path)) {
+            # we mark mappings (and potentially other things) with a dot appended before the field name, so we strip that
+            my @toks = split(/\./,$field_name);
+            if (scalar(@toks)==2) {
+                $field_name = $toks[1];
+            }
             if (!exists($item_lookup_table->{$field_name})) {
                 return "field name given: '$field_name' is not a valid field of '".$base_type->module.".".$base_type->name."'";
             } else {
