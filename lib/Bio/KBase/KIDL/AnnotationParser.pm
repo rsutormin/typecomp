@@ -655,11 +655,11 @@ sub validate_path {
                 
                 #if it is a mapping, we need to mark it so that during subset extraction we know
                 #to interpret the json object as a mapping and not a usual object
-                if ($item_lookup_table->{$field_name}->isa("Bio::KBase::KIDL::KBT::Mapping")) {
-                    my $temp = $parsed_path->{$field_name};
-                    delete $parsed_path->{$field_name};
-                    $parsed_path->{"mapping.".$field_name}=$temp;
-                }
+                #if ($item_lookup_table->{$field_name}->isa("Bio::KBase::KIDL::KBT::Mapping")) {
+                #    my $temp = $parsed_path->{$field_name};
+                #    delete $parsed_path->{$field_name};
+                #    $parsed_path->{"mapping.".$field_name}=$temp;
+                #}
             }
         }
     }
@@ -667,15 +667,25 @@ sub validate_path {
     # if it is the fields of a List we want, then we validate against the items that can be stored in the list
     elsif ($base_type->isa("Bio::KBase::KIDL::KBT::List")) {
         my ($base_element_type, $d) = resolve_typedef($base_type->element_type);
-        my $err_mssg = validate_path($parsed_path,$base_element_type,$isKeysOf);
-        if ($err_mssg ne "") { return $err_mssg; }
+        if (exists $parsed_path->{"[*]"}) {
+            my $err_mssg = validate_path($parsed_path->{"[*]"},$base_element_type,$isKeysOf);
+            if ($err_mssg ne "") { return $err_mssg; }
+        } else {
+            return "must use an '[*]' to select subfields of objects stored in a list";
+        }
     }
     
     # if it is the fields of a Mapping we want, then we validate against the values that can be stored in the list
     elsif ($base_type->isa("Bio::KBase::KIDL::KBT::Mapping")) {
         my ($base_value_type, $d) = resolve_typedef($base_type->value_type);
-        my $err_mssg = validate_path($parsed_path,$base_value_type,$isKeysOf);
-        if ($err_mssg ne "") { return $err_mssg; }
+        if (exists $parsed_path->{"*"}) {
+            my $err_mssg = validate_path($parsed_path->{"*"},$base_value_type,$isKeysOf);
+            if ($err_mssg ne "") { return $err_mssg; }
+        } else {
+            return "must use an '*' to select subfields of objects stored in a mapping";
+        }
+        
+        
     }
     
     #if it is an unsupported type and we got here, then we cannot recurse down and we must abort
