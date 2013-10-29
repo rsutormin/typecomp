@@ -9,7 +9,7 @@ from jsonrpcbase import JSONRPCService, InvalidParamsError, KeywordError,\
   JSONRPCError, ServerError, ParseError, InvalidRequestError
 from os import environ
 from ConfigParser import ConfigParser
-from biokbase import mlog
+from biokbase import log
 [% IF authenticated -%]
 import biokbase.nexus
 [% END -%]
@@ -187,10 +187,10 @@ class MethodContext(dict):
         self._logger = logger
 
     def log_err(self, message):
-        self._log(mlog.ERR, message)
+        self._log(log.ERR, message)
 
     def log_info(self, message):
-        self._log(mlog.INFO, message)
+        self._log(log.INFO, message)
 
     def log_debug(self, message, level=1):
         if level in self._debug_levels:
@@ -232,11 +232,11 @@ class Application(object):
 
     def __init__(self):
         submod = get_service_name() or '[% service_name %]'
-        self.userlog = mlog.mlog(
+        self.userlog = log.log(
             submod, ip_address=True, authuser=True, module=True, method=True,
             call_id=True, changecallback=self.logcallback,
             config=get_config_file())
-        self.serverlog = mlog.mlog(
+        self.serverlog = log.log(
             submod, ip_address=True, authuser=True, module=True, method=True,
             call_id=True, logfile=self.userlog.get_log_file())
         self.rpc_service = JSONRPCServiceCustom()
@@ -330,9 +330,9 @@ class Application(object):
 [% FOREACH module IN modules -%]
                     impl_[% module.module_name %].ctx = ctx
 [% END -%]
-                    self.log(mlog.INFO, ctx, 'start method')
+                    self.log(log.INFO, ctx, 'start method')
                     rpc_result = self.rpc_service.call(request_body)
-                    self.log(mlog.INFO, ctx, 'end method')
+                    self.log(log.INFO, ctx, 'end method')
                 except JSONRPCError as jre:
                     err = {'error': {'code': jre.code,
                                      'name': jre.message,
@@ -375,7 +375,7 @@ class Application(object):
 
     def process_error(self, error, context, request, trace=None):
         if trace:
-            self.log(mlog.ERR, context, trace.split('\n')[0:-1])
+            self.log(log.ERR, context, trace.split('\n')[0:-1])
         if 'id' in request:
             error['id'] = request['id']
         if 'version' in request:

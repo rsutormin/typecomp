@@ -3,7 +3,7 @@ package [% server_package_name %];
 use Data::Dumper;
 use Moose;
 use JSON;
-use Bio::KBase::mlog;
+use Bio::KBase::Log;
 [% IF authenticated -%]
 use Bio::KBase::AuthToken;
 [% END -%]
@@ -95,11 +95,11 @@ sub _build_loggers
     my $submod = $self->get_service_name() || '[% service_name %]';
     my $loggers = {};
     my $callback = sub {$self->logcallback();};
-    $loggers->{userlog} = Bio::KBase::mlog->new(
+    $loggers->{userlog} = Bio::KBase::Log->new(
             $submod, {}, {ip_address => 1, authuser => 1, module => 1,
             method => 1, call_id => 1, changecallback => $callback,
             config => $self->get_config_file()});
-    $loggers->{serverlog} = Bio::KBase::mlog->new(
+    $loggers->{serverlog} = Bio::KBase::Log->new(
             $submod, {}, {ip_address => 1, authuser => 1, module => 1,
             method => 1, call_id => 1,
             logfile => $loggers->{userlog}->get_log_file()});
@@ -136,7 +136,7 @@ sub encode_output_from_exception {
             my @errlines;
             $errlines[0] = $error_params{message};
             push @errlines, split("\n", $error_params{data});
-            $self->log($Bio::KBase::mlog::ERR, $error_params{context}, \@errlines);
+            $self->log($Bio::KBase::Log::ERR, $error_params{context}, \@errlines);
             delete $error_params{context};
         }
     } else {
@@ -213,9 +213,9 @@ sub call_method {
     {
         my $err;
         eval {
-            $self->log($Bio::KBase::mlog::INFO, $ctx, "start method");
+            $self->log($Bio::KBase::Log::INFO, $ctx, "start method");
             @result = $module->$method(@{ $data->{arguments} });
-            $self->log($Bio::KBase::mlog::INFO, $ctx, "end method");
+            $self->log($Bio::KBase::Log::INFO, $ctx, "end method");
         };
         if ($@)
         {
@@ -354,13 +354,13 @@ sub _log
 sub log_err
 {
     my ($self, $message) = @_;
-    $self->_log($Bio::KBase::mlog::ERR, $message);
+    $self->_log($Bio::KBase::Log::ERR, $message);
 }
 
 sub log_info
 {
     my ($self, $message) = @_;
-    $self->_log($Bio::KBase::mlog::INFO, $message);
+    $self->_log($Bio::KBase::Log::INFO, $message);
 }
 
 sub log_debug
