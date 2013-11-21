@@ -1,0 +1,21 @@
+[%# Template for a perl-based client-implementation method -%]
+
+[% INCLUDE client_method_doc.tt %]
+
+sub [% method.name %]
+{
+    my($self, @args) = @_;
+    
+[% INCLUDE client_method_argument_validation.tt %]
+
+[% IF method.ret_count > 0 -%]
+    my([% method.ret_vars %]);
+[% END -%]
+
+    #BEGIN [% method.name %]
+[% client_impl_saved_state.stubs.${method.name} -%]
+    #END [% method.name %]
+
+[% INCLUDE client_method_return_validation.tt %]
+    return([% method.ret_vars %]);
+}

@@ -1,0 +1,62 @@
+package [% client_impl_package_name %];
+
+use [% client_package_name %];
+
+use strict;
+use Data::Dumper;
+
+=head1 NAME
+
+[% client_impl_package_name %]
+
+=head1 DESCRIPTION
+
+[% FOREACH module IN modules %]
+[% module.module_doc %]
+[% END %]
+
+=cut
+
+#BEGIN_HEADER
+[% client_impl_saved_state.header -%]
+#END_HEADER
+
+sub new
+{
+    my($class, $url, @args) = @_;
+    
+[% IF default_service_url -%]
+    if (!defined($url))
+    {
+	$url = '[% default_service_url %]';
+    }
+[% END -%]
+
+    #BEGIN_CONSTRUCTOR
+[% client_impl_saved_state.constructor -%]
+    #END_CONSTRUCTOR
+
+    my $self = {
+        rpc_client => [% client_package_name %]->new($url, @args),
+	url => $url,
+    };
+    
+    return bless $self, $class;
+}
+
+[% FOREACH module IN modules %]
+[% FOREACH method IN module.methods %]
+
+[% IF method.client_implemented -%]
+[% INCLUDE "client_impl_method.tt" %]
+[% ELSE %]
+[% IF NOT method.hidden -%]
+[% INCLUDE "client_impl_delegate_method.tt" %]
+[% END %]
+[% END %]
+
+[% END %]
+[% END %]
+
+
+1;

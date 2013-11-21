@@ -1,0 +1,21 @@
+
+# Authentication: [% method.authentication %]
+
+    if ((my $n = @args) != [% method.arg_count %])
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function [% method.name %] (received $n, expecting [% method.arg_count %])");
+    }
+[% IF method.arg_count > 0 -%]
+    my([% method.arg_vars %]) = @args;
+
+    my @_bad_arguments;
+[% FOR param IN method.params -%]
+    ([% param.validator %]) or push(@_bad_arguments, "Invalid type for argument [% param.index %] \"[% param.name %]\" (value was \"[% param.perl_var %]\")");
+[% END -%]
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to [% method.name %]:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => '[% method.name %]');
+    }
+[% END -%]

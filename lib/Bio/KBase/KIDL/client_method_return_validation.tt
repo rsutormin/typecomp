@@ -1,0 +1,11 @@
+[% IF method.ret_count > 0 -%]
+    my @_bad_returns;
+[% FOR return IN method.returns -%]
+    ([% return.validator %]) or push(@_bad_returns, "Invalid type for return variable \"[% return.name %]\" (value was \"[% return.perl_var %]\")");
+[% END -%]
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to [% method.name %]:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => '[% method.name %]');
+    }
+[% END -%]

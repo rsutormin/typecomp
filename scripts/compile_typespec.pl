@@ -30,6 +30,7 @@ Arguments:
 
     --scripts dir	       Generate simple wrapper scripts
     --impl name		       Use name as the classname for the generated perl implementation module
+    --client-impl name	       Use name as the classname for the generated perl client-implementation module
     --service name	       Use name as the classname for the generated service module
     --psgi name		       Write a PSGI file as name
     --client name	       Use name as the classname for the generated client module
@@ -46,6 +47,7 @@ Robert Olson, Argonne National Laboratory olson@mcs.anl.gov
 
 my $scripts_dir;
 my $impl_module_base;
+my $client_impl_module_base;
 my $service_module;
 my $client_module;
 my $psgi;
@@ -58,19 +60,20 @@ my $dump_parsed;
 my $test_script;
 my $help;
 
-my $rc = GetOptions("scripts=s" => \$scripts_dir,
-                    "impl=s"    => \$impl_module_base,
-                    "service=s" => \$service_module,
-                    "psgi=s"    => \$psgi,
-                    "client=s"  => \$client_module,
-                    "test=s"    => \$test_script,
-                    "js=s"      => \$js_module,
-                    "py=s"      => \$py_module,
-                    "pyserver=s"=> \$py_server_module,
-                    "pyimpl=s"  => \$py_impl_module,
-                    "url=s"     => \$default_service_url,
-                    "dump"      => \$dump_parsed,
-                    "help|h"	=> \$help,
+my $rc = GetOptions("scripts=s"	    => \$scripts_dir,
+                    "impl=s"	    => \$impl_module_base,
+                    "client-impl=s" => \$client_impl_module_base,
+                    "service=s"	    => \$service_module,
+                    "psgi=s"	    => \$psgi,
+                    "client=s"	    => \$client_module,
+                    "test=s"	    => \$test_script,
+                    "js=s"	    => \$js_module,
+                    "py=s"	    => \$py_module,
+                    "pyserver=s"    => \$py_server_module,
+                    "pyimpl=s"	    => \$py_impl_module,
+                    "url=s"	    => \$default_service_url,
+                    "dump"	    => \$dump_parsed,
+                    "help|h"	    => \$help,
                     );
 
 if (!$rc || $help || @ARGV < 2)
@@ -148,7 +151,9 @@ while (my($service, $modules) = each %services)
 
 sub setup_impl_data
 {
-    my($impl_module_base, $module, $ext) = @_;
+    my($impl_module_base, $module, $ext, $impl_suffix) = @_;
+
+    $impl_suffix ||= "Impl";
     
     my $imod;
     if ($impl_module_base)
@@ -157,7 +162,7 @@ sub setup_impl_data
     }
     else
     {
-        $imod = $module->module_name . "Impl";
+        $imod = $module->module_name . $impl_suffix;
     }
     my $ifile = $imod;
     $ifile =~ s,::,/,g; #convert perl module separators to /
@@ -182,25 +187,29 @@ sub write_service_stubs
     
     my $tmpl = Template->new( { OUTPUT_PATH => $output_dir,
                                 ABSOLUTE => 1,
+				    INCLUDE_PATH => Bio::KBase::KIDL::KBT->install_path,
                                 });
+    print "INCLUDE: " . Bio::KBase::KIDL::KBT->install_path . "\n";
 
     my %service_options;
     my %module_impl_file;
     my %module_info;
 
     my @modules;
-    
+
+    my $have_client_impl = 0;
     for my $module_ent (@$modules)
     {
         my($module, $type_info, $type_table) = @$module_ent;
 
+	$have_client_impl += grep { $_->client_implemented } $module->funcdefs;
         # print Dumper($module);
 
         my($imod, $ifile) = setup_impl_data($impl_module_base, $module, ".pm");
         my($pymod, $pyfile) = setup_impl_data($py_impl_module, $module, ".py");
 
         $module_info{$module->module_name} = { module => $imod, file => $ifile,
-                                               pymodule => $pymod, pyfile => $pyfile
+                                               pymodule => $pymod, pyfile => $pyfile,
                                               };
     
         $service_options{$_} = 1 foreach @{$module->options};
@@ -210,9 +219,34 @@ sub write_service_stubs
         push(@modules, $data);
     }
 
-    my $client_package_name = $client_module || ($service . "Client");
+    my $client_package_name;
+    my $client_impl_package_name;
+
+
+    if ($have_client_impl)
+    {
+	$client_impl_package_name = $client_module || ($service . "Client");
+	$client_package_name = $client_impl_package_name . "RPC";
+    }
+    else
+    {
+	$client_package_name = $client_module || ($service . "Client");
+    }
     my $server_package_name = $service_module || ($service . "Server");
     my $python_server_name = $py_server_module || ($service . "Server");
+
+    my $client_impl_package_file;
+    my $client_impl_saved_state = {};
+    if ($have_client_impl)
+    {
+	$client_impl_package_file = $client_impl_package_name;
+	$client_impl_package_file =~ s,::,/,g;
+	$client_impl_package_file .= ".pm";
+	make_path($output_dir . "/" . dirname($client_impl_package_file));
+	my($old_hdr, $old_cls, $old_constr, $old_stubs) = parse_old_client($client_impl_package_file);
+	$client_impl_saved_state = { header => $old_hdr, class_header => $old_cls,
+					 constructor => $old_constr, stubs => $old_stubs };
+    }
 
     my $client_package_file = $client_package_name;
     $client_package_file =~ s,::,/,g;
@@ -253,6 +287,8 @@ sub write_service_stubs
     #
     
     my $vars = {
+	client_impl_saved_state => $client_impl_saved_state,
+        client_impl_package_name => $client_impl_package_name,
         client_package_name => $client_package_name,
         server_package_name => $server_package_name,
         python_server_name => $python_server_name,
@@ -266,7 +302,7 @@ sub write_service_stubs
 			       (!$need_auth->{optional}) && (!$need_auth->{none})) ? 1 : 0),
         psgi_file => $psgi_file,
     };
-#    print Dumper($vars);
+    # print Dumper($vars);
 
     my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;
 
@@ -274,6 +310,7 @@ sub write_service_stubs
     $tmpl->process("$tmpl_dir/python_client.tt", $vars, $py_file) || die Template->error;
     $tmpl->process("$tmpl_dir/python_server.tt", $vars, $python_server_file) || die Template->error;
     $tmpl->process("$tmpl_dir/client_stub.tt", $vars, $client_package_file) || die Template->error;
+    $tmpl->process("$tmpl_dir/client_impl_stub.tt", $vars, $client_impl_package_file) || die Template->error;
     $tmpl->process("$tmpl_dir/server_stub.tt", $vars, $server_package_file) || die Template->error;
     if ($psgi_file)
     {
@@ -416,10 +453,8 @@ sub compute_module_data
         py_module_constructor => $py_saved_const,
     };
 
-    for my $comp (@{$module->module_components})
+    for my $comp ($module->funcdefs)
     {
-        next unless $comp->isa('Bio::KBase::KIDL::KBT::Funcdef');
-
         my $params = $comp->parameters;
         my @args;
         my @arg_types;
@@ -588,6 +623,10 @@ sub compute_module_data
             user_code => $saved_stub{$comp->name},
             py_user_code => $py_saved_stub{$comp->name},
             authentication => $comp->authentication,
+	    implemented_by => $comp->implemented_by,
+
+	    hidden => $comp->hidden,
+	    client_implemented => $comp->client_implemented,
         };
         push(@$methods, $meth);
     }
@@ -743,9 +782,8 @@ sub check_for_authentication
         for my $module_ent (@$modules)
         {
             my($module, $type_info, $type_table) = @$module_ent;
-            for my $comp (@{$module->module_components})
+            for my $comp ($module->funcdefs)
             {
-                next unless $comp->isa('Bio::KBase::KIDL::KBT::Funcdef');
 		$out->{$service}->{$comp->authentication}++;
             }
         }

@@ -18,17 +18,20 @@ our %builtin_types = ('int' => Bio::KBase::KIDL::KBT::Scalar->new(scalar_type =>
 
 our $auth_default = 'none';
 
-our @kidl_keywords = qw(funcdef
-    		        typedef
-			module
+our @kidl_keywords = qw(
+			async
+			authentication
+			funcdef
+			implemented_by
 			list
 			mapping
-			structure
+			module
 			nullable
 			returns
-			authentication
+			structure
 			tuple
-			async);
+			typedef
+);
 our %kidl_keywords = map { $_ => 1 } @kidl_keywords;
 
 our @kidl_reserved = qw(abstract
@@ -150,9 +153,33 @@ module_component_with_doc:
 
 module_component:
 		typedef
-	|	funcdef 
+	|	funcdef
 	|	'use' 'module' ident ';'
 	|	auth_type ';' { $auth_default = $_[1]; 'auth_default' . $_[1] }
+	|	attribute_expr { push(@{$_[0]->{cur_attribute}}, @{$_[1]}); }
+	;
+
+attribute_expr: '[' attribute_list ']' { $_[2] }
+	;
+
+attribute_list: { [] }
+	|	attribute { [ $_[1] ] }
+	|	attribute_list ',' attribute  { [ @{$_[1]}, $_[3] ] }
+	;
+
+attribute:	IDENT { [$_[1], []] }
+	|	IDENT '(' attribute_params ')' { [$_[1], $_[3] ] }
+	;
+
+attribute_params: { [] }
+	|	attribute_param { [ $_[1] ] }
+	|	attribute_params ',' attribute_param { [ @{$_[1]}, $_[3] ] }
+	;
+
+attribute_param:	IDENT
+	|	SQSTRING
+	|	DQSTRING
+	|	NUMBER
 	;
 
 auth_type: 	AUTHENTICATION IDENT { 
@@ -179,12 +206,44 @@ auth_type: 	AUTHENTICATION IDENT {
 typedef:	TYPEDEF type IDENT { $_[0]->get_comment() }  ';' { $_[0]->define_type($_[2], $_[3], $_[4]); }
 	;
 
-funcdef:	async_flag FUNCDEF IDENT { $_[0]->get_comment() } '(' funcdef_params ')' RETURNS '(' funcdef_params ')' auth_param ';'
-			{ Bio::KBase::KIDL::KBT::Funcdef->new(return_type => $_[10], name => $_[3], parameters => $_[6],
-			      comment => $_[4], async => $_[1], authentication => $_[12] ); }
-	|	async_flag FUNCDEF type IDENT { $_[0]->get_comment() } '(' funcdef_params ')' auth_param ';'
-			{ Bio::KBase::KIDL::KBT::Funcdef->new(return_type => [$_[3]], name => $_[4], parameters => $_[7],
-			      comment => $_[5], async => $_[1], authentication => $_[9]); }
+funcdef:	async_flag FUNCDEF IDENT { [ $_[0]->get_comment(), $_[0]->get_attribute() ] } '(' funcdef_params ')'
+		    RETURNS '(' funcdef_params ')' auth_param opt_implementation ';'
+			{
+			    my $func;
+
+			    eval { $func = Bio::KBase::KIDL::KBT::Funcdef->new(return_type => $_[10], name => $_[3],
+					parameters => $_[6],
+					comment => $_[4]->[0], 
+					attribute => $_[4]->[1], 
+					async => $_[1], authentication => $_[12],
+					implemented_by => $_[13] );
+			    };
+			    if ($@)
+			    {
+				$_[0]->emit_error($@);
+			    }
+			    $func;
+			}
+	|	async_flag FUNCDEF type IDENT { $_[0]->get_comment() } '(' funcdef_params ')' auth_param opt_implementation ';'
+			{
+			    my $func;
+			    eval {
+				$func = Bio::KBase::KIDL::KBT::Funcdef->new(return_type => [$_[3]], name => $_[4],
+					parameters => $_[7],
+					comment => $_[5], async => $_[1], authentication => $_[9],
+					implemented_by => $_[10]);
+			    };
+			    if ($@)
+			    {
+				$_[0]->emit_error($@);
+			    }
+			    $func;
+			}
+
+	;
+
+opt_implementation: { [] } # empty
+	| IMPLEMENTED_BY '(' DQSTRING ')' { [ $_[3] ] }
 	;
 
 auth_param: { $auth_default }
@@ -358,7 +417,6 @@ sub emit_warning {
     warn "Warning: $file:$line: $message$twarn\n";
 }
 
-
 sub Lexer {
     my($parser)=shift;
 
@@ -380,6 +438,21 @@ sub Lexer {
 	    if ($_ eq '')
 	    {
 		return ('', undef);
+	    }
+	    elsif (s/^([-+]?([0-9]*\.[0-9]+|[0-9]+))//)
+	    {
+	        my $str = $1;
+		return('NUMBER', $str);
+	    }
+	    elsif (s/^"((?:[^\\"]|\\.)*)"//)
+	    {
+		my $str = $1;
+		return('DQSTRING', $str);
+	    }
+	    elsif (s/^'((?:[^\\']|\\.)*)'//)
+	    {
+		my $str = $1;
+		return('SQSTRING', $str);
 	    }
 	    elsif (s/^([A-Za-z][A-Za-z0-9_]*)//)
 	    {
@@ -456,6 +529,14 @@ sub get_comment
     $self->{cur_comment} = "";
     $ret =~ s/^\s+//;
     $ret =~ s/\s+$//;
+    return $ret;
+}
+    
+sub get_attribute
+{
+    my($self) = @_;
+    my $ret = delete $self->{cur_attribute};
+    $ret ||= [];
     return $ret;
 }
     

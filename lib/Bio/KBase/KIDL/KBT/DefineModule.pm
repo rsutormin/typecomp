@@ -16,4 +16,11 @@ sub as_string
 
 }
 
+sub funcdefs
+{
+    my($self) = @_;
+
+    return grep { UNIVERSAL::can($_, 'isa') && $_->isa('Bio::KBase::KIDL::KBT::Funcdef'); } @{$self->module_components};
+}
+
 1;

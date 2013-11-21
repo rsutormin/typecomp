@@ -1,0 +1,34 @@
+
+=head2 [% method.name %]
+
+  [% IF method.ret_vars -%][% method.ret_vars -%] = [% END -%]$obj->[% method.name %]([% method.arg_vars %])
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+[% FOREACH docline IN method.arg_doc -%]
+[% docline %]
+[% END %]
+</pre>
+
+=end html
+
+=begin text
+
+[% FOREACH docline IN method.arg_doc -%]
+[% docline %]
+[% END %]
+
+=end text
+
+=item Description
+
+[% method.doc %]
+
+=back
+
+=cut

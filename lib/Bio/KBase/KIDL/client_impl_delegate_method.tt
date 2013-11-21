@@ -1,0 +1,8 @@
+[%# Template for a client-implementation invoke through delegate method. -%]
+[% INCLUDE client_method_doc.tt %]
+sub [% method.name %]
+{
+    my($self, @args) = @_;
+
+    return $self->{rpc_client}->[% method.name %](@args);
+}

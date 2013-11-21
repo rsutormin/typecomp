@@ -1,0 +1,53 @@
+[%# Template for a perl-based RPC client method -%]
+[% INCLUDE client_method_doc.tt %]
+sub [% method.name %]
+{
+    my($self, @args) = @_;
+
+# Authentication: [% method.authentication %]
+
+    if ((my $n = @args) != [% method.arg_count %])
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function [% method.name %] (received $n, expecting [% method.arg_count %])");
+    }
+[% IF method.arg_count > 0 -%]
+    {
+	my([% method.arg_vars %]) = @args;
+
+	my @_bad_arguments;
+[% FOR param IN method.params -%]
+        ([% param.validator %]) or push(@_bad_arguments, "Invalid type for argument [% param.index %] \"[% param.name %]\" (value was \"[% param.perl_var %]\")");
+[% END -%]
+        if (@_bad_arguments) {
+	    my $msg = "Invalid arguments passed to [% method.name %]:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => '[% method.name %]');
+	}
+    }
+[% END -%]
+
+    my $result = $self->{client}->call($self->{url}, {
+	method => "[% module.module_name %].[% method.name %]",
+	params => \@args,
+    });
+    if ($result) {
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{code},
+					       method_name => '[% method.name %]',
+					      );
+	} else {
+[% IF method.ret_count > 0 -%]
+	    return wantarray ? @{$result->result} : $result->result->[0];
+[% ELSE -%]
+	    return;
+[% END -%]
+	}
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method [% method.name %]",
+					    status_line => $self->{client}->status_line,
+					    method_name => '[% method.name %]',
+				       );
+    }
+}

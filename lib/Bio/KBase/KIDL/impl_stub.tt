@@ -1,6 +1,9 @@
 package [% module.impl_package_name %];
 use strict;
 use Bio::KBase::Exceptions;
+use File::Temp;
+use File::Slurp;
+use JSON::XS;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org 
 our $VERSION = "0.1.0";
@@ -98,7 +101,71 @@ sub [% method.name %]
     my([% method.ret_vars %]);
 [% END -%]
     #BEGIN [% method.name %]
+[% IF method.implemented_by %]
+[% IF method.user_code == '' -%]
+    #
+    # Invoke script to implement this method: [% method.implemented_by.0 %]
+    #
+    # We set up temp files for input and output of the parameters and returns.
+    # Data structures are passed via JSON in the filesystem (in temp space).
+    #
+    my %_inputs;
+    my %_filenames;
+    my %_outputs;
+    my $_coder = JSON::XS->new->ascii->pretty->allow_nonref;
+[% FOR param IN method.params %]
+    {
+	my $_temp = File::Temp->new();
+	print $_temp $_coder->encode($[% param.name %]);
+	close($_temp);
+	my $_file = $_temp->filename;
+	$_inputs{'[% param.name %]'} = $_temp;
+	$_filenames{'[% param.name %]'} = $_file;
+    }
+[% END %]    
+[% FOR return IN method.returns %]
+    {
+	my $_temp = File::Temp->new();
+	close($_temp);
+	my $_file = $_temp->filename;
+	$_outputs{'[% return.name %]'} = $_temp;
+	$_filenames{'[% return.name %]'} = $_file;
+    }
+[% END %]
+    #
+    # Now we can construct our pipeline.
+    # For now, implemented_by is a single-element array.
+    #
+    my $_cmd = q([% method.implemented_by.0 %]);
+    $_cmd =~ s/%([a-zA-Z0-9_]+)/\'$_filenames{$1}\'/g;
+
+    my $_res = system($_cmd);
+    if ($_res != 0)
+    {
+	die "Error $_res running command: $_cmd";
+    }
+
+[% FOR return IN method.returns %]
+    {
+	my $_name = q([% return.name %]);
+	my $_temp = $_outputs{$_name};
+	my $_file = $_temp->filename;
+	my $_txtref = read_file($_file, scalar_ref => 1);
+	if (!ref($_txtref))
+	{
+	    die "Error executing script: output file $_name not found";
+	}
+	$[% return.name %] = $_coder->decode($$_txtref);
+    }
+[% END %]
+
+    
+[% ELSE -%]
 [% method.user_code -%]
+[% END -%]
+[% ELSE -%]
+[% method.user_code -%]
+[% END -%]
     #END [% method.name %]
 [% IF method.ret_count > 0 -%]
     my @_bad_returns;
