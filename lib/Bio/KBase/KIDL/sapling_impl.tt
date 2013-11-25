@@ -155,7 +155,7 @@ sub _validate_fields_for_relationship
 
 sub _query_entity
 {
-    my($self, $ctx, $tbl, $qry, $fields) = @_;
+    my($self, $ctx, $tbl, $user_qry, $fields) = @_;
 
     my($sfields, $qfields, $rel_fields) = $self->_validate_fields_for_entity($tbl, $fields, 1);
 
@@ -168,7 +168,7 @@ sub _query_entity
     #IN violates the typespec since it requires an array as the $value rather than a string
     my %valid_ops = map { $_ => 1 } ('IS NULL', 'IS NOT NULL', 'LIKE', '<', '>', '=', '>=', '<='); # 'IN');
     my @bad_q;
-    for my $q (@$qry)
+    for my $q (@$user_qry)
     {
         my($field, $op, $value) = @$q;
 	$field =~ s/-/_/g;
