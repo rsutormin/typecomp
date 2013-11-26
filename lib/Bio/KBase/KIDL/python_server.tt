@@ -239,6 +239,7 @@ class Application(object):
         self.serverlog = log.log(
             submod, ip_address=True, authuser=True, module=True, method=True,
             call_id=True, logfile=self.userlog.get_log_file())
+        self.serverlog.set_log_level(6)
         self.rpc_service = JSONRPCServiceCustom()
 [% IF authenticated -%]
         self.method_authentication = dict()

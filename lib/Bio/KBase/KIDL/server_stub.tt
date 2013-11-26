@@ -103,6 +103,7 @@ sub _build_loggers
             $submod, {}, {ip_address => 1, authuser => 1, module => 1,
             method => 1, call_id => 1,
             logfile => $loggers->{userlog}->get_log_file()});
+    $loggers->{serverlog}->set_log_level(6);
     return $loggers;
 }
 
