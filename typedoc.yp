@@ -470,6 +470,7 @@ sub Lexer {
 		}
                 
 		my @lines = split(/\n/, $com);
+		$data->{line_number} += @lines - 1;
 		$lines[0] =~ s/^\s*//;
 		my @new = ($lines[0]);
 		shift @lines;

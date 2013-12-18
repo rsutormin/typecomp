@@ -2,8 +2,6 @@
 [% module.py_module_header -%]
 #END_HEADER
 
-'''
-
 [% 	specToPy.list = 'list';
 	specToPy.tuple = 'list';
 	specToPy.struct = 'dict';
@@ -13,27 +11,35 @@
 	specToPy.string = 'basestring';
 	specToPy.UnspecifiedObject = 'object';
 -%]
-Module Name:
-[% module.module_name %]
 
-Module Description:
-[% module.module_doc %]
-
-'''
 class [% module.module_name %]:
+    '''
+    Module Name:
+    [% module.module_name %]
 
+    Module Description:
+    [% module.module_doc %]
+    '''
+
+    ######## WARNING FOR GEVENT USERS #######
+    # Since asynchronous IO can lead to methods - even the same method -
+    # interrupting each other, you must be *very* careful when using global
+    # state. A method could easily clobber the state set by another while
+    # the latter method is running.
+    #########################################
     #BEGIN_CLASS_HEADER
 [% module.py_module_class_header -%]
     #END_CLASS_HEADER
 
-    def __init__(self, config): #config contains contents of config file in hash or 
-                                #None if it couldn't be found
+    # config contains contents of config file in a hash or None if it couldn't
+    # be found
+    def __init__(self, config):
         #BEGIN_CONSTRUCTOR
 [% module.py_module_constructor -%]
         #END_CONSTRUCTOR
         pass
-
 [% FOREACH method IN module.methods -%]
+
 [% SET paramlist = [];
    FOREACH p IN method.params;
        paramlist.push(p.name);
@@ -45,7 +51,11 @@ class [% module.module_name %]:
        END;
        retlist.push(var.name);
    END -%]
+[%- IF method.arg_count > 0 -%]
     def [% method.name %](self, [% paramlist.join(', ') %]):
+[% ELSE -%]
+    def [% method.name %](self):
+[% END -%]
         # self.ctx is set by the wsgi application class
 [% IF method.ret_count > 0 -%]
         # return variables are: [% retlist.join(", ") %]
@@ -53,17 +63,17 @@ class [% module.module_name %]:
         #BEGIN [% method.name %]
 [% method.py_user_code -%]
         #END [% method.name %]
-
 [% IF method.ret_count > 0 -%]
+
         #At some point might do deeper type checking...
 [% 	FOREACH ret IN method.returns -%]
 [%    	spectype = ret.baretype -%]
 [%    	type = specToPy.$spectype -%]
         if not isinstance([% ret.name %], [% type %]):
-            raise ValueError('Method [% method.name %] return value [% ret.name %] is not type [% type %] as required.')
+            raise ValueError('Method [% method.name %] return value ' +
+                             '[% ret.name %] is not type [% type %] as required.')
 [% END -%]
         # return the results
-        return [ [% retlist.join(', ') %] ]
-        
+        return [[% retlist.join(', ') %]]
 [% END -%]
 [% END -%]
