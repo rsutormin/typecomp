@@ -458,7 +458,8 @@ sub Lexer {
 	    {
 		my $com = $1;
                 # we pull in the entire comment, so we need to account for newlines in the comment
-                $data->{line_number}++ while($com =~ m/\n/g);
+                # was also fixed by bob below, so we don't need this anymore
+		#$data->{line_number}++ while($com =~ m/\n/g);
                 
 		if ($com =~ /^\*/)
 		{
