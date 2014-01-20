@@ -97,6 +97,18 @@ It has the following fields:
 			   fields_[% relationship.name %],
 			   fields_[% relationship.from_data.name %]>>);
 	
+/*
+    funcdef query_relationship_[% relationship.name %](list<tuple<string, string, string>> qry, list<string> from_fields, list<string> rel_fields, list<string> to_fields)
+        returns(list<tuple<fields_[% relationship.from_data.name %],
+			   fields_[% relationship.name %],
+			   fields_[% relationship.to_data.name %]>>);
+
+    funcdef query_relationship_[% relationship.converse_name %](list<tuple<string, string, string>> qry, list<string> from_fields, list<string> rel_fields, list<string> to_fields)
+        returns(list<tuple<fields_[% relationship.to_data.name %],
+			   fields_[% relationship.name %],
+			   fields_[% relationship.from_data.name %]>>);
+*/
+
 [% END -%]
 [% END -%]
 
