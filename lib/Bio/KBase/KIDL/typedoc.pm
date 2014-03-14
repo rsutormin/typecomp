@@ -1343,8 +1343,10 @@ sub Lexer {
 	    {
 		my $com = $1;
                 # we pull in the entire comment, so we need to account for newlines in the comment
-                # was also fixed by bob below, so we don't need this anymore
-		#$data->{line_number}++ while($com =~ m/\n/g);
+                # was also fixed by bob below, so we don't need this anymore -- 12/18/13
+		# turns out that bob's fix does not work when a comment begins with /** as it is
+		# returned as a token (still unsure why...), so reverting to my original fix -- 3/12/14
+		$data->{line_number}++ while($com =~ m/\n/g);
                 
 		if ($com =~ /^\*/)
 		{
@@ -1356,7 +1358,7 @@ sub Lexer {
 		}
                 
 		my @lines = split(/\n/, $com);
-		$data->{line_number} += @lines - 1;
+		#$data->{line_number} += @lines - 1;
 		$lines[0] =~ s/^\s*//;
 		my @new = ($lines[0]);
 		shift @lines;
