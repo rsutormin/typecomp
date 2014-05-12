@@ -15,35 +15,15 @@ my $json_schemas = to_json_schema($available_type_table,$options)
    for each type included in the type table (ignoring built-in scalar types and UnspecifiedObject
    types.  The input $available_type_table is a hash structure which can be pulled from
    the parser object as: "$parser->YYData->{cached_type_tables}"
-   $options is a hash with string valued keys and string values.  The method returns a hash where
-   keys are module names, and values are a hash where keys are type names and values are the JSON schema
-   document string.  (e.g. $json_schemas has this structure: {ModuleName => { TypeName => JsonSchemaString }})
    
-   valid options in the options hash are:
-      "jsonschema_version"=>3|4
-          this indicates whether to use jsonschema v3 or v4 when specifying required fields; by
-          default all fields in a KIDL structure are required unless flagged as optional using
-          KIDL type annotations; default schema version is '4'
-      "use_references"=>1|0
-          if this flag is set to a true value, references are used to other json schemas, which
-          provides a way to identify when typedefs or composition of types in a structure are
-          used; by default, this is off and all references are resolved thus producing a
-          completely self-contained JSON Schema document that is useful for JSON validation.
-	  NOTE: if this is turned on, some annotation information that is normally resolved
-	  will not make it to the Json Schema, importantly the annotations in typedefs of structures!
-      "use_kb_annotations"=>1|0
-          if this flag is set to a true value, KBase specific information is included in
-          the JSON Schema, including information marking id references and searchable elements
-      "omit_comments"=>1|0
-          if this flag is set to a true value, comments are not copied to the 'description' field
-          of the JSON Schema document; by default, this is off and all comments associated to
-          types as defined in KIDL are included in the JSON Schema document
-
-write_json_schemas_to_file($json_schemas,$output_dir,$options)
+   The JSON Schema document is generated in JSON Schema V4.  All types are expanded per document,
+   so each document can be used independently to validate a Json instance.  The JSON Schema
+   is returned with all keys sorted, and additional KBase annotations are added to the JSON
+   Schema document.
+   
+write_json_schemas_to_file($json_schemas,$output_dir)
    Given a set of json schemas produced from 'to_json_schema', output the schemas to file in
-   the specified $output_dir.  The method also accepts an $options hash with string keys and
-   string values, although currently there are no supported options available
-          
+   the specified $output_dir.
           
 =head1 AUTHORS
 
@@ -55,28 +35,41 @@ Michael Sneddon (LBL, mwsneddon@lbl.gov)
 use strict;
 use warnings;
 use Data::Dumper;
+use JSON;
 use File::Path 'make_path';
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(to_json_schema write_json_schemas_to_file);
 
 #
-# usage: my $json_schemas = to_json_schema($available_type_table, $options)
+# usage: my $json_schemas = to_json_schema($available_type_table)
 # see discription of this method at the top of the file
 #
 sub to_json_schema
 {
-    my($available_type_table, $options) = @_;
+    my($available_type_table) = @_; #note: external setting of options is no longer supported.
+    
+    
+    my $json = JSON->new->canonical;
     
     # set default options here if they were not set
+    my $options = {};
     if(!exists($options->{jsonschema_version})) {
         $options->{jsonschema_version} = 4;
+    }
+    if(!exists($options->{use_kb_annotations})) {
+        $options->{use_kb_annotations} = 1;
+    }
+    if(!exists($options->{omit_comments})) {
+        $options->{omit_comments} = 1;
+    }
+    if(!exists($options->{use_references})) {
+        $options->{use_references} = 0;
     }
     
     my $json_schemas = {};
     while (my($module_name, $types) = each %{$available_type_table})
     {
-	
 	while (my($type_name, $type) = each %{$types}) {
 	    # we do not generate json schemas for built-in scalars or UnspecifiedObjects, so we skip
             next if ($type->isa("Bio::KBase::KIDL::KBT::Scalar"));
@@ -86,9 +79,10 @@ sub to_json_schema
 		$json_schemas->{$module_name} = {};
 	    }
 	    
-	    my $schema = '';
-            my $spacer = "    ";
-	    $schema .= "{\n";
+	    # OLD method:
+	    #my $schema = '';
+            #my $spacer = "    ";
+	    #$schema .= "{\n";
 	    # we cannot put in a link to a default reference schema, because with annotations our schemas are not default
 	    # and objects will not validate.  We should define a schema standard for ourselves...
             #if($options->{jsonschema_version}==3) {
@@ -96,15 +90,22 @@ sub to_json_schema
             #} elsif($options->{jsonschema_version}==4) {
             #    #$schema .= $spacer."\"\$schema\":\"http://json-schema.org/draft-04/schema#\",\n";
             #}
-            $schema .= $spacer."\"id\":\"".$type->{name}."\",\n";
-            my $comment = extract_comment_from_type($type,$options);
-            $schema .= $spacer."\"description\":\"".$comment."\",\n";
+            #$schema .= $spacer."\"id\":\"".$type->{name}."\",\n";
+            #my $comment = extract_comment_from_type($type,$options);
+            #$schema .= $spacer."\"description\":\"".$comment."\",\n";
             my $is_top_level = 1;
-            $schema .= get_json_schema_type_string($type,$spacer,$options,$is_top_level);
-            $schema .= map_type_to_json_schema($type,$spacer,$options);
-            $schema .= "}\n";
+            #$schema .= get_json_schema_type_string($type,$spacer,$options,$is_top_level);
+            #$schema .= map_type_to_json_schema($type,$spacer,$options);
+            #$schema .= "}\n";
             
-            $json_schemas->{$module_name}->{$type->{name}} = $schema;
+	    # New method:
+	    my $schemaDocument = {};
+	    $schemaDocument->{id} = $type->{name};
+	    $schemaDocument->{description} = $type->{comment};
+	    add_json_schema_type_info($schemaDocument,$type,$options,$is_top_level);
+	    add_json_schema_definition($schemaDocument,$type,$options);
+	    
+            $json_schemas->{$module_name}->{$type->{name}} = $json->pretty->encode($schemaDocument); #$schema;
 	}
     }
     return $json_schemas;
@@ -140,7 +141,7 @@ sub write_json_schemas_to_file
 
 
 ##############################################################
-##  METHODS BELOW ARE NOT CURRENTLY PUBLICLY ACCESSABLE
+##  METHODS BELOW ARE PRIVATE
 ##############################################################
 
 
@@ -157,6 +158,73 @@ sub write_json_schemas_to_file
 #     $options is a ref to a hash with string keys and string values used to pass options
 #          to this method; currently no optional parameters are supported
 #
+
+sub add_json_schema_definition {
+    my($schemaDocument,$type,$options) = @_;
+    
+    # get the base type, this defines the structure of the JSON Schema element
+    my ($base_type,$depth) = resolve_typedef($type);
+    
+    if ($base_type->isa('Bio::KBase::KIDL::KBT::Scalar')) {
+        #scalar primitives do not require further tags
+    }
+    elsif ($base_type->isa('Bio::KBase::KIDL::KBT::UnspecifiedObject')) {
+        #UndefinedObjects do not require further tags
+    }
+    elsif ($base_type->isa('Bio::KBase::KIDL::KBT::List')) {
+	$schemaDocument->{items} = {};
+	add_json_schema_type_info(  $schemaDocument->{items},$base_type->element_type,$options,0);
+	add_json_schema_definition( $schemaDocument->{items},$base_type->element_type,$options);
+    }
+    elsif ($base_type->isa('Bio::KBase::KIDL::KBT::Mapping')) {
+	$schemaDocument->{additionalProperties} = {};
+	add_json_schema_type_info(  $schemaDocument->{additionalProperties},$base_type->value_type,$options,0);
+	add_json_schema_definition( $schemaDocument->{additionalProperties},$base_type->value_type,$options);
+    }
+    elsif ($base_type->isa('Bio::KBase::KIDL::KBT::Tuple')) {
+        my @subtypes = @{$base_type->element_types};
+	$schemaDocument->{maxItems} = scalar(@subtypes);
+	$schemaDocument->{minItems} = scalar(@subtypes);
+	$schemaDocument->{items} = [];
+	foreach my $subtype (@subtypes) {
+	    my $item = {};
+	    add_json_schema_type_info(  $item,$subtype,$options,0);
+	    add_json_schema_definition( $item,$subtype,$options);
+	    push($schemaDocument->{items},$item);
+	}
+    }
+    elsif ($base_type->isa('Bio::KBase::KIDL::KBT::Struct')) {
+	$schemaDocument->{properties} = {};
+	$schemaDocument->{additionalProperties} = JSON::true;
+	
+        # get the info on this type
+	my @items = @{$base_type->items};
+	my @subtypes = map { $_->item_type } @items;
+	my @names = map { $_->name } @items;
+        my $optional_fields = get_optional_fields_map($type);
+        
+	for (my $i = 0; $i < @subtypes; $i++) {
+	    $schemaDocument->{properties}->{$names[$i]} = {};
+	    add_json_schema_type_info(  $schemaDocument->{properties}->{$names[$i]}, $subtypes[$i],$options,0);
+	    add_json_schema_definition( $schemaDocument->{properties}->{$names[$i]}, $subtypes[$i],$options);
+	}
+        
+	# always use JSON Schema V4...
+	$schemaDocument->{required} = [];
+	for (my $i = 0; $i < @subtypes; $i++) {
+            if(!exists($optional_fields->{$names[$i]})) {
+		push($schemaDocument->{required},$names[$i]);
+	    }
+        }
+	return;
+    }
+    else
+    {
+	die "ERROR in map_type_to_json_schema, could not identify type:\n".Dumper($type);
+    }
+}
+
+
 sub map_type_to_json_schema
 {
     my($type,$spacer,$options) = @_;
@@ -178,8 +246,7 @@ sub map_type_to_json_schema
         #scalar primitives do not require further tags
         return "\n";
     }
-    elsif ($base_type->isa('Bio::KBase::KIDL::KBT::UnspecifiedObject'))
-    {
+    elsif ($base_type->isa('Bio::KBase::KIDL::KBT::UnspecifiedObject')) {
         #UndefinedObjects do not require further tags
         return "\n";
     }
@@ -312,19 +379,42 @@ sub get_optional_fields_map {
     return $full_map;
 }
 
+
 #
-#  $string = get_json_schema_type_string($type,$spacer,$options,$is_top_level)
-#     $string is a string that defines the type in the json schema (e.g. "type":"object")
-#          and uses the method map_type_to_json_schema_typename
-#     $type is a ref to a $type parsed from a typespec and saved to
-#     $spacer is a string containing any characters (generally spaces) to appear before the line
-#          and is mostly used to provide nice formatting
-#     $options is a ref to a hash with string keys and string values used to pass options
-#          to this method; currently no optional parameters are supported
-#     $is_top_level is set to 1 if it is the top level of the JSON schema document, or set to zero
-#          otherwise.  This is needed because some kb annotations are only added the the json
-#          schema document if the typed object is a top-level type
-#
+sub add_json_schema_type_info {
+     my($schemaDocument,$type,$options,$is_top_level) = @_;
+     
+     $schemaDocument->{type} = map_type_to_json_schema_typename($type,$options);
+     
+     if ($options->{use_kb_annotations}) {
+	$schemaDocument->{'original-type'} = map_type_to_KIDL_typename($type,$options);
+	my $idrefs = get_kb_id_ref_tag($type,$options);
+        if($idrefs) {
+	    $schemaDocument->{"id-reference"}->{'id-type'} = $idrefs->{type};
+	    if ($idrefs->{type} eq 'ws') {
+		$schemaDocument->{"id-reference"}->{'valid-typedef-names'} = $idrefs->{valid_typedef_names};
+	    } elsif ($idrefs->{type} eq 'external') {
+		$schemaDocument->{"id-reference"}->{'sources'} = $idrefs->{sources};
+	    }
+	}
+	
+	# only top level objects get assigned workspace searchable tags and workspace metadata tags
+        if($is_top_level == 1) {
+            my $ws_searchable_fields = get_searchable_ws_subset_tag($type,$options,'fields');
+            my $ws_searchable_keys   = get_searchable_ws_subset_tag($type,$options,'keys');
+	    if($ws_searchable_fields || $ws_searchable_keys) {
+		$schemaDocument->{'searchable-ws-subset'}->{'fields'} = $ws_searchable_fields;
+		$schemaDocument->{'searchable-ws-subset'}->{'keys'}   = $ws_searchable_keys;
+	    }
+	    
+            my $ws_metadata = get_metadata_ws_tag($type,$options);
+	    if ($ws_metadata) {
+		$schemaDocument->{'metadata-ws'} = $ws_metadata;
+	    }
+        }
+     }
+}
+
 sub get_json_schema_type_string {
     my($type,$spacer,$options,$is_top_level) = @_;
     # if we use references, then typedefs should not print a type, but will only have a reference
@@ -387,6 +477,19 @@ sub get_json_schema_type_string {
 		$type_string .= "\n".$spacer."    }";
 		$type_string .= "\n".$spacer."}";
             }
+	    
+            my $ws_metadata = get_metadata_ws_tag($type,$options);
+	    if ($ws_metadata) {
+		$type_string .= ",\n".$spacer."\"metadata-ws\": {";
+		my $first_meta = 1;
+		foreach my $md (keys(%$ws_metadata)) {
+		    if ($first_meta) { $first_meta = 0; }
+		    else {$type_string .= ','}
+		    
+		    $type_string .= "\n".$spacer."    \"$md\":\"$ws_metadata->{$md}\"";
+		}
+		$type_string .= "\n".$spacer."}";
+	    }
         }
     }
     return $type_string;
@@ -558,6 +661,35 @@ sub get_searchable_ws_subset_tag {
     }
     return;
 }
+
+#
+# function to check what part of the object should be marked as ws searchable (if any)
+# my $ws_searchable = get_kb_ws_searchable_tag($type,$options, $keyword)
+#
+#   $ws_searchable is undef if no elements were set to be workspace searchable
+#   $ws_searchable is a ref to a hash  containing the parsed set of searchable
+#       fields if @searchable ws_subset annotation was set
+#   $keyword is set to 'fields' or 'keys', depending on what you want
+#   $options is key/value set of options, none are supported as of now.
+#
+sub get_metadata_ws_tag {
+    my($type,$options) = @_;
+    if($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
+        # at the first point where a declaration is found, we grab the keyword.  This ensures we
+	# can always override the searchable tag on typedefs of structures
+	if(defined($type->{annotations}->{metadata}->{ws})) {
+            return $type->{annotations}->{metadata}->{ws};
+        }
+	# otherwise, we go down to the next one...
+        return get_searchable_ws_subset_tag($type->{alias_type},$options);
+    } elsif($type->isa('Bio::KBase::KIDL::KBT::Struct')) {
+        if(defined($type->{annotations}->{metadata}->{ws})) {
+            return $type->{annotations}->{metadata}->{ws};
+        }
+    }
+    return;
+}
+
 
 
 #

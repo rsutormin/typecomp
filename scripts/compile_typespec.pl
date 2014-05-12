@@ -230,16 +230,8 @@ while (my($service, $modules) = each %{$parsed_data})
 ################################
 ###### generate JSON Schema documents
 if($generate_json_schema) {
-    
-    # set some options, but this should really be passed in as arguments
-    my $options = {};
-    $options->{jsonschema_version}=4; #supports 3 or 4
-    $options->{use_references}=0;
-    $options->{use_kb_annotations}=1;
-    $options->{omit_comments}=0;
-    
-    my $json_schemas = to_json_schema($available_type_table,$options);
-    write_json_schemas_to_file($json_schemas,$output_dir,$options);
+    my $json_schemas = to_json_schema($available_type_table);
+    write_json_schemas_to_file($json_schemas,$output_dir);
 }
 
 
@@ -615,7 +607,7 @@ sub write_service_stubs
 			       (!$need_auth->{optional}) && (!$need_auth->{none})) ? 1 : 0),
         psgi_file => $psgi_file,
     };
-#    print Dumper($vars);
+    print Dumper($vars);
 
 
     my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;

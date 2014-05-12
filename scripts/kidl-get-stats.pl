@@ -148,7 +148,7 @@ my $available_type_table = $parser->YYData->{cached_type_tables};
 
 ################################
 # parse and assemble annotations
-my $annotation_options = {ignore_warnings=>0};
+my $annotation_options = {ignore_warnings=>1};
 assemble_annotations($parsed_data, $available_type_table, $annotation_options);
 
 
@@ -216,41 +216,7 @@ foreach my $service_name (keys %$parsed_data) {
                if ($type->isa('Bio::KBase::KIDL::KBT::Funcdef')) {
                     $stats->{funcdef}++;
                }
-               
-#               bless( {
-#                                                       'parameters' => [
-#                                                                         {
-#                                                                           'name' => 'abundance_data',
-#                                                                           'type' => $VAR1->[0][0]{'module_components'}[37]
-#                                                                         },
-#                                                                         {
-#                                                                           'name' => 'filter_params',
-#                                                                           'type' => $VAR1->[0][0]{'module_components'}[38]
-#                                                                         }
-#                                                                       ],
-#                                                       'return_type' => [
-#                                                                          {
-#                                                                            'name' => 'abundance_data_processed',
-#                                                                            'type' => $VAR1->[0][0]{'module_components'}[37]
-#                                                                          }
-#                                                                        ],
-#                                                       'comment' => 'ORDER OF OPERATIONS:
-#1) using normalization scope, defines whether process should occur per column or globally over every column
-#2) using normalization type, normalize by dividing values by the option indicated
-#3) apply normalization post process if set (ie take log of the result)
-#4) apply the cutoff_value threshold to all records, eliminating any that are not above the specified threshold
-#5) apply the cutoff_number_of_records (always applies per_column!!!), discarding any record that are not in the top N record values for that column
-#
-#- if a value is not a valid number, it is ignored',
-#                                                       'async' => 0,
-#                                                       'name' => 'filter_abundance_profile',
-#                                                       'authentication' => 'none',
-#                                                       'annotations' => {
-#                                                                          'unknown_annotations' => {}
-#                                                                        }
-#                                                     }, 'Bio::KBase::KIDL::KBT::Funcdef' ),
-
-               
+                
           }
           
           

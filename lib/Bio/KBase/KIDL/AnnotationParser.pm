@@ -274,6 +274,14 @@ sub process_typedef_annotation {
         $warning_mssg .= $mssg;
     }
     
+    # @metadata [CONTEXT] [EXPRESSION] as [METADATA_NAME]
+    #    this annotation, if set, indicates that part of this object should be extracted under some context.  The only
+    #    supported context is the workspace service, indicated as 'ws'
+    elsif($flag eq 'metadata') {
+        my ($n,$mssg) = process_typedef_annotation_metadata($annotations, $parameters, $raw_line, $type, $options);
+        $n_warnings += $n;
+        $warning_mssg .= $mssg;
+    }
     
     # catch all other annotations and place them on the heap
     else {
@@ -553,6 +561,117 @@ sub process_typedef_annotation_searchable {
             $n_warnings++;
         }
     }
+    return ($n_warnings, $warning_mssg);
+}
+
+
+#
+#  metadata annotations defined as:
+#
+#    @metadata [DATASTORE] [EXPRESSION] as [METADATA NAME]
+#
+#      where the only supported data store is ws
+#
+#    the selector is used to select the fields and compute the value stored as the metadata in the WS
+#    eventually this may support more complex expressions, but for now can only select top level fields by
+#    name.  The fields must resolve to a string, float, int. Additionally, the "length()" operator is supported
+#    by the WS which will compute the length of a list or mapping, as in length(my_list_field_name).
+#
+#
+sub process_typedef_annotation_metadata {
+    my($annotations, $parameters, $raw_line, $type, $options) = @_;
+    my $n_warnings = 0; my $warning_mssg = '';
+    
+    # make sure we are a typedef that points to a structure
+    my ($base_type,$depth) = resolve_typedef($type);
+    if(!$base_type->isa('Bio::KBase::KIDL::KBT::Struct')) {
+        $warning_mssg .= "ANNOTATION WARNING: annotation '\@metadata' does nothing for non-structure types.\n";
+        $warning_mssg .= "  annotation was defined for type '".$type->{module}.".".$type->{name}."', which is not a structure.\n";
+        $n_warnings++;
+    } else {
+        
+        # ensure that we have declared the context for being searchable
+        my $metadata_context = shift(@$parameters);
+        if (!defined $metadata_context) {
+            $warning_mssg .= "ANNOTATION WARNING: annotation '\@metadata' must delcare the the data store that should extract the data.\n";
+            $warning_mssg .= "  The only current valid context is 'ws'.\n";
+            $warning_mssg .= "  Annotation was defined for type '".$type->{module}.".".$type->{name}."'.\n";
+            $n_warnings++;
+            return ($n_warnings, $warning_mssg);
+        }
+        
+        if ($metadata_context eq 'ws') {
+            # we are sure that we have a structure, so get a list of field names
+            my @items = @{$base_type->items};
+            my @subtypes = map { $_->item_type } @items;
+            my @field_names = map { $_->name } @items;
+            my %field_lookup_table = map { $_ => 1 } @field_names;
+               
+            if (scalar(@$parameters) < 1) {
+                $warning_mssg .= "ANNOTATION WARNING: annotation '\@metadata' is invalid, must define at least 2 tokens: \@metadata ws [expression]\n";
+                $warning_mssg .= "  Annotation was defined for type '".$type->{module}.".".$type->{name}."'.\n";
+                $n_warnings++;
+                return ($n_warnings, $warning_mssg);
+            }
+            
+            # parse out the expression and metadata name
+            my $expression = ''; my $metadataName = '';
+            my $seenAsKeyword = 0; my $isFirstWord = 1;
+            foreach my $word (@{$parameters}) {
+                if (!$isFirstWord && (lc($word) eq 'as')) {
+                    $seenAsKeyword = 1; next;
+                }
+                if ($isFirstWord) { $isFirstWord = 0; }
+                if ($seenAsKeyword) { $metadataName .= $word." " }
+                else { $expression .= $word; }
+            }
+            if (!$seenAsKeyword) { $metadataName = $expression; }
+            $metadataName =~ s/^\s+|\s+$//g;
+            
+            # validate that the expression is valid
+            
+            
+            # add it as an annotation
+            if(!defined($annotations->{metadata}->{ws})) { $annotations->{metadata}->{ws} = {}; }
+            if (defined($annotations->{metadata}->{ws}->{$metadataName}) ) {
+                $warning_mssg .= "ANNOTATION WARNING: annotation '\@metadata' is invalid, you cannot redefine a metadata name; attempted to redefine '$metadataName'\n";
+                $warning_mssg .= "  Annotation was defined for type '".$type->{module}.".".$type->{name}."'.\n";
+                $n_warnings++;
+                return ($n_warnings, $warning_mssg);
+            }
+            $annotations->{metadata}->{ws}->{$metadataName} = $expression;
+
+        } else {
+            $warning_mssg .= "ANNOTATION WARNING: annotation '\@metadata' indicated that the data store to use is '$metadata_context', but that is\n";
+            $warning_mssg .= "  not recognized as a valid data store.  Only the Workspace (specified as 'ws') is accepted.\n";
+            $warning_mssg .= "  Annotation was defined for type '".$type->{module}.".".$type->{name}."'\n";
+            $n_warnings++;
+        }
+        
+      
+        
+        #foreach my $field (@{$parameters}) {
+        #    # do simple checking to see if the field exists
+        #    if(!exists($field_lookup_table{$field})) {
+        #        $warning_mssg .= "ANNOTATION WARNING: annotation '\@optional' for structure '".$type->{module}.".".$type->{name}."' indicated\n";
+        #           $warning_mssg .= "  a field named '$field', but no such field exists in the structure, so this constraint was ignored.\n";
+        #           $n_warnings++;
+        #           next;
+        #       }
+        #       # don't add it twice, and report that we found it already
+        #       foreach my $marked_optional_field (@{$annotations->{optional}}) {
+        #           if($marked_optional_field eq $field) {
+        #               $warning_mssg .= "ANNOTATION WARNING: annotation '\@optional' for structure '".$type->{module}.".".$type->{name}."' has\n";
+        #               $warning_mssg .= "  marked a field named '$field' multiple times.\n";
+        #               $n_warnings++;
+        #               next;
+        #           }
+        #       }
+        #       # if we got here, we are good. push it to the list
+        #       push(@{$annotations->{optional}},$field);
+        #   }
+    }
+    
     return ($n_warnings, $warning_mssg);
 }
 
