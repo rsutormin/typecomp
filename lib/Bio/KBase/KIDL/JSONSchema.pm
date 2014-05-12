@@ -681,7 +681,7 @@ sub get_metadata_ws_tag {
             return $type->{annotations}->{metadata}->{ws};
         }
 	# otherwise, we go down to the next one...
-        return get_searchable_ws_subset_tag($type->{alias_type},$options);
+        return get_metadata_ws_tag($type->{alias_type},$options);
     } elsif($type->isa('Bio::KBase::KIDL::KBT::Struct')) {
         if(defined($type->{annotations}->{metadata}->{ws})) {
             return $type->{annotations}->{metadata}->{ws};
