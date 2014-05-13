@@ -36,6 +36,7 @@ use strict;
 use warnings;
 use Data::Dumper;
 use JSON;
+use POSIX;
 use File::Path 'make_path';
 require Exporter;
 our @ISA = qw(Exporter);
@@ -50,7 +51,7 @@ sub to_json_schema
     my($available_type_table) = @_; #note: external setting of options is no longer supported.
     
     
-    my $json = JSON->new->canonical;
+    my $json = JSON->new->canonical->allow_blessed;
     
     # set default options here if they were not set
     my $options = {};
@@ -210,12 +211,16 @@ sub add_json_schema_definition {
 	}
         
 	# always use JSON Schema V4...
-	$schemaDocument->{required} = [];
+	my $requiredList = [];
 	for (my $i = 0; $i < @subtypes; $i++) {
             if(!exists($optional_fields->{$names[$i]})) {
-		push($schemaDocument->{required},$names[$i]);
+		push($requiredList,$names[$i]);
 	    }
         }
+	if (scalar(@$requiredList) > 0 ) {
+	    $schemaDocument->{required} = $requiredList;
+	}
+	
 	return;
     }
     else
@@ -244,7 +249,6 @@ sub map_type_to_json_schema
     
     if ($base_type->isa('Bio::KBase::KIDL::KBT::Scalar')) {
         #scalar primitives do not require further tags
-        return "\n";
     }
     elsif ($base_type->isa('Bio::KBase::KIDL::KBT::UnspecifiedObject')) {
         #UndefinedObjects do not require further tags
@@ -346,6 +350,10 @@ sub map_type_to_json_schema
     
 }
 
+
+
+
+
 # recursively get a map with keys being the names of optional fields for a particular typedef of a structure;
 # optional fields are always added, you can never mark a previously optional field as required (yet).
 sub get_optional_fields_map {
@@ -397,6 +405,13 @@ sub add_json_schema_type_info {
 		$schemaDocument->{"id-reference"}->{'sources'} = $idrefs->{sources};
 	    }
 	}
+	my $range = get_range_annotation($type,$options);
+	if ($range) {
+	    foreach my $key ( keys %$range ) {
+		$schemaDocument->{$key} = $range->{$key};
+	    }
+	}
+	
 	
 	# only top level objects get assigned workspace searchable tags and workspace metadata tags
         if($is_top_level == 1) {
@@ -414,6 +429,52 @@ sub add_json_schema_type_info {
         }
      }
 }
+
+
+sub get_range_annotation {
+     my($type,$options) = @_;
+     
+     my $resolved_type = resolve_typedef($type);
+     
+     my $isInt = 1;
+     if (defined($type->{scalar_type})) {
+	if($type->{scalar_type} eq 'int') {
+	    $isInt = 1;
+	}
+     }
+     
+     if (defined($type->{annotations}->{range})) {
+	my $r = $type->{annotations}->{range};
+	my $rangeForJsonSchema = {};
+	if (defined($r->{minimum})) {
+	    $rangeForJsonSchema->{minimum} = $r->{minimum}+0;
+	    if ($isInt) {
+		$rangeForJsonSchema->{minimum} = floor($rangeForJsonSchema->{minimum});
+	    }
+	    
+	    if (defined($r->{exclusiveMinimum})) {
+		if($r->{exclusiveMinimum}==1) {
+		    $rangeForJsonSchema->{exclusiveMinimum}=JSON::true;
+		}
+	    }
+	    
+	}
+	if (defined($r->{maximum})) {
+	    $rangeForJsonSchema->{maximum} = $r->{maximum}+0;
+	    if ($isInt) {
+		$rangeForJsonSchema->{maximum} = ceil($rangeForJsonSchema->{maximum});
+	    }
+	    if (defined($r->{exclusiveMaximum})) {
+		if($r->{exclusiveMaximum}==1) {
+		    $rangeForJsonSchema->{exclusiveMaximum}=JSON::true;
+		}
+	    }
+	}
+	return $rangeForJsonSchema;
+     }
+     return;
+}
+
 
 sub get_json_schema_type_string {
     my($type,$spacer,$options,$is_top_level) = @_;
