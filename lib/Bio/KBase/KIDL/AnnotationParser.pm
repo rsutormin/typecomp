@@ -789,6 +789,7 @@ sub assemble_components
     while (my($module_name, $types) = each %{$available_type_table}) {
         foreach my $type (values(%{$types})) {
             # we do not parse annotations for built-in scalars or UnspecifiedObjects, so we skip
+            $type->{annotations}={}; # for consistency in parsed structure, we always add annotations
             next if ($type->isa("Bio::KBase::KIDL::KBT::Scalar"));
             next if ($type->isa("Bio::KBase::KIDL::KBT::UnspecifiedObject"));
             push(@$type_list, $type);

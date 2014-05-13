@@ -270,11 +270,10 @@ sub add_json_schema_type_info {
 sub get_range_annotation {
      my($type,$options) = @_;
      
-     my $resolved_type = resolve_typedef($type);
-     
-     my $isInt = 1;
-     if (defined($type->{scalar_type})) {
-	if($type->{scalar_type} eq 'int') {
+     my ($resolved_type,$depth) = resolve_typedef($type);
+     my $isInt = 0;
+     if (defined($resolved_type->{scalar_type})) {
+	if($resolved_type->{scalar_type} eq 'int') {
 	    $isInt = 1;
 	}
      }
