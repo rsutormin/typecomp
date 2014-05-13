@@ -36,6 +36,8 @@ use strict;
 use warnings;
 use Data::Dumper;
 use JSON;
+use Math::BigInt;
+use Math::BigFloat;
 use POSIX;
 use File::Path 'make_path';
 require Exporter;
@@ -50,22 +52,12 @@ sub to_json_schema
 {
     my($available_type_table) = @_; #note: external setting of options is no longer supported.
     
-    
     my $json = JSON->new->canonical->allow_blessed;
     
     # set default options here if they were not set
     my $options = {};
-    if(!exists($options->{jsonschema_version})) {
-        $options->{jsonschema_version} = 4;
-    }
     if(!exists($options->{use_kb_annotations})) {
         $options->{use_kb_annotations} = 1;
-    }
-    if(!exists($options->{omit_comments})) {
-        $options->{omit_comments} = 1;
-    }
-    if(!exists($options->{use_references})) {
-        $options->{use_references} = 0;
     }
     
     my $json_schemas = {};
@@ -80,26 +72,7 @@ sub to_json_schema
 		$json_schemas->{$module_name} = {};
 	    }
 	    
-	    # OLD method:
-	    #my $schema = '';
-            #my $spacer = "    ";
-	    #$schema .= "{\n";
-	    # we cannot put in a link to a default reference schema, because with annotations our schemas are not default
-	    # and objects will not validate.  We should define a schema standard for ourselves...
-            #if($options->{jsonschema_version}==3) {
-            #    #$schema .= $spacer."\"\$schema\":\"http://json-schema.org/draft-03/schema#\",\n";
-            #} elsif($options->{jsonschema_version}==4) {
-            #    #$schema .= $spacer."\"\$schema\":\"http://json-schema.org/draft-04/schema#\",\n";
-            #}
-            #$schema .= $spacer."\"id\":\"".$type->{name}."\",\n";
-            #my $comment = extract_comment_from_type($type,$options);
-            #$schema .= $spacer."\"description\":\"".$comment."\",\n";
             my $is_top_level = 1;
-            #$schema .= get_json_schema_type_string($type,$spacer,$options,$is_top_level);
-            #$schema .= map_type_to_json_schema($type,$spacer,$options);
-            #$schema .= "}\n";
-            
-	    # New method:
 	    my $schemaDocument = {};
 	    $schemaDocument->{id} = $type->{name};
 	    $schemaDocument->{description} = $type->{comment};
@@ -230,129 +203,6 @@ sub add_json_schema_definition {
 }
 
 
-sub map_type_to_json_schema
-{
-    my($type,$spacer,$options) = @_;
-
-    # get the base type, this defines the structure of the JSON Schema element
-    my ($base_type,$depth) = resolve_typedef($type);
-    
-    # we check if we are using references or not- if we are we only put in a link 
-    if ($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
-        if($options->{use_references}) {
-            my $schema = "";
-            $schema .= $spacer."\"\$ref\": ";
-            $schema .= "\"../".$type->module."/".$type->name.".json\"\n";
-            return $schema;
-        }
-    }
-    
-    if ($base_type->isa('Bio::KBase::KIDL::KBT::Scalar')) {
-        #scalar primitives do not require further tags
-    }
-    elsif ($base_type->isa('Bio::KBase::KIDL::KBT::UnspecifiedObject')) {
-        #UndefinedObjects do not require further tags
-        return "\n";
-    }
-    elsif ($base_type->isa('Bio::KBase::KIDL::KBT::List')) {
-        my $schema = ",\n";
-        $schema .= $spacer."\"items\": {\n";
-        $schema .= get_json_schema_type_string($base_type->element_type,$spacer."    ",$options,0);
-	my $list_element_schema = map_type_to_json_schema($base_type->element_type,$spacer."    ",$options);
-        if($list_element_schema ne "") { $schema .= $list_element_schema; } else { $schema .= "\n"; }
-        $schema .= $spacer."}\n";
-	return $schema;
-    }
-    elsif ($base_type->isa('Bio::KBase::KIDL::KBT::Mapping')) {
-        my $schema = ",\n";
-        $schema .= $spacer."\"additionalProperties\": {\n";
-        $schema .= get_json_schema_type_string($base_type->value_type,$spacer."    ",$options,0);
-        
-        #NOTE: key types are ignored because they are always strings in JSON.  We assume that the typecompiler
-        #will catch cases where a non-string type is used
-        my $map_value_schema = map_type_to_json_schema($base_type->value_type,$spacer."    ",$options);
-        if($map_value_schema ne "") { $schema .= $map_value_schema; } else { $schema .= "\n"; }
-        $schema .= $spacer."}\n";
-	return $schema;
-    }
-    elsif ($base_type->isa('Bio::KBase::KIDL::KBT::Tuple')) {
-        my $schema = ",\n";
-    
-        my @subtypes = @{$base_type->element_types};
-        $schema .= $spacer."\"maxItems\":".scalar(@subtypes).",\n";
-        $schema .= $spacer."\"minItems\":".scalar(@subtypes).",\n";
-        $schema .= $spacer."\"items\": [\n";
-        
-	my $first=0;
-	foreach my $subtype (@subtypes) {
-	    if($first==0) {$first=1} else { $schema .= ",\n"}
-	    $schema .= $spacer."    {\n";
-            $schema .= get_json_schema_type_string($subtype,$spacer."        ",$options,0);
-            my $tuple_element_schema = map_type_to_json_schema($subtype,$spacer."        ",$options);
-            if($tuple_element_schema ne "") { $schema .= $tuple_element_schema; } else { $schema .= "\n"; }
-            $schema .= $spacer."    }";
-	}
-        $schema .= "\n".$spacer."]\n";
-	return $schema;
-    }
-    elsif ($base_type->isa('Bio::KBase::KIDL::KBT::Struct')) {
-        my $schema = ",\n";
-        $schema .= $spacer."\"properties\": {\n";
-        
-        # get the info on this type
-	my @items = @{$base_type->items};
-	my @subtypes = map { $_->item_type } @items;
-	my @names = map { $_->name } @items;
-        my $optional_fields = get_optional_fields_map($type);
-        
-	for (my $i = 0; $i < @subtypes; $i++) {
-            $schema .= ",\n" unless ($i==0);
-	    $schema .= $spacer."    ";
-            $schema .= "\"".$names[$i]."\": {\n";
-            my $subtype = $subtypes[$i];
-            if($options->{jsonschema_version}==3) {
-                if(exists($optional_fields->{$names[$i]})) {
-                    $schema .= $spacer."        \"required\":false,\n";
-                } else {
-                    $schema .= $spacer."        \"required\":true,\n";
-                }
-            }
-            $schema .= get_json_schema_type_string($subtype,$spacer."        ",$options,0);
-            my $struct_field_type = map_type_to_json_schema($subtype,$spacer."        ",$options);
-            if($struct_field_type ne "") { $schema .= $struct_field_type; } else { $schema .= "\n"; }
-            $schema .= $spacer."    }";
-	}
-        
-	$schema .= "\n".$spacer."},\n";
-        $schema .= $spacer."\"additionalProperties\":true";
-        my $required_string = ''; my $n_required = 0; 
-        if($options->{jsonschema_version}==4) {
-            $required_string .= ",\n".$spacer."\"required\":[";
-            for (my $i = 0; $i < @subtypes; $i++) {
-                if(!exists($optional_fields->{$names[$i]})) {
-                    $required_string .= "," unless ($n_required==0);
-                    $required_string .= "\"".$names[$i]."\"";
-                    $n_required++;
-                }
-            }
-            $required_string .= "]";
-        }
-        #annoying that the required array must be non-empty!!! so we have to check!
-        if($n_required>0) { $schema .= $required_string; }
-        
-        $schema .= "\n";
-	return $schema;
-    }
-    else
-    {
-	die "ERROR in map_type_to_json_schema, could not identify type:\n".Dumper($type);
-    }
-    
-}
-
-
-
-
 
 # recursively get a map with keys being the names of optional fields for a particular typedef of a structure;
 # optional fields are always added, you can never mark a previously optional field as required (yet).
@@ -449,7 +299,10 @@ sub get_range_annotation {
 	if (defined($r->{minimum})) {
 	    $rangeForJsonSchema->{minimum} = $r->{minimum}+0;
 	    if ($isInt) {
+		#print $rangeForJsonSchema->{minimum}; print "\n";
+		
 		$rangeForJsonSchema->{minimum} = floor($rangeForJsonSchema->{minimum});
+		#print $rangeForJsonSchema->{minimum}; print "\n";
 	    }
 	    
 	    if (defined($r->{exclusiveMinimum})) {
@@ -460,7 +313,7 @@ sub get_range_annotation {
 	    
 	}
 	if (defined($r->{maximum})) {
-	    $rangeForJsonSchema->{maximum} = $r->{maximum}+0;
+	    $rangeForJsonSchema->{maximum} =$r->{maximum}+0;
 	    if ($isInt) {
 		$rangeForJsonSchema->{maximum} = ceil($rangeForJsonSchema->{maximum});
 	    }
@@ -475,104 +328,6 @@ sub get_range_annotation {
      return;
 }
 
-
-sub get_json_schema_type_string {
-    my($type,$spacer,$options,$is_top_level) = @_;
-    # if we use references, then typedefs should not print a type, but will only have a reference
-    if($options->{use_references}) {
-        if ($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
-            return "";
-        }
-    }
-    my $type_string = $spacer."\"type\":\"" . map_type_to_json_schema_typename($type,$options) . "\"";
-    
-    # if they asked for it, bind this type to a java class but only if we can resolve a type name and module name (which all structs and typedefs have)
-    #if($options->{specify_java_types}) {
-    #    if(defined($type->{name}) && defined($type->{module})) {
-    #        $type_string   .= "\n".$spacer."\"javaType\":\"".$options->{specify_java_types}.$type->{module}.".".$type->{name}."\"";
-    #    }
-    #}
-    # if they asked for it, output valid kb_annotations associated to the object
-    if($options->{use_kb_annotations}) {
-        # specify what kind of kbase type it is (helpful for distinguishing between objects and mappings) 
-        $type_string .= ",\n".$spacer."\"original-type\":\"".map_type_to_KIDL_typename($type,$options)."\"";
-	
-        # tag things that are marked as id references
-        my $idrefs = get_kb_id_ref_tag($type,$options);
-        if($idrefs) {
-            $type_string .= ",\n".$spacer."\"id-reference\": {";
-	    $type_string .= "\n" .$spacer."   \"id-type\":\"".$idrefs->{type}."\"";
-	    if ($idrefs->{type} eq 'ws') {
-		$type_string .= ",\n" .$spacer."   \"valid-typedef-names\": [";
-		for (my $i = 0; $i < scalar(@{$idrefs->{valid_typedef_names}}); $i++) {
-		    $type_string .= "," unless ($i==0);
-		    $type_string .= "\"".$idrefs->{valid_typedef_names}->[$i]."\"";
-		}
-		$type_string .= "]";
-	    } elsif ($idrefs->{type} eq 'external') {
-		$type_string .= ",\n" .$spacer."   \"sources\": [";
-		for (my $i = 0; $i < scalar(@{$idrefs->{sources}}); $i++) {
-		    $type_string .= "," unless ($i==0);
-		    $type_string .= "\"".$idrefs->{sources}->[$i]."\"";
-		}
-		$type_string .= "]";
-	    }
-            $type_string .= "\n" .$spacer."}";
-        }
-        # only top level objects get assigned workspace searchable tags
-        if($is_top_level == 1) {
-            my $ws_searchable_fields = get_searchable_ws_subset_tag($type,$options,'fields');
-            my $ws_searchable_keys   = get_searchable_ws_subset_tag($type,$options,'keys');
-            if($ws_searchable_fields || $ws_searchable_keys) {
-		
-		$type_string .= ",\n".$spacer."\"searchable-ws-subset\": {";
-		$type_string .= "\n".$spacer."    \"fields\": {";
-		if ($ws_searchable_fields) {
-		    $type_string .= get_searchable_ws_subset_json_schema($ws_searchable_fields,$spacer."        ");
-		}
-		$type_string .= "\n".$spacer."    }";
-		$type_string .= ",\n".$spacer."    \"keys\": {";
-		if ($ws_searchable_keys) {
-		    $type_string .= get_searchable_ws_subset_json_schema($ws_searchable_keys,$spacer."        ");
-		}
-		$type_string .= "\n".$spacer."    }";
-		$type_string .= "\n".$spacer."}";
-            }
-	    
-            my $ws_metadata = get_metadata_ws_tag($type,$options);
-	    if ($ws_metadata) {
-		$type_string .= ",\n".$spacer."\"metadata-ws\": {";
-		my $first_meta = 1;
-		foreach my $md (keys(%$ws_metadata)) {
-		    if ($first_meta) { $first_meta = 0; }
-		    else {$type_string .= ','}
-		    
-		    $type_string .= "\n".$spacer."    \"$md\":\"$ws_metadata->{$md}\"";
-		}
-		$type_string .= "\n".$spacer."}";
-	    }
-        }
-    }
-    return $type_string;
-}
-
-# get a string of the json schema representation of the parsed path tree used to specify
-# '@searchable ws_subset' fields and keys
-sub get_searchable_ws_subset_json_schema {
-    my ($parsed_path,$spacer) = @_;
-    my $str = ''; my $isFirst = 1;
-    if (scalar(keys(%$parsed_path)) == 0) {
-	return "";
-    }
-    
-    foreach my $field_name (keys(%$parsed_path)) {
-	if (!$isFirst) { $str .= ","; } else { $isFirst = 0; }
-	$str .= "\n".$spacer."\"$field_name\": {";
-	$str .= get_searchable_ws_subset_json_schema($parsed_path->{$field_name},$spacer."    ");
-	$str .= "\n".$spacer."}";
-    }
-    return $str;
-}
 
 #
 #  $typename = map_type_to_json_schema_typename($type,$options)
@@ -751,39 +506,6 @@ sub get_metadata_ws_tag {
     return;
 }
 
-
-
-#
-#  $comments = extract_comment_from_type($type,$options)
-#     $comments is a string that contains the comments for the type properly escaped so it can
-#          go right into a JSON document
-#     $type is a ref to a $type parsed from a typespec and processed by the 'assemble_types' method
-#     $options is a ref to a hash with string keys and string values used to pass options
-#          to this method; currently no optional parameters are supported
-#
-sub extract_comment_from_type
-{
-    my($type,$options) = @_;
-    if($options->{omit_comments}) {
-        return '';
-    }
-    if (!exists($type->{comment})) {
-	return '';
-    }
-    
-    #todo: recurse down typedefs to get all the comments recursively...
-    my $comment = $type->{comment};
-    
-    # escape all backslashes so that our json document is valid
-    $comment =~ s/\\/\\\\/g;
-    # escape all double quotes so that our json document is valid
-    $comment =~ s/"/\\"/g;
-    
-    # we can't have newlines in a JSON document, so replace them with literal slash n
-    $comment =~ s/\n/\\n/g;
-    
-    return $comment;
-}
 
 #  recursive loop to get the base type of a typedef
 sub resolve_typedef {
