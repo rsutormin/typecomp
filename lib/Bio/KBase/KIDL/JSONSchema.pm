@@ -119,20 +119,6 @@ sub write_json_schemas_to_file
 ##############################################################
 
 
-
-#
-# Given a type, print the JSON schema content of this type given the $options
-# and a spacer which provides the indentation level
-#
-#  $content = map_type_to_json_schema($type,$spacer,$options)
-#     $content is a string that contains the json schema content of the object (not including the 'type' specification)
-#     $type is a ref to a $type parsed from a typespec and processed by the 'assemble_types' method
-#     $spacer is a string containing any characters (generally spaces) to appear before the line
-#          and is mostly used to provide nice formatting
-#     $options is a ref to a hash with string keys and string values used to pass options
-#          to this method; currently no optional parameters are supported
-#
-
 sub add_json_schema_definition {
     my($schemaDocument,$type,$options) = @_;
     
@@ -297,12 +283,10 @@ sub get_range_annotation {
 	my $r = $type->{annotations}->{range};
 	my $rangeForJsonSchema = {};
 	if (defined($r->{minimum})) {
+	    # note: possible loss of precision here!  TODO: extend to properly handle bigints and bigfloats
 	    $rangeForJsonSchema->{minimum} = $r->{minimum}+0;
 	    if ($isInt) {
-		#print $rangeForJsonSchema->{minimum}; print "\n";
-		
 		$rangeForJsonSchema->{minimum} = floor($rangeForJsonSchema->{minimum});
-		#print $rangeForJsonSchema->{minimum}; print "\n";
 	    }
 	    
 	    if (defined($r->{exclusiveMinimum})) {
@@ -313,6 +297,7 @@ sub get_range_annotation {
 	    
 	}
 	if (defined($r->{maximum})) {
+	    # note: possible loss of precision here!  TODO: extend to properly handle bigints and bigfloats
 	    $rangeForJsonSchema->{maximum} =$r->{maximum}+0;
 	    if ($isInt) {
 		$rangeForJsonSchema->{maximum} = ceil($rangeForJsonSchema->{maximum});
