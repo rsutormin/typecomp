@@ -214,7 +214,6 @@ my $available_type_table = $parser->YYData->{cached_type_tables};
 my $annotation_options = {ignore_warnings=>0};
 assemble_annotations($parsed_data, $available_type_table, $annotation_options);
 
-
 ################################
 # Generate the client/server files
 my $need_auth = check_for_authentication($parsed_data);
@@ -225,8 +224,6 @@ while (my($service, $modules) = each %{$parsed_data})
         write_service_stubs($service, $modules, $output_dir, $need_auth->{$service}, $available_type_table);
     }
 }
-
-
 ################################
 ###### generate JSON Schema documents
 if($generate_json_schema) {
@@ -261,7 +258,6 @@ if ($dump_xml) {
 
 # all done, so we exit and dump if requested
 print STDERR Dumper($parsed_data) if $dump_parsed;
-
 exit(0);
 
 
@@ -607,7 +603,6 @@ sub write_service_stubs
 			       (!$need_auth->{optional}) && (!$need_auth->{none})) ? 1 : 0),
         psgi_file => $psgi_file,
     };
-    print Dumper($vars);
 
 
     my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;

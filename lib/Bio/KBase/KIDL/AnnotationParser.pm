@@ -47,15 +47,13 @@ our @EXPORT_OK = qw(assemble_annotations);
 #   as it updates everything in-place.
 #
 #   You should call this function once you have parsed every module necessary and assembled the $parsed_data construct, but
-#   before any methods for generating Json Schema, generating client/server code, or dumping parsed data.  You should only
+#   before any methods for generating Json Schema if you need.  You should only
 #   call this method once per compilation.
 #
 #
 sub assemble_annotations
 {
     my($parsed_data, $available_type_table, $options) = @_;
-    
-    resolve_path("");
     
     my $n_total_warnings = 0;
     my $total_warning_mssg = '';
@@ -219,7 +217,7 @@ sub process_function_annotation {
 
 
 #
-#  supported annotations:
+# 
 #
 #  returns ($n_warnings, $warning_mssg)
 sub process_typedef_annotation {
@@ -772,6 +770,26 @@ sub resolve_typedef {
     return ($base_type, $depth);
 }
 
+
+sub initAnnotationStructure {
+    my($type) = @_;
+    $type->{annotations}={};
+    if($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
+        initAnnotationStructure($type->{alias_type});
+    } elsif ($type->isa('Bio::KBase::KIDL::KBT::Mapping')) {
+        initAnnotationStructure($type->{key_type});
+        initAnnotationStructure($type->{value_type});
+    } elsif ($type->isa('Bio::KBase::KIDL::KBT::List')) {
+        initAnnotationStructure($type->{element_type});
+    } elsif ($type->isa('Bio::KBase::KIDL::KBT::Tuple')) {
+        foreach my $element (@{$type->{element_types}}) {
+            initAnnotationStructure($element);
+        }
+    }
+    return;
+}
+
+
 # This method packages up a list of types, functions, and modules so that annotation parsing is simplified
 # 
 #
@@ -789,7 +807,9 @@ sub assemble_components
     while (my($module_name, $types) = each %{$available_type_table}) {
         foreach my $type (values(%{$types})) {
             # we do not parse annotations for built-in scalars or UnspecifiedObjects, so we skip
-            $type->{annotations}={}; # for consistency in parsed structure, we always add annotations
+            #$type->{annotations}={}; # for consistency in parsed structure, we always add annotations
+            initAnnotationStructure($type);
+            
             next if ($type->isa("Bio::KBase::KIDL::KBT::Scalar"));
             next if ($type->isa("Bio::KBase::KIDL::KBT::UnspecifiedObject"));
             push(@$type_list, $type);
@@ -811,6 +831,14 @@ sub assemble_components
             #loop through the module components and find our functions
             foreach my $component (@$module_components) {
                 if ($component->isa("Bio::KBase::KIDL::KBT::Funcdef")) {
+                    # add empty annotation block so that parsed data structure is consistant
+                    foreach my $rt (@{$component->{return_type}}) {
+                        initAnnotationStructure($rt->{type});
+                    }
+                    foreach my $rt (@{$component->{parameters}}) {
+                        initAnnotationStructure($rt->{type});
+                    }
+                    
                     push(@$func_list,$component);
                 }
             }
