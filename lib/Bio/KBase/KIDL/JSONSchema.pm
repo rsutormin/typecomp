@@ -36,13 +36,16 @@ use strict;
 use warnings;
 use Data::Dumper;
 use JSON;
+use POSIX;
 use Math::BigInt;
 use Math::BigFloat;
-use POSIX;
+use Data::UUID;
 use File::Path 'make_path';
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(to_json_schema write_json_schemas_to_file);
+
+my $UUID_GEN = Data::UUID->new();
 
 #
 # usage: my $json_schemas = to_json_schema($available_type_table)
@@ -52,7 +55,7 @@ sub to_json_schema
 {
     my($available_type_table) = @_; #note: external setting of options is no longer supported.
     
-    my $json = JSON->new->canonical->allow_blessed;
+    my $json = JSON->new->canonical;
     
     # set default options here if they were not set
     my $options = {};
@@ -72,21 +75,31 @@ sub to_json_schema
 		$json_schemas->{$module_name} = {};
 	    }
 	    
+	    
             my $is_top_level = 1;
 	    my $schemaDocument = {};
+	    my $numberSubstitutions = {};
 	    $schemaDocument->{id} = $type->{name};
 	    $schemaDocument->{description} = $type->{comment};
-	    add_json_schema_type_info($schemaDocument,$type,$options,$is_top_level);
-	    add_json_schema_definition($schemaDocument,$type,$options);
+	    add_json_schema_type_info($schemaDocument,$type,$options,$is_top_level,$numberSubstitutions);
+	    add_json_schema_definition($schemaDocument,$type,$options,$numberSubstitutions);
+	    my $jsonEncoded = $json->pretty->encode($schemaDocument);
 	    
-            $json_schemas->{$module_name}->{$type->{name}} = $json->pretty->encode($schemaDocument); #$schema;
+            $json_schemas->{$module_name}->{$type->{name}} =  substituteNumbers($jsonEncoded,$numberSubstitutions); #$schema;
 	}
     }
     return $json_schemas;
 }
 
 
-
+sub substituteNumbers {
+    my($jsonEncoded,$numberSubstitutions) = @_;
+    
+    for my $uuid (keys(%$numberSubstitutions)){
+	$jsonEncoded =~ s/"$uuid"/$numberSubstitutions->{$uuid}/g;
+    }
+    return $jsonEncoded;
+}
 
 #
 # usage: write_json_schemas_to_file($json_schemas,$output_dir,$options)
@@ -120,7 +133,7 @@ sub write_json_schemas_to_file
 
 
 sub add_json_schema_definition {
-    my($schemaDocument,$type,$options) = @_;
+    my($schemaDocument,$type,$options,$number_substitutions) = @_;
     
     # get the base type, this defines the structure of the JSON Schema element
     my ($base_type,$depth) = resolve_typedef($type);
@@ -133,13 +146,13 @@ sub add_json_schema_definition {
     }
     elsif ($base_type->isa('Bio::KBase::KIDL::KBT::List')) {
 	$schemaDocument->{items} = {};
-	add_json_schema_type_info(  $schemaDocument->{items},$base_type->element_type,$options,0);
-	add_json_schema_definition( $schemaDocument->{items},$base_type->element_type,$options);
+	add_json_schema_type_info(  $schemaDocument->{items},$base_type->element_type,$options,0,$number_substitutions);
+	add_json_schema_definition( $schemaDocument->{items},$base_type->element_type,$options,$number_substitutions);
     }
     elsif ($base_type->isa('Bio::KBase::KIDL::KBT::Mapping')) {
 	$schemaDocument->{additionalProperties} = {};
-	add_json_schema_type_info(  $schemaDocument->{additionalProperties},$base_type->value_type,$options,0);
-	add_json_schema_definition( $schemaDocument->{additionalProperties},$base_type->value_type,$options);
+	add_json_schema_type_info(  $schemaDocument->{additionalProperties},$base_type->value_type,$options,0,$number_substitutions);
+	add_json_schema_definition( $schemaDocument->{additionalProperties},$base_type->value_type,$options,$number_substitutions);
     }
     elsif ($base_type->isa('Bio::KBase::KIDL::KBT::Tuple')) {
         my @subtypes = @{$base_type->element_types};
@@ -148,8 +161,8 @@ sub add_json_schema_definition {
 	$schemaDocument->{items} = [];
 	foreach my $subtype (@subtypes) {
 	    my $item = {};
-	    add_json_schema_type_info(  $item,$subtype,$options,0);
-	    add_json_schema_definition( $item,$subtype,$options);
+	    add_json_schema_type_info(  $item,$subtype,$options,0,$number_substitutions);
+	    add_json_schema_definition( $item,$subtype,$options,$number_substitutions);
 	    push($schemaDocument->{items},$item);
 	}
     }
@@ -165,8 +178,8 @@ sub add_json_schema_definition {
         
 	for (my $i = 0; $i < @subtypes; $i++) {
 	    $schemaDocument->{properties}->{$names[$i]} = {};
-	    add_json_schema_type_info(  $schemaDocument->{properties}->{$names[$i]}, $subtypes[$i],$options,0);
-	    add_json_schema_definition( $schemaDocument->{properties}->{$names[$i]}, $subtypes[$i],$options);
+	    add_json_schema_type_info(  $schemaDocument->{properties}->{$names[$i]}, $subtypes[$i],$options,0,$number_substitutions);
+	    add_json_schema_definition( $schemaDocument->{properties}->{$names[$i]}, $subtypes[$i],$options,$number_substitutions);
 	}
         
 	# always use JSON Schema V4...
@@ -209,24 +222,13 @@ sub get_optional_fields_map {
 	    $full_map->{$f} = 1;
 	}
     }
-    # in the updated annotation parser (as of 10/2013) optionals are not attached to Structs directly, but
-    # only attached to typedefs; as such, we should pull any optional annotations from here, but we leave
-    # in this bit of code (commented out in case things change again...
-    #elsif ($type->isa('Bio::KBase::KIDL::KBT::Struct')) {
-    #	if (exists($type->{annotations}->{optional})) {
-    #	    my $field_list = $type->{annotations}->{optional};
-    #	    foreach my $f (@$field_list) {
-    #		$full_map->{$f} = 1;
-    #	    }
-    #	}
-    #}
     return $full_map;
 }
 
 
 #
 sub add_json_schema_type_info {
-     my($schemaDocument,$type,$options,$is_top_level) = @_;
+     my($schemaDocument,$type,$options,$is_top_level,$number_substitutions) = @_;
      
      $schemaDocument->{type} = map_type_to_json_schema_typename($type,$options);
      
@@ -241,7 +243,7 @@ sub add_json_schema_type_info {
 		$schemaDocument->{"id-reference"}->{'sources'} = $idrefs->{sources};
 	    }
 	}
-	my $range = get_range_annotation($type,$options);
+	my $range = get_range_annotation($type,$options,$number_substitutions);
 	if ($range) {
 	    foreach my $key ( keys %$range ) {
 		$schemaDocument->{$key} = $range->{$key};
@@ -267,8 +269,22 @@ sub add_json_schema_type_info {
 }
 
 
+sub get_ceil {
+    my($ns) = @_;
+    my $bigf = Math::BigFloat->new($ns);
+    $bigf->bceil();
+    return $bigf->bstr();
+}
+
+sub get_floor {
+    my($ns) = @_;
+    my $bigf = Math::BigFloat->new($ns);
+    $bigf->bfloor();
+    return $bigf->bstr();
+}
+
 sub get_range_annotation {
-     my($type,$options) = @_;
+     my($type,$options,$number_substitutions) = @_;
      
      my ($resolved_type,$depth) = resolve_typedef($type);
      my $isInt = 0;
@@ -282,27 +298,56 @@ sub get_range_annotation {
 	my $r = $type->{annotations}->{range};
 	my $rangeForJsonSchema = {};
 	if (defined($r->{minimum})) {
-	    # note: possible loss of precision here!  TODO: extend to properly handle bigints and bigfloats
-	    $rangeForJsonSchema->{minimum} = $r->{minimum}+0;
+	    # note: to handle big integers, and use the JSON lib to generate schemas,
+	    # we need to manipulate integers as string values and put in placeholders
+	    # that can later be replaced.  Kind-of hacky, but 
+	    # note that JSON::XS does not work with Math::bigint, so we cannot use that,
+	    # and we cannot role out our own bigint blessed type because the JSON lib
+	    # still expects scalars, and maps them as such- it does not allow arbitrary
+	    # appending to the JSON document- so you can put in large numbers but they
+	    # are encoded as strings, not properly formated integers
+	    my $wasAdjusted;
 	    if ($isInt) {
-		$rangeForJsonSchema->{minimum} = floor($rangeForJsonSchema->{minimum});
+		my $uuid = $UUID_GEN->create_str();
+		$rangeForJsonSchema->{minimum} = $uuid;
+		my $numberString = $r->{minimum};
+		my $rounded = get_ceil($numberString);
+		if ($rounded ne $numberString) {
+		    $numberString = $rounded;
+		    $wasAdjusted = 1;
+		}
+		$number_substitutions->{$uuid}=$numberString;
+	    } else {
+		# float values we place directly in - possible loss of precision here up to IEEE double (or
+		# whatever c compiler was used to build your perl)
+		$rangeForJsonSchema->{minimum} = $r->{minimum}+0;
 	    }
-	    
 	    if (defined($r->{exclusiveMinimum})) {
-		if($r->{exclusiveMinimum}==1) {
+		if($r->{exclusiveMinimum}==1 && !defined($wasAdjusted)) {
 		    $rangeForJsonSchema->{exclusiveMinimum}=JSON::true;
 		}
 	    }
 	    
 	}
 	if (defined($r->{maximum})) {
-	    # note: possible loss of precision here!  TODO: extend to properly handle bigints and bigfloats
-	    $rangeForJsonSchema->{maximum} =$r->{maximum}+0;
+	    my $wasAdjusted;
 	    if ($isInt) {
-		$rangeForJsonSchema->{maximum} = ceil($rangeForJsonSchema->{maximum});
+		my $uuid = $UUID_GEN->create_str();
+		$rangeForJsonSchema->{maximum} = $uuid;
+		my $numberString = $r->{maximum};
+		my $rounded = get_floor($numberString);
+		if ($rounded ne $numberString) {
+		    $numberString = $rounded;
+		    $wasAdjusted = 1;
+		}
+		$number_substitutions->{$uuid}=$numberString;
+	    } else {
+		# float values we place directly in - possible loss of precision here up to IEEE double (or
+		# whatever c compiler was used to build your perl)
+		$rangeForJsonSchema->{maximum} = $r->{maximum}+0;
 	    }
 	    if (defined($r->{exclusiveMaximum})) {
-		if($r->{exclusiveMaximum}==1) {
+		if($r->{exclusiveMaximum}==1 && !defined($wasAdjusted)) {
 		    $rangeForJsonSchema->{exclusiveMaximum}=JSON::true;
 		}
 	    }
