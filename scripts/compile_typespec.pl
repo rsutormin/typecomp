@@ -214,7 +214,6 @@ my $available_type_table = $parser->YYData->{cached_type_tables};
 my $annotation_options = {ignore_warnings=>0};
 assemble_annotations($parsed_data, $available_type_table, $annotation_options);
 
-
 ################################
 # Generate the client/server files
 my $need_auth = check_for_authentication($parsed_data);
@@ -225,21 +224,11 @@ while (my($service, $modules) = each %{$parsed_data})
         write_service_stubs($service, $modules, $output_dir, $need_auth->{$service}, $available_type_table);
     }
 }
-
-
 ################################
 ###### generate JSON Schema documents
 if($generate_json_schema) {
-    
-    # set some options, but this should really be passed in as arguments
-    my $options = {};
-    $options->{jsonschema_version}=4; #supports 3 or 4
-    $options->{use_references}=0;
-    $options->{use_kb_annotations}=1;
-    $options->{omit_comments}=0;
-    
-    my $json_schemas = to_json_schema($available_type_table,$options);
-    write_json_schemas_to_file($json_schemas,$output_dir,$options);
+    my $json_schemas = to_json_schema($available_type_table);
+    write_json_schemas_to_file($json_schemas,$output_dir);
 }
 
 
@@ -269,7 +258,6 @@ if ($dump_xml) {
 
 # all done, so we exit and dump if requested
 print STDERR Dumper($parsed_data) if $dump_parsed;
-
 exit(0);
 
 
@@ -615,7 +603,6 @@ sub write_service_stubs
 			       (!$need_auth->{optional}) && (!$need_auth->{none})) ? 1 : 0),
         psgi_file => $psgi_file,
     };
-#    print Dumper($vars);
 
 
     my $tmpl_dir = Bio::KBase::KIDL::KBT->install_path;

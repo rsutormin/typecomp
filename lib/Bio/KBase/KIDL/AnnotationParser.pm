@@ -47,15 +47,13 @@ our @EXPORT_OK = qw(assemble_annotations);
 #   as it updates everything in-place.
 #
 #   You should call this function once you have parsed every module necessary and assembled the $parsed_data construct, but
-#   before any methods for generating Json Schema, generating client/server code, or dumping parsed data.  You should only
+#   before any methods for generating Json Schema if you need.  You should only
 #   call this method once per compilation.
 #
 #
 sub assemble_annotations
 {
     my($parsed_data, $available_type_table, $options) = @_;
-    
-    resolve_path("");
     
     my $n_total_warnings = 0;
     my $total_warning_mssg = '';
@@ -219,7 +217,7 @@ sub process_function_annotation {
 
 
 #
-#  supported annotations:
+# 
 #
 #  returns ($n_warnings, $warning_mssg)
 sub process_typedef_annotation {
@@ -274,6 +272,20 @@ sub process_typedef_annotation {
         $warning_mssg .= $mssg;
     }
     
+    # @metadata [CONTEXT] [EXPRESSION] as [METADATA_NAME]
+    #    this annotation, if set, indicates that part of this object should be extracted under some context.  The only
+    #    supported context is the workspace service, indicated as 'ws'
+    elsif($flag eq 'metadata') {
+        my ($n,$mssg) = process_typedef_annotation_metadata($annotations, $parameters, $raw_line, $type, $options);
+        $n_warnings += $n;
+        $warning_mssg .= $mssg;
+    }
+    
+    elsif($flag eq 'range') {
+        my ($n,$mssg) = process_typedef_annotation_range($annotations, $parameters, $raw_line, $type, $options);
+        $n_warnings += $n;
+        $warning_mssg .= $mssg;
+    }
     
     # catch all other annotations and place them on the heap
     else {
@@ -379,35 +391,32 @@ sub process_typedef_annotation_id {
         return ($n_warnings, $warning_mssg);
     }
     
-    # third, based on the type of id given we construct the annotation object
+    # third, save this ID annotation
+    $annotations->{id} = {type=>$id_type, attributes=>$parameters};
+    
+    # fourth, based on the type of id we may perform some additional checks
     if ($id_type eq 'kb') {
-        #kbase id - for now we mark it and do nothing else; if additional parameters are given, we generate a warning
-        $annotations->{id} = {type=>$id_type};
+        #kbase id - for now we do nothing else; if additional parameters are given, we generate a warning
         if (scalar(@$parameters)>0) {
             $warning_mssg .= "ANNOTATION WARNING: annotation '\@id kb' does not accept additional parameters.\n";
             $warning_mssg .= "  annotation was defined for type '".$type->{module}.".".$type->{name}."', and parameters\n";
-            $warning_mssg .= "  given (".join(' ',@$parameters).") have been ignored.\n";
+            $warning_mssg .= "  given (".join(' ',@$parameters).") likely do nothing.\n";
             $n_warnings++;
         }
     } elsif ($id_type eq 'shock') {
         #shock node id - for now we mark it and do nothing else; if additional parameters are given, we generate a warning
-        $annotations->{id} = {type=>$id_type};
         if (scalar(@$parameters)>0) {
             $warning_mssg .= "ANNOTATION WARNING: annotation '\@id shock' does not accept additional parameters.\n";
             $warning_mssg .= "  annotation was defined for type '".$type->{module}.".".$type->{name}."', and parameters\n";
-            $warning_mssg .= "  given (".join(' ',@$parameters).") have been ignored.\n";
+            $warning_mssg .= "  given (".join(' ',@$parameters).") likely do nothing.\n";
             $n_warnings++;
         }
     } elsif ($id_type eq 'external') {
-        #external id - for now we mark it and add the list of sources; we don't yet validate source names
-        my $sources = [];
-        foreach my $p (@{$parameters}) {
-            push(@$sources,$p);
-        }
-        $annotations->{id} = {type=>$id_type,sources=>$sources};
+        #external id - for now we don't yet validate source names
     } elsif ($id_type eq 'ws') {
         my $valid_typedef_names = {};
         foreach my $typename (@{$parameters}) {
+            # generate warnings if there are duplicates or it doesn't look like the type name is well formed
             if(scalar(split(/\./,$typename)) == 2) {
                 # don't add duplicates
                  if(!exists($valid_typedef_names->{$typename})) {
@@ -424,17 +433,92 @@ sub process_typedef_annotation_id {
                 $n_warnings++;
             }
         }
-        my $valid_typedef_names_list = [];
-        push(@$valid_typedef_names_list, keys(%$valid_typedef_names));
-        $annotations->{id} = {type=>$id_type,valid_typedef_names=>$valid_typedef_names_list};
+        #my $valid_typedef_names_list = [];
+        #push(@$valid_typedef_names_list, keys(%$valid_typedef_names));
+
     } else {
         $annotations->{id} = {type=>$id_type};
         $warning_mssg .= "ANNOTATION WARNING: annotation '\@id' indicated that id type is '$id_type', but that id type is\n";
-        $warning_mssg .= "  not recognized as a valid type.  This id has been marked, but likely does nothing.\n";
-        $warning_mssg .= "  annotation was defined for type '".$type->{module}.".".$type->{name}."'\n";
+        $warning_mssg .= "  not recognized.  Annotation was declared for type '".$type->{module}.".".$type->{name}."'\n";
         $n_warnings++;
     }
     
+    return ($n_warnings, $warning_mssg);
+}
+
+
+
+sub process_typedef_annotation_range {
+    my($annotations, $parameters, $raw_line, $type, $options) = @_;
+    my $n_warnings = 0; my $warning_mssg = '';
+   
+    # first, we make sure that the type maps to a typedef which maps to a number, else generate a warning and return
+    my ($base_type,$depth) = resolve_typedef($type);
+    my $mapsToNumber;
+    if($base_type->isa('Bio::KBase::KIDL::KBT::Scalar')) {
+        if($base_type->{'scalar_type'} eq 'int' || $base_type->{'scalar_type'} eq 'float') {
+            $mapsToNumber = 1;
+        }
+    }
+    if (!$mapsToNumber) {
+        $warning_mssg .= "ANNOTATION WARNING: annotation '\@range' can only be applied to typedefs that resolve to an int or float.\n";
+        $warning_mssg .= "  \@range annotation was defined for type '".$type->{module}.".".$type->{name}."', which is not a typedef\n";
+        $warning_mssg .= "  that resolves to an 'int' or 'float' base type.  This annotation therefore has no effect.\n";
+        $n_warnings++;
+        return ($n_warnings, $warning_mssg);
+    }
+    
+    $annotations->{range}={};
+    
+    # second, we extract out and parse the range string
+    my $rangeStr = join('',@$parameters);
+    $rangeStr =~ s/^\s+|\s+$//g;
+    
+    my $isExclusiveMin = 0;
+    my $isExclusiveMax = 0;
+    
+    my $minValue;
+    my $maxValue;
+    
+    if ($rangeStr =~ m/^\[/) { #starts with [
+        $rangeStr = substr($rangeStr,1);
+    } elsif ($rangeStr =~ m/^[(\]]/) { #starts with ( or ]
+        $rangeStr = substr($rangeStr,1);
+        $isExclusiveMin = 1;
+    }
+    
+    if ($rangeStr =~ m/\]$/) { #ends with ]
+        chop($rangeStr);
+    } elsif ($rangeStr =~ m/[)\[]$/) { #ends with ) or []
+        chop($rangeStr);
+        $isExclusiveMax = 1;
+    }
+    
+    my @values = split(/,/,$rangeStr);
+    if (scalar(@values)>=1) {
+        $minValue = $values[0];        
+    }
+    if (scalar(@values)==2) {
+        $maxValue = $values[1];     
+    }
+    if (scalar(@values)>2) {
+        $warning_mssg .= "ANNOTATION WARNING: annotation '\@range' could not be parsed because there are too many commas.\n";
+        $warning_mssg .= "  \@range annotation was defined for '".$type->{module}.".".$type->{name}."' and has no effect.\n";
+        $n_warnings++;
+        return ($n_warnings, $warning_mssg);
+    }
+    if (defined $minValue) {
+        if ($minValue ne '') {
+            $annotations->{range}->{minimum} = $minValue;
+            $annotations->{range}->{exclusiveMinimum} = $isExclusiveMin;
+        }
+    }
+    if (defined $maxValue) {
+        if ($maxValue ne '') {
+            $annotations->{range}->{maximum} = $maxValue;
+            $annotations->{range}->{exclusiveMaximum} = $isExclusiveMax;
+        }
+    }
     return ($n_warnings, $warning_mssg);
 }
 
@@ -557,6 +641,117 @@ sub process_typedef_annotation_searchable {
 }
 
 
+#
+#  metadata annotations defined as:
+#
+#    @metadata [DATASTORE] [EXPRESSION] as [METADATA NAME]
+#
+#      where the only supported data store is ws
+#
+#    the selector is used to select the fields and compute the value stored as the metadata in the WS
+#    eventually this may support more complex expressions, but for now can only select top level fields by
+#    name.  The fields must resolve to a string, float, int. Additionally, the "length()" operator is supported
+#    by the WS which will compute the length of a list or mapping, as in length(my_list_field_name).
+#
+#
+sub process_typedef_annotation_metadata {
+    my($annotations, $parameters, $raw_line, $type, $options) = @_;
+    my $n_warnings = 0; my $warning_mssg = '';
+    
+    # make sure we are a typedef that points to a structure
+    my ($base_type,$depth) = resolve_typedef($type);
+    if(!$base_type->isa('Bio::KBase::KIDL::KBT::Struct')) {
+        $warning_mssg .= "ANNOTATION WARNING: annotation '\@metadata' does nothing for non-structure types.\n";
+        $warning_mssg .= "  annotation was defined for type '".$type->{module}.".".$type->{name}."', which is not a structure.\n";
+        $n_warnings++;
+    } else {
+        
+        # ensure that we have declared the context for being searchable
+        my $metadata_context = shift(@$parameters);
+        if (!defined $metadata_context) {
+            $warning_mssg .= "ANNOTATION WARNING: annotation '\@metadata' must delcare the the data store that should extract the data.\n";
+            $warning_mssg .= "  The only current valid context is 'ws'.\n";
+            $warning_mssg .= "  Annotation was defined for type '".$type->{module}.".".$type->{name}."'.\n";
+            $n_warnings++;
+            return ($n_warnings, $warning_mssg);
+        }
+        
+        if ($metadata_context eq 'ws') {
+            # we are sure that we have a structure, so get a list of field names
+            my @items = @{$base_type->items};
+            my @subtypes = map { $_->item_type } @items;
+            my @field_names = map { $_->name } @items;
+            my %field_lookup_table = map { $_ => 1 } @field_names;
+               
+            if (scalar(@$parameters) < 1) {
+                $warning_mssg .= "ANNOTATION WARNING: annotation '\@metadata' is invalid, must define at least 2 tokens: \@metadata ws [expression]\n";
+                $warning_mssg .= "  Annotation was defined for type '".$type->{module}.".".$type->{name}."'.\n";
+                $n_warnings++;
+                return ($n_warnings, $warning_mssg);
+            }
+            
+            # parse out the expression and metadata name
+            my $expression = ''; my $metadataName = '';
+            my $seenAsKeyword = 0; my $isFirstWord = 1;
+            foreach my $word (@{$parameters}) {
+                if (!$isFirstWord && (lc($word) eq 'as')) {
+                    $seenAsKeyword = 1; next;
+                }
+                if ($isFirstWord) { $isFirstWord = 0; }
+                if ($seenAsKeyword) { $metadataName .= $word." " }
+                else { $expression .= $word; }
+            }
+            if (!$seenAsKeyword) { $metadataName = $expression; }
+            $metadataName =~ s/^\s+|\s+$//g;
+            
+            # validate that the expression is valid
+            
+            
+            # add it as an annotation
+            if(!defined($annotations->{metadata}->{ws})) { $annotations->{metadata}->{ws} = {}; }
+            if (defined($annotations->{metadata}->{ws}->{$metadataName}) ) {
+                $warning_mssg .= "ANNOTATION WARNING: annotation '\@metadata' is invalid, you cannot redefine a metadata name; attempted to redefine '$metadataName'\n";
+                $warning_mssg .= "  Annotation was defined for type '".$type->{module}.".".$type->{name}."'.\n";
+                $n_warnings++;
+                return ($n_warnings, $warning_mssg);
+            }
+            $annotations->{metadata}->{ws}->{$metadataName} = $expression;
+
+        } else {
+            $warning_mssg .= "ANNOTATION WARNING: annotation '\@metadata' indicated that the data store to use is '$metadata_context', but that is\n";
+            $warning_mssg .= "  not recognized as a valid data store.  Only the Workspace (specified as 'ws') is accepted.\n";
+            $warning_mssg .= "  Annotation was defined for type '".$type->{module}.".".$type->{name}."'\n";
+            $n_warnings++;
+        }
+        
+      
+        
+        #foreach my $field (@{$parameters}) {
+        #    # do simple checking to see if the field exists
+        #    if(!exists($field_lookup_table{$field})) {
+        #        $warning_mssg .= "ANNOTATION WARNING: annotation '\@optional' for structure '".$type->{module}.".".$type->{name}."' indicated\n";
+        #           $warning_mssg .= "  a field named '$field', but no such field exists in the structure, so this constraint was ignored.\n";
+        #           $n_warnings++;
+        #           next;
+        #       }
+        #       # don't add it twice, and report that we found it already
+        #       foreach my $marked_optional_field (@{$annotations->{optional}}) {
+        #           if($marked_optional_field eq $field) {
+        #               $warning_mssg .= "ANNOTATION WARNING: annotation '\@optional' for structure '".$type->{module}.".".$type->{name}."' has\n";
+        #               $warning_mssg .= "  marked a field named '$field' multiple times.\n";
+        #               $n_warnings++;
+        #               next;
+        #           }
+        #       }
+        #       # if we got here, we are good. push it to the list
+        #       push(@{$annotations->{optional}},$field);
+        #   }
+    }
+    
+    return ($n_warnings, $warning_mssg);
+}
+
+
 
 
 #  recursive loop to get the base type of a typedef
@@ -570,6 +765,26 @@ sub resolve_typedef {
     }
     return ($base_type, $depth);
 }
+
+
+sub initAnnotationStructure {
+    my($type) = @_;
+    $type->{annotations}={};
+    if($type->isa('Bio::KBase::KIDL::KBT::Typedef')) {
+        initAnnotationStructure($type->{alias_type});
+    } elsif ($type->isa('Bio::KBase::KIDL::KBT::Mapping')) {
+        initAnnotationStructure($type->{key_type});
+        initAnnotationStructure($type->{value_type});
+    } elsif ($type->isa('Bio::KBase::KIDL::KBT::List')) {
+        initAnnotationStructure($type->{element_type});
+    } elsif ($type->isa('Bio::KBase::KIDL::KBT::Tuple')) {
+        foreach my $element (@{$type->{element_types}}) {
+            initAnnotationStructure($element);
+        }
+    }
+    return;
+}
+
 
 # This method packages up a list of types, functions, and modules so that annotation parsing is simplified
 # 
@@ -588,6 +803,9 @@ sub assemble_components
     while (my($module_name, $types) = each %{$available_type_table}) {
         foreach my $type (values(%{$types})) {
             # we do not parse annotations for built-in scalars or UnspecifiedObjects, so we skip
+            #$type->{annotations}={}; # for consistency in parsed structure, we always add annotations
+            initAnnotationStructure($type);
+            
             next if ($type->isa("Bio::KBase::KIDL::KBT::Scalar"));
             next if ($type->isa("Bio::KBase::KIDL::KBT::UnspecifiedObject"));
             push(@$type_list, $type);
@@ -609,6 +827,14 @@ sub assemble_components
             #loop through the module components and find our functions
             foreach my $component (@$module_components) {
                 if ($component->isa("Bio::KBase::KIDL::KBT::Funcdef")) {
+                    # add empty annotation block so that parsed data structure is consistant
+                    foreach my $rt (@{$component->{return_type}}) {
+                        initAnnotationStructure($rt->{type});
+                    }
+                    foreach my $rt (@{$component->{parameters}}) {
+                        initAnnotationStructure($rt->{type});
+                    }
+                    
                     push(@$func_list,$component);
                 }
             }
