@@ -237,11 +237,7 @@ sub add_json_schema_type_info {
 	my $idrefs = get_kb_id_ref_tag($type,$options);
         if($idrefs) {
 	    $schemaDocument->{"id-reference"}->{'id-type'} = $idrefs->{type};
-	    if ($idrefs->{type} eq 'ws') {
-		$schemaDocument->{"id-reference"}->{'valid-typedef-names'} = $idrefs->{valid_typedef_names};
-	    } elsif ($idrefs->{type} eq 'external') {
-		$schemaDocument->{"id-reference"}->{'sources'} = $idrefs->{sources};
-	    }
+	    $schemaDocument->{"id-reference"}->{'attributes'} = $idrefs->{attributes};
 	}
 	my $range = get_range_annotation($type,$options,$number_substitutions);
 	if ($range) {

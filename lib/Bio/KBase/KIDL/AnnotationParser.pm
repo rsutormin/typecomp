@@ -391,35 +391,32 @@ sub process_typedef_annotation_id {
         return ($n_warnings, $warning_mssg);
     }
     
-    # third, based on the type of id given we construct the annotation object
+    # third, save this ID annotation
+    $annotations->{id} = {type=>$id_type, attributes=>$parameters};
+    
+    # fourth, based on the type of id we may perform some additional checks
     if ($id_type eq 'kb') {
-        #kbase id - for now we mark it and do nothing else; if additional parameters are given, we generate a warning
-        $annotations->{id} = {type=>$id_type};
+        #kbase id - for now we do nothing else; if additional parameters are given, we generate a warning
         if (scalar(@$parameters)>0) {
             $warning_mssg .= "ANNOTATION WARNING: annotation '\@id kb' does not accept additional parameters.\n";
             $warning_mssg .= "  annotation was defined for type '".$type->{module}.".".$type->{name}."', and parameters\n";
-            $warning_mssg .= "  given (".join(' ',@$parameters).") have been ignored.\n";
+            $warning_mssg .= "  given (".join(' ',@$parameters).") likely do nothing.\n";
             $n_warnings++;
         }
     } elsif ($id_type eq 'shock') {
         #shock node id - for now we mark it and do nothing else; if additional parameters are given, we generate a warning
-        $annotations->{id} = {type=>$id_type};
         if (scalar(@$parameters)>0) {
             $warning_mssg .= "ANNOTATION WARNING: annotation '\@id shock' does not accept additional parameters.\n";
             $warning_mssg .= "  annotation was defined for type '".$type->{module}.".".$type->{name}."', and parameters\n";
-            $warning_mssg .= "  given (".join(' ',@$parameters).") have been ignored.\n";
+            $warning_mssg .= "  given (".join(' ',@$parameters).") likely do nothing.\n";
             $n_warnings++;
         }
     } elsif ($id_type eq 'external') {
-        #external id - for now we mark it and add the list of sources; we don't yet validate source names
-        my $sources = [];
-        foreach my $p (@{$parameters}) {
-            push(@$sources,$p);
-        }
-        $annotations->{id} = {type=>$id_type,sources=>$sources};
+        #external id - for now we don't yet validate source names
     } elsif ($id_type eq 'ws') {
         my $valid_typedef_names = {};
         foreach my $typename (@{$parameters}) {
+            # generate warnings if there are duplicates or it doesn't look like the type name is well formed
             if(scalar(split(/\./,$typename)) == 2) {
                 # don't add duplicates
                  if(!exists($valid_typedef_names->{$typename})) {
@@ -436,14 +433,13 @@ sub process_typedef_annotation_id {
                 $n_warnings++;
             }
         }
-        my $valid_typedef_names_list = [];
-        push(@$valid_typedef_names_list, keys(%$valid_typedef_names));
-        $annotations->{id} = {type=>$id_type,valid_typedef_names=>$valid_typedef_names_list};
+        #my $valid_typedef_names_list = [];
+        #push(@$valid_typedef_names_list, keys(%$valid_typedef_names));
+
     } else {
         $annotations->{id} = {type=>$id_type};
         $warning_mssg .= "ANNOTATION WARNING: annotation '\@id' indicated that id type is '$id_type', but that id type is\n";
-        $warning_mssg .= "  not recognized as a valid type.  This id has been marked, but likely does nothing.\n";
-        $warning_mssg .= "  annotation was defined for type '".$type->{module}.".".$type->{name}."'\n";
+        $warning_mssg .= "  not recognized.  Annotation was declared for type '".$type->{module}.".".$type->{name}."'\n";
         $n_warnings++;
     }
     
