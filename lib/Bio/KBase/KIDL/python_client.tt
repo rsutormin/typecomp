@@ -155,15 +155,10 @@ class [% module.module_name %](object):
                         authdata['user_id'], authdata['password'])
         if self.timeout < 1:
             raise ValueError('Timeout value must be at least 1 second')
-[% FOREACH method IN module.methods -%]
-[% IF method.arg_count > 0 %]
-    def [% method.name %](self, [% method.args %]):
-[% ELSE %]
-    def [% method.name %](self):
-[% END -%]
 
-        arg_hash = {'method': '[% module.module_name %].[% method.name %]',
-                    'params': [[% method.args %]],
+    def _call(self, method, params):
+        arg_hash = {'method': method,
+                    'params': params,
                     'version': '1.1',
                     'id': str(random.random())[2:]
                     }
@@ -189,16 +184,23 @@ class [% module.module_name %](object):
             raise URLError('Received bad response code from server:' +
                            ret.code)
         resp = json.loads(ret.read())
-
-        if 'result' in resp:
-[% IF method.ret_count == 1 -%]
-            return resp['result'][0]
-[% ELSIF method.ret_count > 1 -%]
-            return resp['result']
-[% ELSE -%]
-            pass  # nothing to return
-[% END -%]
-        else:
+        if 'result' not in resp:
             raise ServerError('Unknown', 0, 'An unknown server error occurred')
+        return resp['result']
+[% FOREACH method IN module.methods -%]
+[% IF method.arg_count > 0 %]
+    def [% method.name %](self, [% method.args %]):
+[% ELSE %]
+    def [% method.name %](self):
+[% END -%]
+        resp = self._call('[% module.module_name %].[% method.name %]',
+                          [[% method.args %]])
+[% IF method.ret_count == 1 -%]
+        return resp[0]
+[% ELSIF method.ret_count > 1 -%]
+        return resp
+[% ELSE -%]
+        pass  # nothing to return
+[% END -%]
 [% END -%]
 [% END -%]
