@@ -54,6 +54,7 @@ Arguments:
                                with the given name in the output directory.  NOTE: requires install
                                of cpan module XML::Dumper
     --dump		       Dump the parsed type specification file to stdout
+    --enable-retries	       Enable client-side retries to perl clients.
 
 =head1 AUTHORS
 
@@ -77,6 +78,7 @@ my $dump_parsed;
 my $dump_xml;
 my $test_script;
 my $help;
+my $enable_retries;
 
 my $rc = GetOptions("scripts=s" => \$scripts_dir,
                     "impl=s"    => \$impl_module_base,
@@ -94,6 +96,7 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
 		    "xmldump=s" => \$dump_xml,
                     "dump"      => \$dump_parsed,
                     "xmldump=s" => \$dump_xml,
+		    "enable-retries" => \$enable_retries,
                     "help|h"	=> \$help,
                     );
 
@@ -602,6 +605,7 @@ sub write_service_stubs
         authenticated_only => (($need_auth->{required} &&
 			       (!$need_auth->{optional}) && (!$need_auth->{none})) ? 1 : 0),
         psgi_file => $psgi_file,
+	enable_client_retry => $enable_retries,
     };
 
 
