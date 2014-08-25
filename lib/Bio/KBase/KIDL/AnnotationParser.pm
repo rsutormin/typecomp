@@ -386,7 +386,7 @@ sub process_typedef_annotation_id {
     my $id_type = shift(@$parameters);
     if (!defined $id_type) {
         $warning_mssg .= "ANNOTATION WARNING: annotation '\@id' must delcare a type of ID.  Valid ID types are 'ws', 'kb',\n";
-        $warning_mssg .= "  'shock', 'external'.  Annotation was defined for type '".$type->{module}.".".$type->{name}."'.\n";
+        $warning_mssg .= "  'handle', 'external'.  Annotation was defined for type '".$type->{module}.".".$type->{name}."'.\n";
         $n_warnings++;
         return ($n_warnings, $warning_mssg);
     }
@@ -403,10 +403,10 @@ sub process_typedef_annotation_id {
             $warning_mssg .= "  given (".join(' ',@$parameters).") likely do nothing.\n";
             $n_warnings++;
         }
-    } elsif ($id_type eq 'shock') {
-        #shock node id - for now we mark it and do nothing else; if additional parameters are given, we generate a warning
+    } elsif ($id_type eq 'handle') {
+        #shock node handle id - for now we mark it and do nothing else; if additional parameters are given, we generate a warning
         if (scalar(@$parameters)>0) {
-            $warning_mssg .= "ANNOTATION WARNING: annotation '\@id shock' does not accept additional parameters.\n";
+            $warning_mssg .= "ANNOTATION WARNING: annotation '\@id handle' does not accept additional parameters.\n";
             $warning_mssg .= "  annotation was defined for type '".$type->{module}.".".$type->{name}."', and parameters\n";
             $warning_mssg .= "  given (".join(' ',@$parameters).") likely do nothing.\n";
             $n_warnings++;
@@ -437,7 +437,7 @@ sub process_typedef_annotation_id {
         #push(@$valid_typedef_names_list, keys(%$valid_typedef_names));
 
     } else {
-        $annotations->{id} = {type=>$id_type};
+        $annotations->{id} = {type=>$id_type, attributes=>$parameters};
         $warning_mssg .= "ANNOTATION WARNING: annotation '\@id' indicated that id type is '$id_type', but that id type is\n";
         $warning_mssg .= "  not recognized.  Annotation was declared for type '".$type->{module}.".".$type->{name}."'\n";
         $n_warnings++;
