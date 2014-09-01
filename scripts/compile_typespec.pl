@@ -37,6 +37,7 @@ Arguments:
     --py name		       Use name as the basename for the generated Python client module
     --url URL		       Use URL as the default service URL in the generated clients
     --dump		       Dump the parsed type specification file to stdout
+    --enable-retries	       Enable client-side retries to services.
 
 =head1 AUTHORS
 
@@ -57,6 +58,7 @@ my $default_service_url;
 my $dump_parsed;
 my $test_script;
 my $help;
+my $enable_retries;
 
 my $rc = GetOptions("scripts=s" => \$scripts_dir,
                     "impl=s"    => \$impl_module_base,
@@ -70,6 +72,7 @@ my $rc = GetOptions("scripts=s" => \$scripts_dir,
                     "pyimpl=s"  => \$py_impl_module,
                     "url=s"     => \$default_service_url,
                     "dump"      => \$dump_parsed,
+		    "enable-retries" => \$enable_retries,
                     "help|h"	=> \$help,
                     );
 
@@ -265,6 +268,7 @@ sub write_service_stubs
         authenticated_only => (($need_auth->{required} &&
 			       (!$need_auth->{optional}) && (!$need_auth->{none})) ? 1 : 0),
         psgi_file => $psgi_file,
+	enable_client_retry => $enable_retries,
     };
 #    print Dumper($vars);
 
