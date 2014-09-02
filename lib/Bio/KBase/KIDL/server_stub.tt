@@ -4,6 +4,7 @@ use Data::Dumper;
 use Moose;
 use JSON;
 use Bio::KBase::Log;
+use Config::Simple;
 [% IF authenticated -%]
 use Bio::KBase::AuthToken;
 [% END -%]
@@ -15,6 +16,7 @@ has 'user_auth' => (is => 'ro', isa => 'UserAuth');
 has 'valid_methods' => (is => 'ro', isa => 'HashRef', lazy => 1,
 			builder => '_build_valid_methods');
 has 'loggers' => (is => 'ro', required => 1, builder => '_build_loggers');
+has 'config' => (is => 'ro', required => 1, builder => '_build_config');
 
 our $CallContext;
 
@@ -68,9 +70,25 @@ sub get_service_name
 {
     my ($self) = @_;
     if(!defined $ENV{$SERVICE}) {
-        return undef;
+        return '[% service_name %]';
     }
     return $ENV{$SERVICE};
+}
+
+sub _build_config
+{
+    my ($self) = @_;
+    my $sn = $self->get_service_name();
+    my $cf = $self->get_config_file();
+    if (!($cf)) {
+        return {};
+    }
+    my $cfg = new Config::Simple($cf);
+    my $cfgdict = $cfg->get_block($sn);
+    if (!($cfgdict)) {
+        return {};
+    }
+    return $cfgdict;
 }
 
 sub logcallback
@@ -92,7 +110,7 @@ sub log
 sub _build_loggers
 {
     my ($self) = @_;
-    my $submod = $self->get_service_name() || '[% service_name %]';
+    my $submod = $self->get_service_name();
     my $loggers = {};
     my $callback = sub {$self->logcallback();};
     $loggers->{userlog} = Bio::KBase::Log->new(
@@ -158,13 +176,41 @@ sub encode_output_from_exception {
     return $self->encode_output_from_object($json_error);
 }
 
+sub trim {
+    my ($str) = @_;
+    if (!(defined $str)) {
+        return $str;
+    }
+    $str =~ s/^\s+|\s+$//g;
+    return $str;
+}
+
+sub getIPAddress {
+    my ($self) = @_;
+    my $xFF = trim($self->_plack_req->header("X-Forwarded-For"));
+    my $realIP = trim($self->_plack_req->header("X-Real-IP"));
+    my $nh = $self->config->{"dont_trust_x_ip_headers"};
+    my $trustXHeaders = !(defined $nh) || $nh ne "true";
+
+    if ($trustXHeaders) {
+        if ($xFF) {
+            my @tmp = split(",", $xFF);
+            return trim($tmp[0]);
+        }
+        if ($realIP) {
+            return $realIP;
+        }
+    }
+    return $self->_plack_req->address;
+}
+
 sub call_method {
     my ($self, $data, $method_info) = @_;
 
     my ($module, $method, $modname) = @$method_info{qw(module method modname)};
     
     my $ctx = [% ctx_pkg %]->new($self->{loggers}->{userlog},
-                           client_ip => $self->_plack_req->address);
+                           client_ip => $self->getIPAddress());
     $ctx->module($modname);
     $ctx->method($method);
     $ctx->call_id($self->{_last_call}->{id});
@@ -212,6 +258,11 @@ sub call_method {
     local $CallContext = $ctx;
     my @result;
     {
+        my $xFF = $self->_plack_req->header("X-Forwarded-For");
+        if ($xFF) {
+            $self->log($Bio::KBase::Log::INFO, $ctx,
+                "X-Forwarded-For: " . $xFF);
+        }
         my $err;
         eval {
             $self->log($Bio::KBase::Log::INFO, $ctx, "start method");
