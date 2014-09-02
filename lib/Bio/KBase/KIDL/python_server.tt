@@ -217,6 +217,20 @@ class MethodContext(dict):
                                  self['method'], self['call_id'])
 
 
+def getIPAddress(environ):
+    xFF = environ.get('HTTP_X_FORWARDED_FOR')
+    realIP = environ.get('HTTP_X_REAL_IP')
+    trustXHeaders = config is None or \
+        config.get('dont_trust_x_ip_headers') != 'true'
+
+    if (trustXHeaders):
+        if (xFF):
+            return xFF.split(',')[0].strip()
+        if (realIP):
+            return realIP.strip()
+    return environ.get('REMOTE_ADDR')
+
+
 class Application(object):
     # Wrap the wsgi handler in a class definition so that we can
     # do some initialization and avoid regenerating stuff over
@@ -271,8 +285,7 @@ class Application(object):
     def __call__(self, environ, start_response):
         # Context object, equivalent to the perl impl CallContext
         ctx = MethodContext(self.userlog)
-        ctx['client_ip'] = environ.get('REMOTE_ADDR')
-
+        ctx['client_ip'] = getIPAddress(environ)
         status = '500 Internal Server Error'
 
         try:
@@ -331,6 +344,9 @@ class Application(object):
 [% FOREACH module IN modules -%]
                     impl_[% module.module_name %].ctx = ctx
 [% END -%]
+                    if (environ.get('HTTP_X_FORWARDED_FOR')):
+                        self.log(log.INFO, ctx, 'X-Forwarded-For: ' +
+                                 environ.get('HTTP_X_FORWARDED_FOR'))
                     self.log(log.INFO, ctx, 'start method')
                     rpc_result = self.rpc_service.call(request_body)
                     self.log(log.INFO, ctx, 'end method')
