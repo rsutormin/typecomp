@@ -263,7 +263,7 @@ class Application(object):
 [% IF authenticated -%]
         self.auth_client = biokbase.nexus.Client(
             config={'server': 'nexus.api.globusonline.org',
-                    'verify_ssl': False,
+                    'verify_ssl': True,
                     'client': None,
                     'client_secret': None})
 [% END -%]
