@@ -5,6 +5,12 @@ use Moose;
 use JSON;
 use Bio::KBase::Log;
 use Config::Simple;
+my $get_time = sub { time, 0 };
+eval {
+    require Time::HiRes;
+    $get_time = sub { Time::HiRes::gettimeofday };
+};
+
 [% IF authenticated -%]
 use Bio::KBase::AuthToken;
 [% END -%]
@@ -100,11 +106,11 @@ sub logcallback
 
 sub log
 {
-    my ($self, $level, $context, $message) = @_;
+    my ($self, $level, $context, $message, $tag) = @_;
     my $user = defined($context->user_id()) ? $context->user_id(): undef; 
     $self->loggers()->{serverlog}->log_message($level, $message, $user, 
         $context->module(), $context->method(), $context->call_id(),
-        $context->client_ip());
+        $context->client_ip(), $tag);
 }
 
 sub _build_loggers
@@ -116,10 +122,12 @@ sub _build_loggers
     $loggers->{userlog} = Bio::KBase::Log->new(
             $submod, {}, {ip_address => 1, authuser => 1, module => 1,
             method => 1, call_id => 1, changecallback => $callback,
+	    tag => 1,
             config => $self->get_config_file()});
     $loggers->{serverlog} = Bio::KBase::Log->new(
             $submod, {}, {ip_address => 1, authuser => 1, module => 1,
             method => 1, call_id => 1,
+	    tag => 1,
             logfile => $loggers->{userlog}->get_log_file()});
     $loggers->{serverlog}->set_log_level(6);
     return $loggers;
@@ -258,20 +266,36 @@ sub call_method {
     local $CallContext = $ctx;
     my @result;
     {
+	# 
+	# Process tag and metadata information if present.
+	#
+	my $tag = $self->_plack_req_header("Kbrpc-Tag");
+	if (!$tag)
+	{
+	    my ($t, $us) = &$get_time();
+	    $us = sprintf("%06d", $us);
+	    my $ts = strftime("%Y-%m-%dT%H:%M:%S.${us}Z", gmtime $t);
+	    $tag = "S:$self->{hostname}:$$:$ts";
+	}
+	local $ENV{KBRPC_TAG} = $tag;
+	local $ENV{KBRPC_METADATA} = $self->_plack_req_header("Kbrpc-Metadata");;
+
         my $xFF = $self->_plack_req->header("X-Forwarded-For");
         if ($xFF) {
             $self->log($Bio::KBase::Log::INFO, $ctx,
-                "X-Forwarded-For: " . $xFF);
+                "X-Forwarded-For: " . $xFF, $tag);
         }
+	
         my $err;
         eval {
-            $self->log($Bio::KBase::Log::INFO, $ctx, "start method");
+            $self->log($Bio::KBase::Log::INFO, $ctx, "start method", $tag);
             @result = $module->$method(@{ $data->{arguments} });
-            $self->log($Bio::KBase::Log::INFO, $ctx, "end method");
+            $self->log($Bio::KBase::Log::INFO, $ctx, "end method", $tag);
         };
         if ($@)
         {
             my $err = $@;
+            $self->log($Bio::KBase::Log::INFO, $ctx, "fail method", $tag);
             my $nicerr;
             if(ref($err) eq "Bio::KBase::Exceptions::KBaseException") {
                 $nicerr = {code => -32603, # perl error from RPC::Any::Exception
@@ -383,6 +407,8 @@ sub new
     my $self = {
         %opts,
     };
+    chomp($self->{hostname} = `hostname`);
+    $self->{hostname} ||= 'unknown-host';
     $self->{_logger} = $logger;
     $self->{_debug_levels} = {7 => 1, 8 => 1, 9 => 1,
                               'DEBUG' => 1, 'DEBUG2' => 1, 'DEBUG3' => 1};
