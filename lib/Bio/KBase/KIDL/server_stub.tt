@@ -2,6 +2,7 @@ package [% server_package_name %];
 [% SET ctx_pkg = "${server_package_name}Context" %]
 use Data::Dumper;
 use Moose;
+use POSIX;
 use JSON;
 use Bio::KBase::Log;
 use Config::Simple;
@@ -269,7 +270,7 @@ sub call_method {
 	# 
 	# Process tag and metadata information if present.
 	#
-	my $tag = $self->_plack_req_header("Kbrpc-Tag");
+	my $tag = $self->_plack_req->header("Kbrpc-Tag");
 	if (!$tag)
 	{
 	    my ($t, $us) = &$get_time();
@@ -278,7 +279,7 @@ sub call_method {
 	    $tag = "S:$self->{hostname}:$$:$ts";
 	}
 	local $ENV{KBRPC_TAG} = $tag;
-	local $ENV{KBRPC_METADATA} = $self->_plack_req_header("Kbrpc-Metadata");;
+	local $ENV{KBRPC_METADATA} = $self->_plack_req->header("Kbrpc-Metadata");;
 
         my $xFF = $self->_plack_req->header("X-Forwarded-For");
         if ($xFF) {
