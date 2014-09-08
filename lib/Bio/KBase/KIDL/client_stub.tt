@@ -67,7 +67,7 @@ sub new
 	my ($t, $us) = &$get_time();
 	$us = sprintf("%06d", $us);
 	my $ts = strftime("%Y-%m-%dT%H:%M:%S.${us}Z", gmtime $t);
-	$self->{kbrpc_tag} = "C:$self->{hostname}:$$:$ts";
+	$self->{kbrpc_tag} = "C:$0:$self->{hostname}:$$:$ts";
     }
     push(@{$self->{headers}}, 'Kbrpc-Tag', $self->{kbrpc_tag});
 
