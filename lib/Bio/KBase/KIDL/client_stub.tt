@@ -77,6 +77,12 @@ sub new
 	push(@{$self->{headers}}, 'Kbrpc-Metadata', $self->{kbrpc_metadata});
     }
 
+    if ($ENV{KBRPC_ERROR_DEST})
+    {
+	$self->{kbrpc_error_dest} = $ENV{KBRPC_ERROR_DEST};
+	push(@{$self->{headers}}, 'Kbrpc-Errordest', $self->{kbrpc_error_dest});
+    }
+
 [% IF authenticated -%]
     #
     # This module requires authentication.
