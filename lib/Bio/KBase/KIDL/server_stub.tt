@@ -615,6 +615,7 @@ sub log_cmd
     my($self, @cmd) = @_;
     my $d = $self->{dest};
     my $str;
+    my $ts = $self->timestamp();
     if (ref($cmd[0]))
     {
 	$str = join(" ", @{$cmd[0]});
@@ -625,11 +626,11 @@ sub log_cmd
     }
     if (ref($d) eq 'SCALAR')
     {
-	$$d .= $str . "\n";
+	$$d .= "[$ts] " . $str . "\n";
     }
     elsif ($d)
     {
-	print $d $str . "\n";
+	print $d "[$ts] " . $str . "\n";
     }
 	 
 }
