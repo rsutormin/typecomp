@@ -283,7 +283,7 @@ sub call_method {
 	local $ENV{KBRPC_METADATA} = $self->_plack_req->header("Kbrpc-Metadata");
 	local $ENV{KBRPC_ERROR_DEST} = $self->_plack_req->header("Kbrpc-Errordest");
 
-	my $stderr = [% stderr_pkg %]->new($ctx);
+	my $stderr = [% stderr_pkg %]->new($ctx, $get_time);
 	$ctx->stderr($stderr);
 
         my $xFF = $self->_plack_req->header("X-Forwarded-For");
@@ -308,8 +308,8 @@ sub call_method {
         if ($@)
         {
             my $err = $@;
-	    $ctx->stderr(undef);
 	    $stderr->log($err);
+	    $ctx->stderr(undef);
 	    undef $stderr;
             $self->log($Bio::KBase::Log::INFO, $ctx, "fail method", $tag);
             my $nicerr;
@@ -416,7 +416,7 @@ is available via $context->client_ip.
 use base 'Class::Accessor';
 
 __PACKAGE__->mk_accessors(qw(user_id client_ip authenticated token
-                             module method call_id stderr));
+                             module method call_id hostname stderr));
 
 sub new
 {
@@ -501,8 +501,10 @@ use Time::HiRes 'gettimeofday';
 
 sub new
 {
-    my($class, $ctx) = @_;
-    my $self = {};
+    my($class, $ctx, $get_time) = @_;
+    my $self = {
+	get_time => $get_time,
+    };
     my $dest = $ENV{KBRPC_ERROR_DEST};
     my $tag = $ENV{KBRPC_TAG};
     my ($t, $us) = gettimeofday();
@@ -546,7 +548,13 @@ sub new
 	$self->{dest} = \$stderr;
     }
     
-    return bless $self, $class;
+    bless $self, $class;
+
+    for my $e (sort { $a cmp $b } keys %ENV)
+    {
+	$self->log_cmd($e, $ENV{$e});
+    }
+    return $self;
 }
 
 sub redirect
@@ -562,19 +570,44 @@ sub redirect
     }
 }
 
+sub redirect_both
+{
+    my($self) = @_;
+    if ($self->{dest})
+    {
+	return(">&", $self->{dest});
+    }
+    else
+    {
+	return ();
+    }
+}
+
+sub timestamp
+{
+    my($self) = @_;
+    my ($t, $us) = $self->{get_time}->();
+    $us = sprintf("%06d", $us);
+    my $ts = strftime("%Y-%m-%dT%H:%M:%S.${us}Z", gmtime $t);
+    return $ts;
+}
+
 sub log
 {
     my($self, $str) = @_;
     my $d = $self->{dest};
+    my $ts = $self->timestamp();
     if (ref($d) eq 'SCALAR')
     {
-	$$d .= $str . "\n";
+	$$d .= "[$ts] " . $str . "\n";
+	return 1;
     }
     elsif ($d)
     {
-	print $d $str . "\n";
+	print $d "[$ts] " . $str . "\n";
+	return 1;
     }
-	 
+    return 0;
 }
 
 sub log_cmd
