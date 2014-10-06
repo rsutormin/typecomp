@@ -69,7 +69,7 @@ class JSONObjectEncoder(json.JSONEncoder):
 
 class JSONRPCServiceCustom(JSONRPCService):
 
-    def call(self, jsondata):
+    def call(self, ctx, jsondata):
         """
         Calls jsonrpc service's method and returns its return value in a JSON
         string or None if there is none.
@@ -77,13 +77,13 @@ class JSONRPCServiceCustom(JSONRPCService):
         Arguments:
         jsondata -- remote method call in jsonrpc format
         """
-        result = self.call_py(jsondata)
+        result = self.call_py(ctx, jsondata)
         if result is not None:
             return json.dumps(result, cls=JSONObjectEncoder)
 
         return None
 
-    def _call_method(self, request):
+    def _call_method(self, ctx, request):
         """Calls given method with given params and returns it value."""
         method = self.method_data[request['method']]['method']
         params = request['params']
@@ -91,23 +91,23 @@ class JSONRPCServiceCustom(JSONRPCService):
         try:
             if isinstance(params, list):
                 # Does it have enough arguments?
-                if len(params) < self._man_args(method):
+                if len(params) < self._man_args(method) - 1:
                     raise InvalidParamsError('not enough arguments')
                 # Does it have too many arguments?
                 if(not self._vargs(method) and len(params) >
-                        self._max_args(method)):
+                        self._max_args(method) - 1):
                     raise InvalidParamsError('too many arguments')
 
-                result = method(*params)
+                result = method(ctx, *params)
             elif isinstance(params, dict):
                 # Do not accept keyword arguments if the jsonrpc version is
                 # not >=1.1.
                 if request['jsonrpc'] < 11:
                     raise KeywordError
 
-                result = method(**params)
+                result = method(ctx, **params)
             else:  # No params
-                result = method()
+                result = method(ctx)
         except JSONRPCError:
             raise
         except Exception as e:
@@ -119,7 +119,7 @@ class JSONRPCServiceCustom(JSONRPCService):
             raise newerr
         return result
 
-    def call_py(self, jsondata):
+    def call_py(self, ctx, jsondata):
         """
         Calls jsonrpc service's method and returns its return value in python
         object format or None if there is none.
@@ -142,7 +142,7 @@ class JSONRPCServiceCustom(JSONRPCService):
         if isinstance(rdata, dict) and rdata:
             # It's a single request.
             self._fill_request(request, rdata)
-            respond = self._handle_request(request)
+            respond = self._handle_request(ctx, request)
 
             # Don't respond to notifications
             if respond is None:
@@ -161,7 +161,7 @@ class JSONRPCServiceCustom(JSONRPCService):
                 requests.append(request_)
 
             for request_ in requests:
-                respond = self._handle_request(request_)
+                respond = self._handle_request(ctx, request_)
                 # Don't respond to notifications
                 if respond is not None:
                     responds.append(respond)
@@ -174,6 +174,24 @@ class JSONRPCServiceCustom(JSONRPCService):
         else:
             # empty dict, list or wrong type
             raise InvalidRequestError
+
+    def _handle_request(self, ctx, request):
+        """Handles given request and returns its response."""
+        if self.method_data[request['method']].has_key('types'): # @IgnorePep8
+            self._validate_params_types(request['method'], request['params'])
+
+        result = self._call_method(ctx, request)
+
+        # Do not respond to notifications.
+        if request['id'] is None:
+            return None
+
+        respond = {}
+        self._fill_ver(request['jsonrpc'], respond)
+        respond['result'] = result
+        respond['id'] = request['id']
+
+        return respond
 
 
 class MethodContext(dict):
@@ -342,16 +360,11 @@ class Application(object):
                                         "Token validation failed: %s" % e
                                     raise err
 [% END -%]
-                    # push the context object into the implementation
-                    # instance's namespace
-[% FOREACH module IN modules -%]
-                    impl_[% module.module_name %].ctx = ctx
-[% END -%]
                     if (environ.get('HTTP_X_FORWARDED_FOR')):
                         self.log(log.INFO, ctx, 'X-Forwarded-For: ' +
                                  environ.get('HTTP_X_FORWARDED_FOR'))
                     self.log(log.INFO, ctx, 'start method')
-                    rpc_result = self.rpc_service.call(req)
+                    rpc_result = self.rpc_service.call(ctx, req)
                     self.log(log.INFO, ctx, 'end method')
                 except JSONRPCError as jre:
                     err = {'error': {'code': jre.code,
