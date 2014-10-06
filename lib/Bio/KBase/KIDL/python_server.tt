@@ -6,7 +6,7 @@ import traceback
 from multiprocessing import Process
 from getopt import getopt, GetoptError
 from jsonrpcbase import JSONRPCService, InvalidParamsError, KeywordError,\
-    JSONRPCError, ServerError, ParseError, InvalidRequestError
+    JSONRPCError, ServerError, InvalidRequestError
 from os import environ
 from ConfigParser import ConfigParser
 from biokbase import log
@@ -128,10 +128,13 @@ class JSONRPCServiceCustom(JSONRPCService):
         object instead of JSON string. This method is mainly only useful for
         debugging purposes.
         """
-        try:
-            rdata = json.loads(jsondata)
-        except ValueError:
-            raise ParseError
+        rdata = jsondata
+        # we already deserialize the json string earlier in the server code, no
+        # need to do it again
+#        try:
+#            rdata = json.loads(jsondata)
+#        except ValueError:
+#            raise ParseError
 
         # set some default values for error handling
         request = self._get_default_vals()
@@ -348,7 +351,7 @@ class Application(object):
                         self.log(log.INFO, ctx, 'X-Forwarded-For: ' +
                                  environ.get('HTTP_X_FORWARDED_FOR'))
                     self.log(log.INFO, ctx, 'start method')
-                    rpc_result = self.rpc_service.call(request_body)
+                    rpc_result = self.rpc_service.call(req)
                     self.log(log.INFO, ctx, 'end method')
                 except JSONRPCError as jre:
                     err = {'error': {'code': jre.code,
