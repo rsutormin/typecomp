@@ -35,6 +35,11 @@ our $VERSION = "0.1.0";
 
 sub new
 {
+    # 'args' argument is a pointer to a hash with authentication parameters.
+    # In case there is 'auth_service_url' key in this map defining end-point
+    # of auth_service then '/Sessions/Login' function of KBase auth_service
+    # will be used for authentication rather than direct communication with
+    # GlobusOnline.
     my($class, $url, @args) = @_;
     
 [% IF default_service_url -%]

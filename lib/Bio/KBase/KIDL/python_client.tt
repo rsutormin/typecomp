@@ -26,9 +26,32 @@ _URL_SCHEME = frozenset(['http', 'https'])
 
 def _get_token(user_id, password,
                auth_svc='https://nexus.api.globusonline.org/goauth/token?' +
-                        'grant_type=client_credentials'):
+                        'grant_type=client_credentials',
+               auth_service_url = None):
     # This is bandaid helper function until we get a full
     # KBase python auth client released
+    # In case auth_service_url input argument is passed defining end-point
+    # of auth_service then '/Sessions/Login' function of KBase auth_service
+    # will be used for authentication rather than direct communication with
+    # GlobusOnline.
+    if auth_service_url:
+        headers = {'Content-type': 'application/x-www-form-urlencoded'}
+        url = auth_service_url + '/Sessions/Login'
+        data = 'user_id=' + user_id + '&password=' + password + '&fields=token'
+        # Here we use '/Sessions/Login' function of KBase auth_service sending
+        # user_id and password there and getting valid token back.
+        ret = _requests.post(url, headers = headers, data = data)
+        status = ret.status_code
+        if status >= 200 and status <= 299:
+            # Parse response in JSON format, it's a map containing requested
+            # user properties (only token in our case).
+            user_map = _json.loads(ret.text)
+        elif status == 403:
+            raise Exception('Authentication failed: Bad user_id/password ' +
+                            'combination for user %s' % (user_id))
+        else:
+            raise Exception(ret.text)
+        return user_map['token']
     auth = _base64.encodestring(user_id + ':' + password)
     headers = {'Authorization': 'Basic ' + auth}
     ret = _requests.get(auth_svc, headers=headers, allow_redirects=True)
@@ -107,7 +130,8 @@ class [% module.module_name %](object):
 
     def __init__(self, url=None, timeout=30 * 60, user_id=None,
                  password=None, token=None, ignore_authrc=False,
-                 trust_all_ssl_certificates=False):
+                 trust_all_ssl_certificates=False, 
+                 auth_service_url = None):
         if url is None:
 [% IF default_service_url -%]
             url = '[% default_service_url %]'
@@ -125,7 +149,10 @@ class [% module.module_name %](object):
         if token is not None:
             self._headers['AUTHORIZATION'] = token
         elif user_id is not None and password is not None:
-            self._headers['AUTHORIZATION'] = _get_token(user_id, password)
+            # We propagate auth_service_url to _get_token method in case 
+            # it was passed into constructor of client.
+            self._headers['AUTHORIZATION'] = _get_token(user_id, password, 
+                auth_service_url = auth_service_url)
         elif 'KB_AUTH_TOKEN' in _os.environ:
             self._headers['AUTHORIZATION'] = _os.environ.get('KB_AUTH_TOKEN')
         elif not ignore_authrc:
@@ -137,8 +164,11 @@ class [% module.module_name %](object):
                     self._headers['AUTHORIZATION'] = authdata['token']
                 elif(authdata.get('user_id') is not None
                      and authdata.get('password') is not None):
+                    # We propagate auth_service_url to _get_token method in case 
+                    # it was passed into constructor of client.
                     self._headers['AUTHORIZATION'] = _get_token(
-                        authdata['user_id'], authdata['password'])
+                        authdata['user_id'], authdata['password'],
+                        auth_service_url = auth_service_url)
         if self.timeout < 1:
             raise ValueError('Timeout value must be at least 1 second')
 

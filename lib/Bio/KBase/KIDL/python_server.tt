@@ -349,8 +349,13 @@ class Application(object):
                             pass
                         else:
                             try:
+                                auth_service_url = None
+                                if config is not None:
+                                    auth_service_url = config.get('auth-service-url')
+                                # We propagate auth_service end-point to validate_token method in case there is
+                                # 'auth-service-url' property defined in deployment configuration of server.
                                 user, _, _ = \
-                                    self.auth_client.validate_token(token)
+                                    self.auth_client.validate_token(token, auth_service_url)
                                 ctx['user_id'] = user
                                 ctx['authenticated'] = 1
                                 ctx['token'] = token

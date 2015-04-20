@@ -246,7 +246,10 @@ sub call_method {
 	    $self->exception('PerlError', "Authentication required for [% module.module_name %] but no authentication header was passed");
 	}
 
-	my $auth_token = Bio::KBase::AuthToken->new(token => $token, ignore_authrc => 1);
+	# We propagate auth_service end-point to AuthToken constructor in case there is
+	# 'auth-service-url' property defined in deployment configuration of server.
+	my $auth_token = Bio::KBase::AuthToken->new(token => $token, ignore_authrc => 1, 
+	                                            auth_service_url => $self->config->{'auth-service-url'});
 	my $valid = $auth_token->validate();
 	# Only throw an exception if authentication was required and it fails
 	if ($method_auth eq 'required' && !$valid)
